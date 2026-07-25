@@ -5,7 +5,7 @@ function getManifest() {
       "id": "hhpanda",
       "name": "Nguồn HHPanda",
       "description": "Anime siêu hay.",
-      "version": "1.1.6",
+      "version": "1.1.7",
       "info": "Nguồn phim hoạt hình chất lượng cao, tuy nhiên cơ chế chiếu phát của nó rất khó chịu. Chỉ phát được trên máy chủ của họ còn phát qua app sẽ bị mất góc không tràn viền.\r\nVì thế đã tích hợp bộ chỉnh kích cỡ video vào bên trong video. Bạn có thể chỉnh sao cho vừa màn hình. Chỉ cần chỉnh 1 lần là các lần sau sẽ dùng như vậy.",
       "baseUrl": "https://hhpanda.st",
       "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp",
@@ -576,16 +576,26 @@ function customJS(config) {
             }
 
             .floating-control-ui {
-                opacity: 0 !important;
-                transition: opacity 0.5s ease, transform 0.2s ease, background-color 0.2s ease !important;
-            }
-            
-            .floating-control-ui:hover, 
-            .floating-control-ui:focus-within, 
-            .floating-control-ui:active,
-            .floating-control-ui.initial-show {
-                opacity: 1 !important;
-            }
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+
+    transition:
+        opacity 0.5s ease,
+        visibility 0.5s ease,
+        transform 0.2s ease,
+        background-color 0.2s ease !important;
+}
+
+.floating-control-ui.show-ui,
+.floating-control-ui:hover,
+.floating-control-ui:focus-within,
+.floating-control-ui:active,
+.floating-control-ui.initial-show {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
 
             .floating-nav-item:hover {
                 background-color: #e50914 !important;
@@ -736,15 +746,26 @@ function customJS(config) {
         renderScaleGrid();
     }
 
-    function triggerInitialShow() {
-        const elements = document.querySelectorAll('.floating-control-ui');
-        elements.forEach(el => el.classList.add('initial-show'));
+function triggerInitialShow() {
 
-        if (window.fadeTimer) clearTimeout(window.fadeTimer);
-        window.fadeTimer = setTimeout(() => {
-            elements.forEach(el => el.classList.remove('initial-show'));
-        }, INITIAL_SHOW_TIME);
-    }
+    const elements =
+        document.querySelectorAll('.floating-control-ui');
+
+    elements.forEach(el => {
+        el.classList.add('show-ui');
+    });
+
+    clearTimeout(window.fadeTimer);
+
+    window.fadeTimer = setTimeout(() => {
+
+        elements.forEach(el => {
+            el.classList.remove('show-ui');
+            el.classList.remove('initial-show');
+        });
+
+    }, INITIAL_SHOW_TIME);
+}checkHistoryAndStart();
 
     function addTouchSupport(el) {
         if (!el) return;
@@ -1380,6 +1401,17 @@ function customJS(config) {
     }
 
     // KHỞI CHẠY
+document.addEventListener('touchstart', function() {
+    triggerInitialShow();
+}, { passive: true });
+
+document.addEventListener('mousedown', function() {
+    triggerInitialShow();
+});
+
+document.addEventListener('mousemove', function() {
+    triggerInitialShow();
+});
     checkHistoryAndStart();
 })();
     `;
