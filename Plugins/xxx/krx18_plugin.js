@@ -5,7 +5,7 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "description": "Nguồn XXX hàn quốc Hay",
-        "version": "1.0",
+        "version": "1.1",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
@@ -281,7 +281,8 @@ function parseDetailResponse(html,url) {
         "Accept": "*/*",
         "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
         "X-Requested-With": "com.android.chrome",
-        "Custom-Js": customjs.trim()
+        "Custom-Js": customjs.trim(),
+      	"Block-Ads": "true"
     },
     "subtitles": []
 });
@@ -306,7 +307,8 @@ function parseEmbedResponse(html, sourceUrl) {
             isEmbed: false, // Kết thúc, đây là link stream cuối
             mimeType: "application/x-mpegURL", // Báo App đây là HLS
             headers: { "Referer": BASEURL,
-            "Custom-Js": customjs.trim()
+            "Custom-Js": customjs.trim(),
+            "Block-Ads": "true"
                 
             },
         });
