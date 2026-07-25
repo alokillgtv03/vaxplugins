@@ -7,7 +7,7 @@ function getManifest() {
         "id": "gamomephim",
         "name": "Gà Mờ Mê Phim",
         "description": "Phim Ngắn Hay",
-        "version": "1.2",
+        "version": "1.2.1",
         "baseUrl": "https://gamomephim.com",
       	"info": "Đây là dạng phim ngắn nên họ thường quay theo chiều dọc màn hình. Qua tập bằng cách vuốt như tiktok nhé.",
         "iconUrl": "https://cdn.gamomephim.com/site/logo-1784305321242.png",
