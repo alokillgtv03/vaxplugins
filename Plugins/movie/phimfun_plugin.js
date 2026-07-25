@@ -5,7 +5,7 @@ function getManifest() {
       "id": "phimfun",
       "name": "Nguồn Phim Fun",
       "description": "Nguồn phim mới.",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "info": "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim.",
       "baseUrl": "https://phimfun.net",
       "iconUrl": "https://phimfun.net/Content/PhimFun/Imgs/phimFun.png",
@@ -1387,7 +1387,14 @@ function getMainLogicCode(config) {
                 document.body.appendChild(notice);
             }
             notice.textContent = text;
-            requestAnimationFrame(function() { notice.style.opacity = '1'; });
+requestAnimationFrame(function() {
+    notice.style.opacity = '1';
+});
+
+setTimeout(function() {
+    hideCenterPlayNotice();
+}, 3000);
+            
             let overlayEvt = document.getElementById('iframe-event-overlay');
             if (overlayEvt) overlayEvt.style.display = 'block';
         }
@@ -1601,6 +1608,13 @@ function getMainLogicCode(config) {
             eventOverlay.addEventListener('mousemove', handleOverlayTrigger);
             eventOverlay.addEventListener('click', handleOverlayTrigger);
             eventOverlay.addEventListener('touchstart', handleOverlayTrigger, { passive: true });
+document.addEventListener('touchstart', function() {
+    hideCenterPlayNotice();
+}, { passive: true });
+
+document.addEventListener('click', function() {
+    hideCenterPlayNotice();
+});
             document.body.appendChild(eventOverlay);
 
             let container = document.createElement("div");
