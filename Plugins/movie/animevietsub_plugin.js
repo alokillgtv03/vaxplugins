@@ -428,7 +428,15 @@ function parseDetailResponse(htmlContent, pageUrl) {
 function customJS(initialLink){
   return `
 (function() {
-    // 0. MÀN HÌNH LOADING OVERLAY
+    // 1. CHÈN NGAY CSS VÀO HEAD VÀ BẬT LOADING OVERLAY CHE PHỦ TOÀN BỘ WEBSITE
+    let styleTag = document.createElement('style');
+    styleTag.textContent = \`
+        margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000;
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    \`;
+    if (document.head) document.head.appendChild(styleTag);
+    else document.documentElement.appendChild(styleTag);
+
     let overlay = document.createElement('div');
     overlay.id = 'loading-overlay';
     Object.assign(overlay.style, {
@@ -436,13 +444,13 @@ function customJS(initialLink){
         backgroundColor: '#000', zIndex: '999998', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        pointerEvents: 'none'
+        pointerEvents: 'none', opacity: '1', transition: 'opacity 0.3s ease'
     });
     overlay.innerHTML = \`
         <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #e50914; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite;"></div>
         <div style="margin-top: 12px; font-size: 12px; color: #a1a1aa;">Đang tải...</div>
-        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
     \`;
+    
     if (document.body) document.body.appendChild(overlay);
     else document.documentElement.appendChild(overlay);
 
@@ -553,7 +561,6 @@ function customJS(initialLink){
 
         let isPopupOpen = false;
 
-        // BỘ QUẢN LÝ ĐỘ MỜ TẤT CẢ UI (MẶC ĐỊNH 0.2, KHI TƯƠNG TÁC SẼ BẬT 1.0)
         function setAllUIOpacity(opacityValue) {
             container.style.opacity = opacityValue;
             btnSidePrev.style.opacity = opacityValue;
@@ -561,7 +568,6 @@ function customJS(initialLink){
             popupGrid.style.opacity = opacityValue;
         }
 
-        // NÚT CHỌN TẬP ĐỎ
         let container = document.createElement("div");
         container.id = "floating-select-box";
         Object.assign(container.style, {
@@ -569,7 +575,6 @@ function customJS(initialLink){
             opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
         });
 
-        // POPUP LƯỚI TẬP PHIM
         let popupGrid = document.createElement("div");
         popupGrid.id = "episode-grid-popup";
         Object.assign(popupGrid.style, {
@@ -581,7 +586,6 @@ function customJS(initialLink){
             opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
         });
 
-        // 2 NÚT CHUYỂN TẬP MỚI
         let btnSidePrev = document.createElement("div");
         btnSidePrev.innerHTML = "&#10094;";
         Object.assign(btnSidePrev.style, {
@@ -606,7 +610,6 @@ function customJS(initialLink){
             pointerEvents: "auto"
         });
 
-        // XỬ LÝ SỰ KIỆN HOVER VÀ TOUCH TRÊN PC / MOBILE
         [container, btnSidePrev, btnSideNext, popupGrid].forEach(el => {
             el.addEventListener("mouseenter", () => setAllUIOpacity("1"));
             el.addEventListener("mouseleave", () => {
@@ -615,7 +618,6 @@ function customJS(initialLink){
             el.addEventListener("touchstart", () => setAllUIOpacity("1"), { passive: true });
         });
 
-        // IFRAME PHÁT VIDEO
         if (initLink) {
             let newIframe = document.createElement("iframe");
             newIframe.className = "frameMain";
@@ -645,7 +647,6 @@ function customJS(initialLink){
         document.body.appendChild(btnSidePrev);
         document.body.appendChild(btnSideNext);
 
-        // DỮ LIỆU TẬP PHIM
         const listFrame = new Array(allEpisodes.length);
         if (allEpisodes[currentPlayingIndex] && initLink) {
             listFrame[currentPlayingIndex] = {
@@ -774,6 +775,7 @@ function customJS(initialLink){
         allEpisodes.forEach(episode => fetchPage(episode));
     }
 
+    // Chờ cho trang web load hoàn tất rồi mới chạy logic trích xuất tập phim và dựng giao diện
     if (document.readyState === 'complete') init();
     else window.addEventListener('load', init);
 })();
