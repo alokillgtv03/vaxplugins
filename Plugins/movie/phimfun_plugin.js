@@ -5,7 +5,7 @@ function getManifest() {
       "id": "phimfun",
       "name": "Nguồn Phim Fun",
       "description": "Nguồn phim mới.",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "info": "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim.",
       "baseUrl": "https://phimfun.net",
       "iconUrl": "https://phimfun.net/Content/PhimFun/Imgs/phimFun.png",
@@ -941,11 +941,18 @@ if (overlayEvt) overlayEvt.style.pointerEvents = 'auto';
             let cleanInitialStream = INITIAL_STREAM;
             if (cleanInitialStream.startsWith("//")) cleanInitialStream = "https:" + cleanInitialStream;
             framePlay.src = cleanInitialStream;
-            framePlay.onload = function() {
-                hideLoading();
-                applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
-                showCenterPlayNotice('▶ Vui lòng nhấn Play để xem video!');
-            };
+framePlay.onload = function() {
+    hideLoading();
+    applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
+
+    showCenterPlayNotice('▶ Vui lòng nhấn Play để xem video!');
+
+    clearTimeout(window.__noticeHideTimer);
+
+    window.__noticeHideTimer = setTimeout(function() {
+        hideCenterPlayNotice();
+    }, 2500);
+};
             document.body.appendChild(framePlay);
 
             let eventOverlay = document.createElement("div");
@@ -1387,14 +1394,7 @@ function getMainLogicCode(config) {
                 document.body.appendChild(notice);
             }
             notice.textContent = text;
-requestAnimationFrame(function() {
-    notice.style.opacity = '1';
-});
-
-setTimeout(function() {
-    hideCenterPlayNotice();
-}, 3000);
-            
+            requestAnimationFrame(function() { notice.style.opacity = '1'; });
             let overlayEvt = document.getElementById('iframe-event-overlay');
             if (overlayEvt) overlayEvt.style.display = 'block';
         }
@@ -1569,6 +1569,12 @@ setTimeout(function() {
                             framePlay.onload = function() {
                                 hideLoading();
                                 showCenterPlayNotice('▶ Đã chuyển ' + epName + '. Vui lòng nhấn Play để tiếp tục xem!');
+
+clearTimeout(window.__noticeHideTimer);
+
+window.__noticeHideTimer = setTimeout(function() {
+    hideCenterPlayNotice();
+}, 2500);
                             };
                         }
                     } else { hideLoading(); }
@@ -1604,17 +1610,20 @@ setTimeout(function() {
 
             let eventOverlay = document.createElement("div");
             eventOverlay.id = "iframe-event-overlay";
-            function handleOverlayTrigger() { resetAutoHideTimer(); hideCenterPlayNotice(); }
+function handleOverlayTrigger() {
+    resetAutoHideTimer();
+
+    showCenterPlayNotice('▶ Vui lòng nhấn Play để xem video!');
+
+    clearTimeout(window.__noticeHideTimer);
+
+    window.__noticeHideTimer = setTimeout(function() {
+        hideCenterPlayNotice();
+    }, 2500);
+}
             eventOverlay.addEventListener('mousemove', handleOverlayTrigger);
             eventOverlay.addEventListener('click', handleOverlayTrigger);
             eventOverlay.addEventListener('touchstart', handleOverlayTrigger, { passive: true });
-document.addEventListener('touchstart', function() {
-    hideCenterPlayNotice();
-}, { passive: true });
-
-document.addEventListener('click', function() {
-    hideCenterPlayNotice();
-});
             document.body.appendChild(eventOverlay);
 
             let container = document.createElement("div");
