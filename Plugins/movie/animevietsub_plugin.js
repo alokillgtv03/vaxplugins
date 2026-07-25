@@ -7,7 +7,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "animevietsub",
         "name": "AnimeVietSub",
-        "version": "1.0.9",
+        "version": "1.1.0",
         "baseUrl": "https://animevietsub.wiki",
         "iconUrl": "https://animevietsub.wiki/statics/default/images/logo.png",
         "isEnabled": true,
@@ -424,6 +424,8 @@ function parseDetailResponse(htmlContent, pageUrl) {
         return JSON.stringify({ url: "", isEmbed: false, headers: {}, subtitles: [] });
     }
 }
+
+
 function customJS(initialLink){
   return `
 (function() {
@@ -445,9 +447,9 @@ function customJS(initialLink){
     if (document.body) document.body.appendChild(overlay);
     else document.documentElement.appendChild(overlay);
 
-    // Chặn quảng cáo chuyển trang
+    // Chặn quảng cáo
     window.addEventListener('click', function(e) {
-        if (!e.target.closest('#floating-select-box') && !e.target.closest('#episode-grid-popup')) {
+        if (!e.target.closest('#floating-select-box') && !e.target.closest('#episode-grid-popup') && !e.target.closest('#btn-toggle-ui')) {
             let aTag = e.target.closest('a');
             if (aTag && (aTag.target === '_blank' || aTag.href)) {
                 e.stopPropagation();
@@ -493,7 +495,7 @@ function customJS(initialLink){
                 });
 
                 modalOverlay.innerHTML = \`
-                    <div style="background: #141416; border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; width: 300px; color: #fff; text-align: center;">
+                    <div style="background: #141416; border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; width: 290px; color: #fff; text-align: center;">
                         <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Phát hiện lịch sử xem</div>
                         <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 16px; line-height: 1.4;">
                             Bạn đang mở <b style="color:#fff;">\${currentEpObj.title}</b>. Lần trước xem <b style="color:#e50914;">\${savedEpObj.title}</b>.
@@ -550,29 +552,27 @@ function customJS(initialLink){
 
         if (overlay) document.body.appendChild(overlay);
 
-        // NÚT CHỌN TẬP GÓC TRÊN PHẢI (Pointer-events auto để bấm được)
+        // NÚT CHỌN TẬP GÓC TRÊN PHẢI
         let container = document.createElement("div");
         container.id = "floating-select-box";
         Object.assign(container.style, {
             position: "fixed", top: "12px", right: "16px", zIndex: "999999",
-            transition: "opacity 0.3s ease, visibility 0.3s ease",
-            pointerEvents: "auto"
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
         });
 
-        // POPUP 6 Ô 1 HÀNG (Pointer-events auto)
+        // POPUP LƯỚI 6 Ô 1 HÀNG
         let popupGrid = document.createElement("div");
         popupGrid.id = "episode-grid-popup";
         Object.assign(popupGrid.style, {
             position: "fixed", top: "46px", right: "16px", zIndex: "1000000",
             backgroundColor: "rgba(18, 18, 20, 0.95)", backdropFilter: "blur(12px)",
             border: "1px solid rgba(255, 255, 255, 0.1)", padding: "8px", borderRadius: "10px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.8)", width: "270px", maxHeight: "260px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.8)", width: "270px", maxHeight: "240px",
             overflowY: "auto", display: "none", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px",
-            transition: "opacity 0.3s ease, visibility 0.3s ease",
-            pointerEvents: "auto"
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
         });
 
-        // NÚT CHUYỂN TẬP TRÁI / PHẢI
+        // NÚT CHUYỂN TẬP MỚI
         let btnSidePrev = document.createElement("div");
         btnSidePrev.innerHTML = "&#10094;";
         Object.assign(btnSidePrev.style, {
@@ -581,8 +581,7 @@ function customJS(initialLink){
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.15)", transition: "opacity 0.3s ease, visibility 0.3s ease",
-            pointerEvents: "auto"
+            border: "1px solid rgba(255,255,255,0.15)", transition: "all 0.3s ease"
         });
 
         let btnSideNext = document.createElement("div");
@@ -593,40 +592,34 @@ function customJS(initialLink){
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.15)", transition: "opacity 0.3s ease, visibility 0.3s ease",
-            pointerEvents: "auto"
+            border: "1px solid rgba(255,255,255,0.15)", transition: "all 0.3s ease"
         });
 
-        // LỚP PHỦ CẢM ỨNG XUYÊN QUA (Chủ yếu để kích hoạt lại UI khi chạm/di chuột)
-        let touchTriggerArea = document.createElement("div");
-        Object.assign(touchTriggerArea.style, {
-            position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh",
-            zIndex: "999990", pointerEvents: "none" // Xuyên qua để bấm play video OK
-        });
-
-        // XỬ LÝ ẨN / HIỆN UI
+        // QUẢN LÝ TỰ ĐỘNG ẨN/HIỆN
         let hideControlsTimer = null;
+        let isControlsVisible = true;
         let isPopupOpen = false;
 
         function showUI() {
-            container.style.opacity = "1"; container.style.visibility = "visible";
-            btnSidePrev.style.opacity = "1"; btnSidePrev.style.visibility = "visible";
-            btnSideNext.style.opacity = "1"; btnSideNext.style.visibility = "visible";
-
+            isControlsVisible = true;
+            container.style.opacity = "1"; container.style.pointerEvents = "auto";
+            btnSidePrev.style.opacity = "1"; btnSidePrev.style.pointerEvents = "auto";
+            btnSideNext.style.opacity = "1"; btnSideNext.style.pointerEvents = "auto";
+            
             if (isPopupOpen) {
-                popupGrid.style.opacity = "1";
-                popupGrid.style.visibility = "visible";
+                popupGrid.style.opacity = "1"; popupGrid.style.pointerEvents = "auto";
             }
             resetHideTimer();
         }
 
         function hideUI() {
-            container.style.opacity = "0"; container.style.visibility = "hidden";
-            btnSidePrev.style.opacity = "0"; btnSidePrev.style.visibility = "hidden";
-            btnSideNext.style.opacity = "0"; btnSideNext.style.visibility = "hidden";
+            isControlsVisible = false;
+            container.style.opacity = "0"; container.style.pointerEvents = "none";
+            btnSidePrev.style.opacity = "0"; btnSidePrev.style.pointerEvents = "none";
+            btnSideNext.style.opacity = "0"; btnSideNext.style.pointerEvents = "none";
             
             if (isPopupOpen) {
-                popupGrid.style.opacity = "0"; popupGrid.style.visibility = "hidden";
+                popupGrid.style.opacity = "0"; popupGrid.style.pointerEvents = "none";
                 isPopupOpen = false;
                 setTimeout(() => { popupGrid.style.display = "none"; }, 300);
             }
@@ -634,20 +627,29 @@ function customJS(initialLink){
 
         function resetHideTimer() {
             clearTimeout(hideControlsTimer);
-            hideControlsTimer = setTimeout(hideUI, 4000); // 4s ẩn nút
+            hideControlsTimer = setTimeout(hideUI, 4000); // 4 giây tự ẩn
         }
 
-        // Bắt sự kiện di chuyển/chạm vào màn hình để HIỆN LẠI UI
-        ['mousemove', 'touchstart', 'click'].forEach(evt => {
-            window.addEventListener(evt, showUI, { passive: true });
+        // TẠO NÚT BẤM KÍCH HOẠT MENU NHỎ XỈU Ở GÓC DƯỚI DÀNH CHO ĐIỆN THOẠI
+        let btnToggleUI = document.createElement("div");
+        btnToggleUI.id = "btn-toggle-ui";
+        btnToggleUI.innerHTML = "&#9881;"; // Icon bánh răng/công cụ nhỏ
+        Object.assign(btnToggleUI.style, {
+            position: "fixed", bottom: "16px", right: "16px", zIndex: "999997",
+            width: "32px", height: "32px", borderRadius: "50%",
+            backgroundColor: "rgba(0, 0, 0, 0.4)", color: "rgba(255,255,255,0.7)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "16px", cursor: "pointer", backdropFilter: "blur(4px)",
+            border: "1px solid rgba(255,255,255,0.1)"
         });
 
-        // Khi người dùng bấm vào iframe (trình phát video), window bị mất focus -> Gọi showUI để hẹn giờ tự ẩn
-        window.addEventListener('blur', () => {
-            showUI();
-        });
+        btnToggleUI.onclick = (e) => {
+            e.stopPropagation();
+            if (isControlsVisible) hideUI();
+            else showUI();
+        };
 
-        // IFRAME VIDEO
+        // IFRAME PHÁT VIDEO
         if (initLink) {
             let newIframe = document.createElement("iframe");
             newIframe.className = "frameMain";
@@ -672,15 +674,15 @@ function customJS(initialLink){
             document.body.appendChild(newIframe);
         }
 
-        document.body.appendChild(touchTriggerArea);
         document.body.appendChild(container);
         document.body.appendChild(popupGrid);
         document.body.appendChild(btnSidePrev);
         document.body.appendChild(btnSideNext);
+        document.body.appendChild(btnToggleUI);
 
         showUI();
 
-        // DỮ LIỆU TẬP
+        // DỮ LIỆU TẬP PHIM
         const listFrame = new Array(allEpisodes.length);
         if (allEpisodes[currentPlayingIndex] && initLink) {
             listFrame[currentPlayingIndex] = {
@@ -729,19 +731,17 @@ function customJS(initialLink){
             if (isPopupOpen) {
                 popupGrid.style.display = "grid";
                 setTimeout(() => {
-                    popupGrid.style.opacity = "1";
-                    popupGrid.style.visibility = "visible";
+                    popupGrid.style.opacity = "1"; popupGrid.style.pointerEvents = "auto";
                 }, 10);
             } else {
-                popupGrid.style.opacity = "0";
-                popupGrid.style.visibility = "hidden";
+                popupGrid.style.opacity = "0"; popupGrid.style.pointerEvents = "none";
                 setTimeout(() => { popupGrid.style.display = "none"; }, 300);
             }
             showUI();
         }
 
         const closePopupOutside = (e) => {
-            if (isPopupOpen && !container.contains(e.target) && !popupGrid.contains(e.target)) {
+            if (isPopupOpen && !container.contains(e.target) && !popupGrid.contains(e.target) && !btnToggleUI.contains(e.target)) {
                 togglePopup(false);
             }
         };
@@ -817,6 +817,7 @@ function customJS(initialLink){
 })();
   `;
 }
+
 
 
 /*
