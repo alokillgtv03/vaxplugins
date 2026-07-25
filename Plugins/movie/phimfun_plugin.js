@@ -5,7 +5,7 @@ function getManifest() {
       "id": "phimfun",
       "name": "Nguồn Phim Fun",
       "description": "Nguồn phim mới.",
-      "version": "1.0.9",
+      "version": "1.1.0",
       "info": "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim.",
       "baseUrl": "https://phimfun.net",
       "iconUrl": "https://phimfun.net/Content/PhimFun/Imgs/phimFun.png",
@@ -674,8 +674,6 @@ function getMainLogicCode(config) {
     z-index: 10 !important;
     background: transparent !important;
     cursor: pointer !important;
-
-    pointer-events: none !important;
     touch-action: manipulation !important;
 }
             .floating-control-ui { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.4s ease !important; }
@@ -957,10 +955,20 @@ framePlay.onload = function() {
 
             let eventOverlay = document.createElement("div");
             eventOverlay.id = "iframe-event-overlay";
-            function handleOverlayTrigger() { resetAutoHideTimer(); hideCenterPlayNotice(); }
-            eventOverlay.addEventListener('mousemove', handleOverlayTrigger);
-            eventOverlay.addEventListener('click', handleOverlayTrigger);
-            eventOverlay.addEventListener('touchstart', handleOverlayTrigger, { passive: true });
+function handleOverlayTrigger() {
+    resetAutoHideTimer();
+
+    showCenterPlayNotice('▶ Vui lòng nhấn Play để xem video!');
+
+    clearTimeout(window.__noticeHideTimer);
+
+    window.__noticeHideTimer = setTimeout(function() {
+        hideCenterPlayNotice();
+    }, 2500);
+}
+document.addEventListener('mousemove', handleOverlayTrigger);
+document.addEventListener('click', handleOverlayTrigger);
+document.addEventListener('touchstart', handleOverlayTrigger, { passive: true });
             document.body.appendChild(eventOverlay);
 
             let container = document.createElement("div");
