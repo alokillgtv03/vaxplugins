@@ -1,254 +1,434 @@
-// ============================================================================
-// 1. MOCK BRIDGES (GIẢ LẬP BRIDGE TRÊN DESKTOP CONSOLE)
-// ============================================================================
-function runjS(){
-return `
-(function initMocks() {
-  console.group('🔧 [INIT] Cấu hình Mock Bridges');
-
-  // Android Bridge Mock
-  if (!window.SnifferBridge) {
-    window.SnifferBridge = {
-      play: function (videoUrl, headers) {
-        console.group('%c🚀 [Android Bridge Called]', 'color: #00ff00; font-weight: bold;');
-        console.log('🔗 Video URL:', videoUrl);
-        try {
-          console.log('📋 Headers (Parsed):', JSON.parse(headers));
-        } catch (e) {
-          console.warn('⚠️ Không thể parse Headers JSON:', e);
-          console.log('📋 Headers (Raw):', headers);
+(function initEnhancedVideoSniffer() {
+  try {
+    // ==========================================
+    // 1. HELPER: LOGGING & TOAST BRIDGE
+    // ==========================================
+    function bridgeLog(msg) {
+      try {
+        if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+          window.SnifferBridge.log(String(msg));
+        } else {
+          console.log('[LOG]', msg);
         }
-        console.groupEnd();
+      } catch (e) {
+        console.error('[LOG ERROR]', e);
       }
-    };
-    console.log('✅ Đã khởi tạo SnifferBridge Mock (Android)');
-  } else {
-    console.log('ℹ️ SnifferBridge Native đã sẵn sàng');
-  }
+    }
 
-  // iOS Webkit Mock
-  if (!window.webkit) {
-    window.webkit = {
-      messageHandlers: {
-        m3u8Detected: {
-          postMessage: function (videoUrl) {
-            console.group('%c🚀 [iOS Webkit Bridge Called]', 'color: #00bcff; font-weight: bold;');
-            console.log('🔗 Video URL:', videoUrl);
-            console.groupEnd();
-          }
+    function bridgeToast(msg) {
+      try {
+        if (window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast(String(msg));
+        } else {
+          console.log('[TOAST]', msg);
         }
-      }
-    };
-    console.log('✅ Đã khởi tạo webkit.messageHandlers Mock (iOS)');
-  } else {
-    console.log('ℹ️ Webkit MessageHandlers Native đã sẵn sàng');
-  }
-
-  console.groupEnd();
-})();
-
-// ============================================================================
-// 2. MAIN SNIFFER SCRIPT
-// ============================================================================
-(function initVideoSniffer() {
-  console.log('🎬 [Sniffer] Script đã được nạp vào trang.');
-
-  // --- Hàm 1: Trích xuất SRC từ Video Element ---
-  function getVideoSrc(videoEl) {
-    console.groupCollapsed('🔍 [getVideoSrc] Đang kiểm tra thẻ video...', videoEl);
-
-    // Ưu tiên 1: currentSrc (URL thực tế trình duyệt đang nạp)
-    if (videoEl.currentSrc && videoEl.currentSrc.trim() !== '') {
-      console.log('👉 Tìm thấy từ "currentSrc":', videoEl.currentSrc);
-      console.groupEnd();
-      return videoEl.currentSrc;
-    }
-
-    // Ưu tiên 2: thuộc tính src của thẻ video
-    if (videoEl.src && videoEl.src.trim() !== '') {
-      console.log('👉 Tìm thấy từ "src":', videoEl.src);
-      console.groupEnd();
-      return videoEl.src;
-    }
-
-    // Ưu tiên 3: Tìm thẻ <source> bên trong
-    const sourceEl = videoEl.querySelector('source[src]');
-    if (sourceEl && sourceEl.src) {
-      console.log('👉 Tìm thấy từ thẻ con "<source src=\\"...\\">":', sourceEl.src);
-      console.groupEnd();
-      return sourceEl.src;
-    }
-
-    console.warn('⚠️ Thẻ video hiện tại chưa có "src" hoặc "currentSrc".');
-    console.groupEnd();
-    return null;
-  }
-
-  // --- Hàm 2: Lắng nghe DOM để tìm Video ---
-  function watchForVideo(onFound) {
-    console.log('👀 [watchForVideo] Bắt đầu tiến trình theo dõi Video...');
-
-    const checkAndProcess = function (videoEl, sourceLocation) {
-      console.log('🎯 [Check] Phát hiện thẻ video từ source: "' + sourceLocation + '"');
-      const src = getVideoSrc(videoEl);
-
-      if (src) {
-        console.log('🎉 [Success] Trích xuất thành công URL:', src);
-        onFound(src, videoEl);
-        return true;
-      }
-      return false;
-    };
-
-    // BƯỚC 1: Kiểm tra các thẻ <video> đã tồn tại sẵn trong DOM
-    const existingVideos = document.querySelectorAll('video');
-    console.log('🔎 [Step 1] Tìm trong DOM sẵn có: Thấy ' + existingVideos.length + ' thẻ <video>');
-
-    for (let i = 0; i < existingVideos.length; i++) {
-      if (checkAndProcess(existingVideos[i], 'DOM có sẵn (video #' + (i + 1) + ')')) {
-        return; // Đã tìm thấy, dừng lại
+      } catch (e) {
+        console.error('[TOAST ERROR]', e);
       }
     }
 
-    // BƯỚC 2: Nếu chưa có, bật MutationObserver lắng nghe DOM thay đổi
-    console.log('📡 [Step 2] Chưa thấy video hợp lệ. Đang kích hoạt MutationObserver...');
-
-    const observer = new MutationObserver(function (mutations) {
-      for (let i = 0; i < mutations.length; i++) {
-        const mutation = mutations[i];
-
-        // Trường hợp A: Thêm node mới
-        if (mutation.type === 'childList') {
-          for (let j = 0; j < mutation.addedNodes.length; j++) {
-            const node = mutation.addedNodes[j];
-            if (node.nodeType !== Node.ELEMENT_NODE) continue;
-
-            const tagName = node.tagName.toLowerCase();
-
-            // Node mới chính là thẻ <video>
-            if (tagName === 'video') {
-              console.log('⚡ [Mutation] Phát hiện thẻ <video> mới được chèn vào DOM!');
-              if (checkAndProcess(node, 'Mutation: Added <video>')) {
-                observer.disconnect();
-                console.log('🛑 [Observer] Đã ngắt MutationObserver.');
-                return;
-              }
-            }
-
-            // Node mới chứa thẻ <video> bên trong
-            const videoInside = node.querySelector && node.querySelector('video');
-            if (videoInside) {
-              console.log('⚡ [Mutation] Phát hiện thẻ chứa <video> được chèn vào DOM!');
-              if (checkAndProcess(videoInside, 'Mutation: Added parent element with <video>')) {
-                observer.disconnect();
-                console.log('🛑 [Observer] Đã ngắt MutationObserver.');
-                return;
-              }
-            }
-          }
-        }
-
-        // Trường hợp B: Thẻ <video> có sẵn nhưng vừa được gán attribute 'src' hoặc 'currentsrc'
-        if (mutation.type === 'attributes') {
-          const target = mutation.target;
-          if (target.tagName && target.tagName.toLowerCase() === 'video') {
-            console.log('⚡ [Mutation] Thẻ <video> vừa cập nhật thuộc tính [' + mutation.attributeName + ']');
-            if (checkAndProcess(target, 'Mutation: Attribute ' + mutation.attributeName + ' changed')) {
-              observer.disconnect();
-              console.log('🛑 [Observer] Đã ngắt MutationObserver.');
-              return;
-            }
-          }
-        }
-      }
-    });
-
-    try {
-      observer.observe(document.body || document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['src', 'currentsrc']
-      });
-      console.log('✅ [Observer] Lắng nghe DOM thành công.');
-    } catch (err) {
-      console.error('❌ [Error] Không thể khởi tạo MutationObserver:', err);
-    }
-  }
-
-  // --- BƯỚC KHỞI CHẠY CHÍNH ---
-  const handlePageLoad = function () {
-    console.log('🌐 [Event] Trang web đã nạp xong (window.load). Bắt đầu quét...');
-
-    watchForVideo(function (videoUrl, videoElement) {
-      console.group('📌 [RESULT] Đã bắt được Video! Chuẩn bị gửi dữ liệu sang Native App');
-      console.log('🔗 Raw Video URL:', videoUrl);
-      console.log('🏷️ Video Element:', videoElement);
-
-      // Lấy Referer & User-Agent
-      const currentReferer = window.location.href;
-      const userAgent = navigator.userAgent;
-
-      const headersObj = {
-        "Referer": currentReferer,
-        "User-Agent": userAgent
+    // Hàm Debounce gom các sự kiện DOM dồn dập
+    function debounce(fn, delay) {
+      let timer = null;
+      return function () {
+        const context = this, args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          fn.apply(context, args);
+        }, delay);
       };
-      const headersJson = JSON.stringify(headersObj);
+    }
 
-      console.log('⚙️ Extracted Headers:', headersObj);
+    bridgeLog('🎬 [Sniffer v2.3] Script khởi tạo (Đã bật bộ lọc chặn Blob URL).');
 
-      // Định dạng lại URL nếu thiếu đuôi
-      let finalUrl = videoUrl;
-      if (!finalUrl.includes('.m3u8') && !finalUrl.includes('.mp4')) {
-        finalUrl += '#.m3u8';
-        console.log('🛠️ URL không chứa đuôi mở rộng, đã append "#.m3u8" ->', finalUrl);
-      }
+    // Tập hợp lưu trữ URL đã gửi để tránh gửi lặp lại
+    const processedUrls = new Set();
 
-      // Gửi sang Native App
-      let bridgeDispatched = false;
+    // ==========================================
+    // 2. HÀM TRUYỀN DỮ LIỆU SANG NATIVE BRIDGE (CÓ BỘ LỌC BLOB)
+    // ==========================================
+    function dispatchToNative(videoUrl) {
+      try {
+        if (!videoUrl || typeof videoUrl !== 'string') return;
 
-      // 1. Android Bridge
-      if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
-        try {
-          console.log('📲 Đang gửi dữ liệu tới Android SnifferBridge...');
-          window.SnifferBridge.play(finalUrl, headersJson);
-          bridgeDispatched = true;
-        } catch (err) {
-          console.error('❌ Lỗi khi gọi Android SnifferBridge.play():', err);
+        // --- BỘ LỌC 1: CHẶN BLOB URL ---
+        if (videoUrl.indexOf('blob:') === 0 || videoUrl.startsWith('blob:')) {
+          bridgeLog('🚫 [Filter Blob] Đã chặn link Blob (ExoPlayer không hỗ trợ): ' + videoUrl);
+          return;
         }
-      }
 
-      // 2. iOS Bridge
-      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.m3u8Detected) {
-        try {
-          console.log('📲 Đang gửi dữ liệu tới iOS Webkit MessageHandler...');
-          window.webkit.messageHandlers.m3u8Detected.postMessage(finalUrl);
-          bridgeDispatched = true;
-        } catch (err) {
-          console.error('❌ Lỗi khi gọi iOS messageHandlers.m3u8Detected:', err);
+        // --- BỘ LỌC 2: BỎ QUA CÁC PHÂN ĐOẠN .TS LẺ ---
+        if (videoUrl.indexOf('.ts') !== -1 && videoUrl.indexOf('.m3u8') === -1) {
+          bridgeLog('⏳ [Filter TS] Bỏ qua file phân đoạn .ts lẻ: ' + videoUrl);
+          return;
         }
+
+        // --- BỘ LỌC 3: KIỂM TRA TRÙNG LẶP ---
+        if (processedUrls.has(videoUrl)) return;
+        processedUrls.add(videoUrl);
+
+        bridgeToast('🎉 Đã bắt được link media hợp lệ!');
+        bridgeLog('📌 [RESULT] Stream URL gửi sang Native: ' + videoUrl);
+
+        const headersObj = {
+          "Referer": window.location.href,
+          "User-Agent": navigator.userAgent
+        };
+        const headersJson = JSON.stringify(headersObj);
+
+        let dispatched = false;
+
+        // Android Native Bridge
+        if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+          try {
+            bridgeLog('📲 Đang gửi dữ liệu tới Android SnifferBridge.play()...');
+            window.SnifferBridge.play(videoUrl, headersJson);
+            dispatched = true;
+          } catch (e) {
+            bridgeLog('❌ Lỗi Android Bridge: ' + e.message);
+          }
+        }
+
+        // iOS Native Bridge
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.m3u8Detected) {
+          try {
+            bridgeLog('📲 Đang gửi dữ liệu tới iOS Webkit MessageHandler...');
+            window.webkit.messageHandlers.m3u8Detected.postMessage(videoUrl);
+            dispatched = true;
+          } catch (e) {
+            bridgeLog('❌ Lỗi iOS Bridge: ' + e.message);
+          }
+        }
+
+        if (!dispatched) {
+          bridgeLog('⚠️ Không tìm thấy Native Bridge tương thích.');
+        }
+      } catch (errDispatch) {
+        bridgeLog('💥 [Fatal Error in dispatchToNative]: ' + errDispatch.message);
+      }
+    }
+
+    // ==========================================
+    // 3. NETWORK INTERCEPTOR (GHI ĐÈ XHR & FETCH)
+    // ==========================================
+    (function initNetworkInterceptor() {
+      try {
+        bridgeLog('📡 [Interceptor] Đang kích hoạt lắng nghe XHR & Fetch...');
+
+        const isMediaUrl = function (url) {
+          if (!url || typeof url !== 'string') return false;
+          
+          // Bỏ qua Blob URL ngay từ khâu nhận dạng request
+          if (url.indexOf('blob:') === 0) return false;
+
+          return (
+            url.indexOf('.m3u8') !== -1 ||
+            url.indexOf('.mp4') !== -1 ||
+            url.indexOf('manifest') !== -1 ||
+            url.indexOf('playlist') !== -1
+          );
+        };
+
+        // 3a. Ghi đè XMLHttpRequest
+        try {
+          const originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            try {
+              if (isMediaUrl(url)) {
+                const absoluteUrl = new URL(url, document.baseURI || window.location.href).href;
+                bridgeLog('⚡ [XHR Detected]: ' + absoluteUrl);
+                dispatchToNative(absoluteUrl);
+              }
+            } catch (e) {
+              bridgeLog('⚠️ Lỗi xử lý URL trong XHR: ' + e.message);
+            }
+            return originalOpen.apply(this, arguments);
+          };
+          bridgeLog('✅ [Interceptor] Patch XMLHttpRequest thành công.');
+        } catch (errXHR) {
+          bridgeLog('❌ Lỗi Patch XHR: ' + errXHR.message);
+        }
+
+        // 3b. Ghi đè Fetch API
+        try {
+          if (window.fetch) {
+            const originalFetch = window.fetch;
+            window.fetch = function (input, init) {
+              try {
+                let url = '';
+                if (typeof input === 'string') {
+                  url = input;
+                } else if (input && input.url) {
+                  url = input.url;
+                }
+
+                if (isMediaUrl(url)) {
+                  const absoluteUrl = new URL(url, document.baseURI || window.location.href).href;
+                  bridgeLog('⚡ [Fetch Detected]: ' + absoluteUrl);
+                  dispatchToNative(absoluteUrl);
+                }
+              } catch (e) {
+                bridgeLog('⚠️ Lỗi xử lý URL trong Fetch: ' + e.message);
+              }
+
+              return originalFetch.apply(this, arguments);
+            };
+            bridgeLog('✅ [Interceptor] Patch Fetch API thành công.');
+          }
+        } catch (errFetch) {
+          bridgeLog('❌ Lỗi Patch Fetch: ' + errFetch.message);
+        }
+      } catch (errInterceptor) {
+        bridgeLog('💥 [Fatal Error in initNetworkInterceptor]: ' + errInterceptor.message);
+      }
+    })();
+
+    // ==========================================
+    // 4. TỐI ƯU HÓA LỌC HTML LOG (CLEAN SNAPSHOT)
+    // ==========================================
+    function getCleanHTML() {
+      try {
+        if (!document.documentElement) return 'DOM chưa sẵn sàng';
+        const cloneNode = document.documentElement.cloneNode(true);
+
+        const junkSelectors = ['script', 'style', 'svg', 'path', 'noscript', 'link[rel="stylesheet"]'];
+
+        junkSelectors.forEach(function (selector) {
+          try {
+            const elements = cloneNode.querySelectorAll(selector);
+            for (let i = 0; i < elements.length; i++) {
+              const el = elements[i];
+              if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+              }
+            }
+          } catch (e) {}
+        });
+
+        const allElements = cloneNode.querySelectorAll('*');
+        for (let i = 0; i < allElements.length; i++) {
+          const el = allElements[i];
+          if (el.hasAttribute && el.hasAttribute('style')) el.removeAttribute('style');
+          if (el.src && el.src.indexOf('data:') === 0) el.removeAttribute('src');
+        }
+
+        return cloneNode.outerHTML
+          .replace(/^\\s*[\\r\\n]/gm, '')
+          .substring(0, 10000);
+      } catch (e) {
+        return '⚠️ Không thể rút gọn HTML: ' + e.message;
+      }
+    }
+
+    bridgeLog('📄 [Clean DOM Snapshot]:\\n' + getCleanHTML());
+
+    // ==========================================
+    // 5. API AUTO-CLICKER (CÓ RETRY VÀ TRY-CATCH)
+    // ==========================================
+    function autoClick(config) {
+      try {
+        const cfg = Object.assign({
+          selector: '',
+          contains: null,
+          eq: 0,
+          maxClicks: 1,
+          interval: 1000,
+          delay: 500,
+          maxRetries: 10,
+          retryInterval: 500
+        }, config);
+
+        if (!cfg.selector) return;
+
+        bridgeLog('🖱️ [AutoClick] Lên lịch cho selector: "' + cfg.selector + '"');
+
+        setTimeout(function () {
+          let currentClicks = 0;
+          let retryCount = 0;
+
+          const attemptClick = function () {
+            try {
+              let nodes = Array.from(document.querySelectorAll(cfg.selector));
+
+              if (cfg.contains) {
+                nodes = nodes.filter(function (el) {
+                  return el.textContent && el.textContent.toLowerCase().indexOf(cfg.contains.toLowerCase()) !== -1;
+                });
+              }
+
+              if (nodes.length === 0) {
+                retryCount++;
+                if (retryCount <= cfg.maxRetries) {
+                  setTimeout(attemptClick, cfg.retryInterval);
+                } else {
+                  bridgeLog('⚠️ [AutoClick] Hết lượt thử lại, không tìm thấy nút: ' + cfg.selector);
+                }
+                return;
+              }
+
+              let targetEl = null;
+              if (cfg.eq === 'first' || cfg.eq === 0) targetEl = nodes[0];
+              else if (cfg.eq === 'last') targetEl = nodes[nodes.length - 1];
+              else if (typeof cfg.eq === 'number' && nodes[cfg.eq]) targetEl = nodes[cfg.eq];
+              else targetEl = nodes[0];
+
+              if (targetEl) {
+                targetEl.click();
+                currentClicks++;
+                bridgeLog('✅ [AutoClick] Đã click (' + currentClicks + '/' + cfg.maxClicks + ') vào <' + targetEl.tagName.toLowerCase() + '>');
+
+                if (currentClicks < cfg.maxClicks) {
+                  setTimeout(attemptClick, cfg.interval);
+                }
+              }
+            } catch (err) {
+              bridgeLog('❌ [AutoClick Error]: ' + err.message);
+            }
+          };
+
+          attemptClick();
+        }, cfg.delay);
+      } catch (errAutoClick) {
+        bridgeLog('💥 [Fatal Error in autoClick]: ' + errAutoClick.message);
+      }
+    }
+
+    // ==========================================
+    // 6. BỘ QUÉT URL TRONG DOM & SCRIPT TAGS
+    // ==========================================
+    function extractMediaUrls() {
+      const foundUrls = new Set();
+      const mediaRegex = /https?:\\/\\/[^\\s"'<>]+\\.(?:m3u8|mp4)(?:[?#][^\\s"'<>]*)?/gi;
+
+      try {
+        // 1. Thẻ video / source
+        const videos = document.querySelectorAll('video');
+        videos.forEach(function (v) {
+          if (v.currentSrc && v.currentSrc.indexOf('blob:') !== 0) foundUrls.add(v.currentSrc);
+          if (v.src && v.src.indexOf('blob:') !== 0) foundUrls.add(v.src);
+          
+          const sources = v.querySelectorAll('source');
+          sources.forEach(function (s) { 
+            if (s.src && s.src.indexOf('blob:') !== 0) foundUrls.add(s.src); 
+          });
+        });
+
+        // 2. Thuộc tính chứa link
+        const elementsWithAttr = document.querySelectorAll('[src], [data-src], [data-url], [href]');
+        elementsWithAttr.forEach(function (el) {
+          ['src', 'data-src', 'data-url', 'href'].forEach(function (attr) {
+            const val = el.getAttribute(attr);
+            if (val && val.indexOf('blob:') !== 0 && (val.indexOf('.m3u8') !== -1 || val.indexOf('.mp4') !== -1)) {
+              try {
+                const absoluteUrl = new URL(val, document.baseURI || window.location.href).href;
+                foundUrls.add(absoluteUrl);
+              } catch (e) {
+                foundUrls.add(val);
+              }
+            }
+          });
+        });
+
+        // 3. Quét các thẻ <script>
+        const scripts = document.querySelectorAll('script');
+        scripts.forEach(function (s) {
+          if (s.textContent) {
+            let match;
+            while ((match = mediaRegex.exec(s.textContent)) !== null) {
+              if (match[0].indexOf('blob:') !== 0) {
+                foundUrls.add(match[0]);
+              }
+            }
+          }
+        });
+      } catch (e) {
+        bridgeLog('⚠️ Lỗi trích xuất URL từ DOM: ' + e.message);
       }
 
-      if (!bridgeDispatched) {
-        console.error('❌ [Error] Không tìm thấy bất kỳ Native Bridge nào (Cả Android lẫn iOS)!');
+      return Array.from(foundUrls);
+    }
+
+    // ==========================================
+    // 7. MÁY QUÉT DOM DỰ PHÒNG & THEO DÕI MUTATION
+    // ==========================================
+    function startDOMSniffing() {
+      try {
+        bridgeLog('👀 [DOM Sniffer] Bắt đầu quét media trong DOM...');
+
+        const checkAllSources = function () {
+          try {
+            const urls = extractMediaUrls();
+            if (urls.length > 0) {
+              urls.forEach(function (url) { dispatchToNative(url); });
+            }
+          } catch (errCheck) {
+            bridgeLog('⚠️ Lỗi trong checkAllSources: ' + errCheck.message);
+          }
+        };
+
+        // Quét ngay lần đầu
+        checkAllSources();
+
+        // Debounce 400ms tránh quá tải CPU khi DOM thay đổi liên tục
+        const debouncedCheck = debounce(checkAllSources, 400);
+
+        const observer = new MutationObserver(function () {
+          debouncedCheck();
+        });
+
+        try {
+          observer.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src', 'data-src', 'data-url']
+          });
+          bridgeLog('✅ [MutationObserver] Khởi tạo lắng nghe thành công.');
+        } catch (err) {
+          bridgeLog('❌ Lỗi MutationObserver: ' + err.message);
+        }
+      } catch (errSniff) {
+        bridgeLog('💥 [Fatal Error in startDOMSniffing]: ' + errSniff.message);
       }
+    }
 
-      console.groupEnd();
-    });
-  };
+    // ==========================================
+    // 8. ĐIỂM KHỞI CHẠY (ENTRY POINT)
+    // ==========================================
+    const handleMainExecution = function () {
+      try {
+        bridgeLog('🚀 [Main Execution] Trang web đã sẵn sàng, tiến hành các thao tác...');
 
-  // Kiểm tra trạng thái document
-  if (document.readyState === 'complete') {
-    console.log('⚡ Document đã "complete", chạy thẳng handler.');
-    handlePageLoad();
-  } else {
-    console.log('⏳ Document chưa load xong, đang đợi sự kiện "load"...');
-    window.addEventListener('load', handlePageLoad);
+        // Cấu hình Auto Click
+        autoClick({
+          selector: 'div[aria-label="Phát"], #btnResume, button[id*="Resume"], button[id*="resume"]',
+          eq: 'first',
+          maxClicks: 1,
+          delay: 500,
+          maxRetries: 10
+        });
+
+        // Bắt đầu quét DOM bổ sung
+        startDOMSniffing();
+      } catch (errExec) {
+        bridgeLog('💥 [Fatal Error in handleMainExecution]: ' + errExec.message);
+      }
+    };
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      bridgeLog('⚡ Document đã ở trạng thái "' + document.readyState + '", chạy ngay.');
+      handleMainExecution();
+    } else {
+      bridgeLog('⏳ Document chưa sẵn sàng, đang chờ sự kiện "load"...');
+      window.addEventListener('load', handleMainExecution);
+    }
+
+  } catch (globalErr) {
+    const msg = '💥 [Fatal Error]: ' + (globalErr && globalErr.message ? globalErr.message : String(globalErr));
+    if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+      window.SnifferBridge.log(msg);
+    } else {
+      console.error(msg);
+    }
   }
 })();
-`
-}
-
-eval(runjS())
-
-

@@ -7,11 +7,12 @@ function getManifest() {
         "id": "gamomephim",
         "name": "Gà Mờ Mê Phim",
         "description": "Phim Ngắn Hay",
-        "version": "1.1",
-        "BASEURL": "https://gamomephim.com",
+        "version": "1.2",
+        "baseUrl": "https://gamomephim.com",
+      	"info": "Đây là dạng phim ngắn nên họ thường quay theo chiều dọc màn hình. Qua tập bằng cách vuốt như tiktok nhé.",
         "iconUrl": "https://cdn.gamomephim.com/site/logo-1784305321242.png",
         "isEnabled": true,
-        "type": "MOVIE",
+        "type": "shortfilm",
         "playerType": "exoplayer"
     });
 }
@@ -23,25 +24,39 @@ function log(msg) {
         console.log("[gamomephim] " + msg);
     }
 }
-
 function getHomeSections() {
-    var listurl = "[{\"link\":\"/phim-moi\",\"name\":\"Hàng Mới\"}]";
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = "[{\"link\":\"/phim-moi\",\"name\":\"Hàng Mới\"}]";
+        var menulist = buildMenu(listurl, true);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -50,6 +65,7 @@ function getFilterConfig() {
 
 function getUrlList(slug, filtersJson) {
     try {
+        log("getUrlList[url]: \n" + slug);
         if (slug && slug.indexOf("http") > -1) {
             if (slug.indexOf("search") > -1) {
                 if (filtersJson) {
@@ -58,15 +74,20 @@ function getUrlList(slug, filtersJson) {
                         var filters = JSON.parse(fixedJson);
                         var page = parseInt(filters.page) || 1;
                         if (page > 1) {
-                            return slug + "?from_videos=" + page + "&from_albums=" + page;
+                            var resSearch = slug + "?from_videos=" + page + "&from_albums=" + page;
+                            log("getUrlList[url]: \n" + resSearch);
+                            return resSearch;
                         } else {
+                            log("getUrlList[url]: \n" + slug);
                             return slug;
                         }
                     } catch (jsonErr) {
+                        log("getUrlList[url]: \n" + slug);
                         return slug;
                     }
                 }
             }
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
         
@@ -95,36 +116,82 @@ function getUrlList(slug, filtersJson) {
         if (page > 1) {
             resultUrl += "?page=" + page;
         }
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
     } catch (e) {
-        console.log(e);
+        log("getUrlList[err]:\n " + e);
         if (slug && slug.indexOf("http") > -1) {
             return slug;
         }
         var fallback = BASEURL + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var resFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + resFallback);
+        return resFallback;
     }
 }
 
 function getUrlSearch(keyword, filtersJson) {
-    return BASEURL + "/tim-kiem/" + encodeURIComponent(keyword);
+    try {
+        var searchUrl = BASEURL + "/tim-kiem/" + encodeURIComponent(keyword || "");
+        log("getUrlSearch[url]: \n" + searchUrl);
+        return searchUrl;
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+        var fallbackUrl = BASEURL + "/tim-kiem/" + encodeURIComponent(keyword || "");
+        log("getUrlSearch[url]: \n" + fallbackUrl);
+        return fallbackUrl;
+    }
 }
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+        var detailUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + detailUrl);
+        return detailUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() { 
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL; 
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCountries() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 function parseListResponse(html, $url) {
     try {
+        log("parseListResponse[url]: \n" + $url);
         var items = [];
         var calculatedPage = 1;
         if ($url && $url.indexOf("page=") > -1) {
@@ -165,7 +232,7 @@ function parseListResponse(html, $url) {
             }
         });
     } catch (e) {
-        log(e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url || "error_url",
@@ -182,7 +249,19 @@ function parseListResponse(html, $url) {
 }
 
 function parseSearchResponse(html, url) {
-    return parseListResponse(html, url);
+    try {
+        log("parseSearchResponse[url]: \n" + url);
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
 }
 
 function parseNextPayload(raw) {
@@ -194,44 +273,50 @@ function parseNextPayload(raw) {
         var cleanJsonStr = rawString.replace(/^\w+:/, '').replace(/\n$/, '');
         return JSON.parse(cleanJsonStr);
     } catch (e) {
+        log("parseNextPayload[err]:\n " + e);
         return null;
     }
 }
 
 // Thay thế các cú pháp ES6 như const/let thành var để tương thích hoàn toàn QuickJS cổ điển
 function extractCleanData(data) {
-    var result = { video: null, episodes: [], related: [], collection: [] };
-    function traverse(node) {
-        if (!node) return;
-        if (typeof node === 'object' && !Array.isArray(node)) {
-            if (node.video && typeof node.video === 'object') {
-                result.video = node.video;
-            }
-            if (Array.isArray(node.episodes)) {
-                result.episodes = node.episodes;
-            }
-            if (Array.isArray(node.related)) {
-                result.related = node.related;
-            }
-            if (Array.isArray(node.collection)) {
-                result.collection = node.collection;
-            }
-            for (var key in node) {
-                if (node.hasOwnProperty(key)) traverse(node[key]);
-            }
-        } else if (Array.isArray(node)) {
-            for (var i = 0; i < node.length; i++) {
-                traverse(node[i]);
+    try {
+        var result = { video: null, episodes: [], related: [], collection: [] };
+        function traverse(node) {
+            if (!node) return;
+            if (typeof node === 'object' && !Array.isArray(node)) {
+                if (node.video && typeof node.video === 'object') {
+                    result.video = node.video;
+                }
+                if (Array.isArray(node.episodes)) {
+                    result.episodes = node.episodes;
+                }
+                if (Array.isArray(node.related)) {
+                    result.related = node.related;
+                }
+                if (Array.isArray(node.collection)) {
+                    result.collection = node.collection;
+                }
+                for (var key in node) {
+                    if (node.hasOwnProperty(key)) traverse(node[key]);
+                }
+            } else if (Array.isArray(node)) {
+                for (var i = 0; i < node.length; i++) {
+                    traverse(node[i]);
+                }
             }
         }
+        traverse(data);
+        return result;
+    } catch (e) {
+        log("extractCleanData[err]:\n " + e);
+        return { video: null, episodes: [], related: [], collection: [] };
     }
-    traverse(data);
-    return result;
 }
 
 function parseMovieDetail(html, url) {
     try {
-        log(url);
+        log("parseMovieDetail[url]: \n" + url);
         var id = url;
         var lname = "Đang cập nhật...";
         var limg = "";
@@ -300,7 +385,7 @@ function parseMovieDetail(html, url) {
             extra: extra
         });
     } catch (e) {
-        log(e);
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: url || "error",
             title: "Lỗi tải thông tin chi tiết",
@@ -311,6 +396,7 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
     try {
+        log("parseDetailResponse[url]: \n" + url);
         return JSON.stringify({
             "url": "",
             "isEmbed": false,
@@ -322,30 +408,44 @@ function parseDetailResponse(html, url) {
             "subtitles": []
         });
     } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({ "url": "", "headers": {} });
     }
 }
 
 function sortEpisodesByName(data) {
-    data.forEach(function(server) {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort(function(a, b) {
-                var matchA = a.name.match(/Tập\s*(\d+)/i);
-                var matchB = b.name.match(/Tập\s*(\d+)/i);
-                var numA = matchA ? parseInt(matchA[1], 10) : 0;
-                var numB = matchB ? parseInt(matchB[1], 10) : 0;
-                return numA - numB;
+    try {
+        if (data && Array.isArray(data)) {
+            data.forEach(function(server) {
+                if (server.episodes && Array.isArray(server.episodes)) {
+                    server.episodes.sort(function(a, b) {
+                        var matchA = a.name.match(/Tập\s*(\d+)/i);
+                        var matchB = b.name.match(/Tập\s*(\d+)/i);
+                        var numA = matchA ? parseInt(matchA[1], 10) : 0;
+                        var numB = matchB ? parseInt(matchB[1], 10) : 0;
+                        return numA - numB;
+                    });
+                }
             });
         }
-    });
-    return data;
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
 
 function parseCategoriesResponse(apiResponseJson) {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
+
 
 function parseCountriesResponse(html) { return "[]"; }
 function parseYearsResponse(html) { return "[]"; }

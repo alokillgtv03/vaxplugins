@@ -6,8 +6,9 @@ function getManifest() {
 		"id": "onflix",
 		"name": "Onflix",
 		"description": "Trang xem phim siêu hay.",
-		"version": "1.7.8",
-		"BASEURL": "https://onflix.lat",
+		"version": "1.7.9",
+		"baseUrl": "https://onflix.lat",
+    "info": "Nguồn phim Onflix, nhanh mượt và dễ tìm phim là ưu điểm.",
 		"iconUrl": "https://onflix.lat/app/asset/logo.png",
 		"isEnabled": true,
 		"type": "VIDEO",
@@ -24,32 +25,50 @@ function log(msg) {
 }
 
 // https://onflix.lat/kham-pha?page=2
+// https://onflix.lat/kham-pha?page=2
 function getHomeSections() {
-    var listurl = `
+    try {
+        var listurl = `
 /movies?sort=newest&limit=24@@Phim Mới@@true
 `;
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 // ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 
 function getUrlList(slug, filtersJson) {
     try {
+        log("getUrlList[url]: \n" + slug);
+
         var api = (typeof BASEAPI !== "undefined" && BASEAPI) ? BASEAPI : "https://k8s.onflixcdn.com/api";
         var page = 1;
         var path = slug || "";
@@ -66,10 +85,13 @@ function getUrlList(slug, filtersJson) {
 
                     if (pageSearch > 1 && path.indexOf("page=") === -1) {
                         var sepSearch = path.indexOf("?") > -1 ? "&" : "?";
-                        return (path + sepSearch + "page=" + pageSearch).replace(/([^:]\/)\/+/g, "$1");
+                        var resUrl1 = (path + sepSearch + "page=" + pageSearch).replace(/([^:]\/)\/+/g, "$1");
+                        log("getUrlList[url]: \n" + resUrl1);
+                        return resUrl1;
                     }
                 } catch (jsonErr) {}
             }
+            log("getUrlList[url]: \n" + path);
             return path;
         }
 
@@ -104,13 +126,17 @@ function getUrlList(slug, filtersJson) {
             resultUrl += separator + "page=" + page;
         }
 
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log("Lỗi getUrlList: " + e);
+        log("getUrlList[err]:\n " + e);
         var fallbackApi = (typeof BASEAPI !== "undefined" && BASEAPI) ? BASEAPI : "https://k8s.onflixcdn.com/api";
         var safePath = slug ? (slug.indexOf("/") === 0 ? slug : "/" + slug) : "";
-        return (fallbackApi + safePath).replace(/([^:]\/)\/+/g, "$1");
+        var resFallback = (fallbackApi + safePath).replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + resFallback);
+        return resFallback;
     }
 }
 
@@ -134,40 +160,72 @@ function getUrlSearch(keyword, filtersJson) {
         // Chuẩn hóa theo cấu trúc: /search?q=keyword&page=1
         var resultUrl = api + "/search?q=" + encodedKeyword + "&page=" + page;
 
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log("Lỗi getUrlSearch: " + e);
+        log("getUrlSearch[err]:\n " + e);
         var fallbackApi = (typeof BASEAPI !== "undefined" && BASEAPI) ? BASEAPI : "https://k8s.onflixcdn.com/api";
-        return (fallbackApi + "/search?q=" + encodeURIComponent(keyword || "") + "&page=1").replace(/([^:]\/)\/+/g, "$1");
+        var resFallback = (fallbackApi + "/search?q=" + encodeURIComponent(keyword || "") + "&page=1").replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + resFallback);
+        return resFallback;
     }
 }
 
 function getUrlDetail(slug) {
-    var domain = (typeof BASEURL !== "undefined" && BASEURL) ? BASEURL : "https://onflix.lat";
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return (domain + "/phim/" + slug).replace(/([^:]\/)\/+/g, "$1");
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        var domain = (typeof BASEURL !== "undefined" && BASEURL) ? BASEURL : "https://onflix.lat";
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+        var resUrl = (domain + "/phim/" + slug).replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlDetail[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
 function getUrlCategories() { 
-    return (typeof BASEURL !== "undefined" && BASEURL) ? BASEURL : "https://onflix.lat"; 
+    try {
+        var domain = (typeof BASEURL !== "undefined" && BASEURL) ? BASEURL : "https://onflix.lat";
+        log("getUrlCategories[url]: \n" + domain);
+        return domain;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
 }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+
+function getUrlCountries() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 
 function parseListResponse(html, $url) {
+    log("parseListResponse[url]: \n" + $url);
     try {
         var safeUrl = $url || "";
         var domain = (typeof BASEURL !== "undefined" && BASEURL) ? BASEURL : "https://onflix.lat";
-
-        if (typeof log === "function") {
-            log("parseListResponse: " + safeUrl);
-        }
 
         var items = [];
         var videoData = typeof html === "string" ? JSON.parse(html) : html;
@@ -227,7 +285,7 @@ function parseListResponse(html, $url) {
         });
 
     } catch (e) {
-        console.log("Lỗi parseListResponse: " + e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [],
             "pagination": { "currentPage": 1, "totalPages": 1 }
@@ -236,18 +294,28 @@ function parseListResponse(html, $url) {
 }
 
 function parserFind(html, $url) {
-    return parseListResponse(html, $url);
+    try {
+        log("parserFind[url]: \n" + $url);
+        return parseListResponse(html, $url);
+    } catch (e) {
+        log("parserFind[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": { "currentPage": 1, "totalPages": 1 }
+        });
+    }
 }
-//var BASEURL = "https://onflix.lat";
-//var BASEAPI = "https://k8s.onflixcdn.com/api";
-//var html = $("#labHtmlEditorWrap #labHtmlTreeContainer .lab-dom-pure-text").html();
-//JSON.parse(parseListResponse(html, BASEAPI));
-//var videoData = JSON.parse(html);
-//videoData.data.length
-
 
 function parseSearchResponse(html) {
-    return parseListResponse(html);
+    try {
+        return parseListResponse(html);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": { "currentPage": 1, "totalPages": 1 }
+        });
+    }
 }
 
 function parseNextPayload(raw) {
@@ -266,57 +334,65 @@ function parseNextPayload(raw) {
         // Parse chuỗi đã làm sạch thành Array/Object JS
         return JSON.parse(cleanJsonStr);
     } catch (e) {
-        //console.error("Lỗi khi parse payload:", e);
+        log("parseNextPayload[err]:\n " + e);
         return null;
     }
 }
+
 function extractCleanData(data) {
-    let result = {
-        movie: null,
-        episodes: [],
-        related: [],
-        collection: []
-    };
+    try {
+        let result = {
+            movie: null,
+            episodes: [],
+            related: [],
+            collection: []
+        };
 
-    // Hàm đệ quy để duyệt mọi ngóc ngách của mảng/object
-    function traverse(node) {
-        if (!node) return;
+        // Hàm đệ quy để duyệt mọi ngóc ngách của mảng/object
+        function traverse(node) {
+            if (!node) return;
 
-        // Nếu là Object, kiểm tra xem có chứa các key cần tìm không
-        if (typeof node === 'object' && !Array.isArray(node)) {
-            if (node.movie && typeof node.movie === 'object') {
-                result.movie = node.movie;
-            }
-            if (Array.isArray(node.episodes)) {
-                result.episodes = node.episodes;
-            }
-            if (Array.isArray(node.related)) {
-                result.related = node.related;
-            }
-            if (Array.isArray(node.collection)) {
-                result.collection = node.collection;
-            }
+            // Nếu là Object, kiểm tra xem có chứa các key cần tìm không
+            if (typeof node === 'object' && !Array.isArray(node)) {
+                if (node.movie && typeof node.movie === 'object') {
+                    result.movie = node.movie;
+                }
+                if (Array.isArray(node.episodes)) {
+                    result.episodes = node.episodes;
+                }
+                if (Array.isArray(node.related)) {
+                    result.related = node.related;
+                }
+                if (Array.isArray(node.collection)) {
+                    result.collection = node.collection;
+                }
 
-            // Tiếp tục duyệt các thuộc tính bên trong Object này
-            for (let key in node) {
-                if (node.hasOwnProperty(key)) {
-                    traverse(node[key]);
+                // Tiếp tục duyệt các thuộc tính bên trong Object này
+                for (let key in node) {
+                    if (node.hasOwnProperty(key)) {
+                        traverse(node[key]);
+                    }
+                }
+            } 
+            // Nếu là Mảng, duyệt qua từng phần tử của mảng
+            else if (Array.isArray(node)) {
+                for (let i = 0; i < node.length; i++) {
+                    traverse(node[i]);
                 }
             }
-        } 
-        // Nếu là Mảng, duyệt qua từng phần tử của mảng
-        else if (Array.isArray(node)) {
-            for (let i = 0; i < node.length; i++) {
-                traverse(node[i]);
-            }
         }
-    }
 
-    traverse(data);
-    return result;
+        traverse(data);
+        return result;
+    } catch (e) {
+        log("extractCleanData[err]:\n " + e);
+        return { movie: null, episodes: [], related: [], collection: [] };
+    }
 }
+
 // https://motchille.cx/baseapi/episodes?movie_id=76981
 function parseMovieDetail(html, $url) {
+    log("parseMovieDetail[url]: \n" + $url);
     try {
         // 3. Gán vào biến dataVD
         var script = _$(html).find("script:content('original_name')").text();
@@ -331,7 +407,6 @@ function parseMovieDetail(html, $url) {
         if (movie && movie.actors) {
             movie.actors.forEach(actor => {
                 actors += actor.name + ", ";
-                // In ra: "สุภัสสรา ธนชาต", "ขุนณรงค์ ประเทศรัตน์", ...
             });
         }
 
@@ -407,24 +482,24 @@ function parseMovieDetail(html, $url) {
         // Trả về kết quả JSON
         return JSON.stringify({
             id: $url,
-            title: movie.title,
-            posterUrl: movie.poster_url,
-            backdropUrl: movie.poster_url,
-            description: movie.content,
+            title: movie ? movie.title : "",
+            posterUrl: movie ? movie.poster_url : "",
+            backdropUrl: movie ? movie.poster_url : "",
+            description: movie ? movie.content : "",
             servers: servers,
-            quality: movie.quality,
-            year: movie.year,
-            status: movie.episode_status,
-            duration: movie.time,
+            quality: movie ? movie.quality : "HD",
+            year: movie ? movie.year : "",
+            status: movie ? movie.episode_status : "",
+            duration: movie ? movie.time : "",
             casts: actors,
-            director: movie.directors,
-            category: movie.categories && movie.categories[0] ? movie.categories[0].name : "",
-            lang: movie.lang,
-            country: movie.countries && movie.countries[0] ? movie.countries[0].name : ""
+            director: movie ? movie.directors : "",
+            category: (movie && movie.categories && movie.categories[0]) ? movie.categories[0].name : "",
+            lang: movie ? movie.lang : "",
+            country: (movie && movie.countries && movie.countries[0]) ? movie.countries[0].name : ""
         });
     } 
     catch (e) {
-        //console.log(e);
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: $url,
             title: "Lỗi rồi bạn ơi. Tên miền đã bị đổi",
@@ -442,67 +517,62 @@ function parseMovieDetail(html, $url) {
     }
 }
 
-
-
 function parseDetailResponse(html, url) {
-	try {
-		var $stream = "";
-		var $type = "application/x-mpegURL";
-		if(url.indexOf("embed") > -1){
-			$stream = url;
-			$type = "";
-		}
-		var customjs = textJS(url);
-		return JSON.stringify({
-			"url": $stream,
-			"mimeType": $type,
-			"headers": {
-				"Referer": BASEURL,
-				"Origin": BASEURL,
-				"User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-				// Đánh lừa thuật toán Client Hints của tường lửa
-				"Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-				"Sec-Ch-Ua-Mobile": "?1",
-				"Sec-Ch-Ua-Platform": '"Android"',
-				
-				// Khai báo kiểu dữ liệu được chấp nhận giống như trình duyệt thật
-				"Accept": "*/*",
-				"Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-				"X-Requested-With": "com.android.chrome",
-				"Custom-Js": customjs.trim()
-			},
-			"subtitles": []
-		});
-		
-	} catch (e) {
-		return JSON.stringify({ "url": "", "headers": {} });
-	}
+    log("parseDetailResponse[url]: \n" + url);
+    try {
+        var $stream = "";
+        var $type = "application/x-mpegURL";
+        if(url.indexOf("embed") > -1){
+            $stream = url;
+            $type = "";
+        }
+        var customjs = textJS(url);
+        return JSON.stringify({
+            "url": $stream,
+            "mimeType": $type,
+            "headers": {
+                "Referer": BASEURL,
+                "Origin": BASEURL,
+                "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+                "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+                "Sec-Ch-Ua-Mobile": "?1",
+                "Sec-Ch-Ua-Platform": '"Android"',
+                "Accept": "*/*",
+                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+                "X-Requested-With": "com.android.chrome",
+                "Custom-Js": customjs.trim()
+            },
+            "subtitles": []
+        });
+        
+    } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
 }
-
-//BASEURL = "https://phimnganhdc.com";
-//var html = outerHTML;
-//var $url = "https://phimnganhdc.com/hot-babe-remy-cheats-with-bbc/";
-//JSON.parse(parseDetailResponse(html, url))
 
 function sortEpisodesByName(data) {
-    data.forEach(server => {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort((a, b) => {
-                // Sử dụng Regex để tìm số đứng ngay sau chữ "Tập" (Không phân biệt hoa thường)
-                const matchA = a.name.match(/Tập\s*(\d+)/i);
-                const matchB = b.name.match(/Tập\s*(\d+)/i);
-                
-                // Nếu tìm thấy số thì chuyển thành kiểu Int, nếu không thấy thì mặc định là 0
-                const numA = matchA ? parseInt(matchA[1], 10) : 0;
-                const numB = matchB ? parseInt(matchB[1], 10) : 0;
-                
-                // Sắp xếp tăng dần: Số nhỏ xếp trước (lên trên), số lớn xếp sau (xuống dưới)
-                return numA - numB;
-            });
-        }
-    });
-    return data;
+    try {
+        data.forEach(server => {
+            if (server.episodes && Array.isArray(server.episodes)) {
+                server.episodes.sort((a, b) => {
+                    const matchA = a.name.match(/Tập\s*(\d+)/i);
+                    const matchB = b.name.match(/Tập\s*(\d+)/i);
+                    
+                    const numA = matchA ? parseInt(matchA[1], 10) : 0;
+                    const numB = matchB ? parseInt(matchB[1], 10) : 0;
+                    
+                    return numA - numB;
+                });
+            }
+        });
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
+
 
 function textJS($links) {
     // Sử dụng biến $url từ tham số truyền vào thay vì ghi cứng link

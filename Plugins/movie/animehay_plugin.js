@@ -5,7 +5,7 @@ function getManifest() {
       "id": "animehay",
       "name": "Nguồn Animehay",
       "description": "Anime siêu hay.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "info": "Nguồn phim anime chất lượng cao. Cập nhật khá nhanh.",
       "baseUrl": "https://animehay09.site",
       "iconUrl": "https://animehay09.site/themes/img/logo.png",
@@ -24,25 +24,38 @@ function log(msg) {
 }
 
 function getHomeSections() {
-    var listurl = '[{\"link\":\"/phim-moi-cap-nhap/tat-ca-1.html\",\"name\":\"Phim Mới\"}]';
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = '[{\"link\":\"/phim-moi-cap-nhap/tat-ca-1.html\",\"name\":\"Phim Mới\"}]';
+        var menulist = buildMenu(listurl, true);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
-
-
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl,"filter");
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl, "filter");
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -50,6 +63,8 @@ function getFilterConfig() {
 // =============================================================================
 function getUrlList(slug, filtersJson) {
     try {
+        log("getUrlList[url]: \n" + slug);
+
         if (slug && slug.indexOf("http") > -1) {
             return slug;
         }
@@ -79,9 +94,12 @@ function getUrlList(slug, filtersJson) {
         if (page > 1) {
             resultUrl += "/trang-" + page + ".html";
         }
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
     } catch (e) {
-        console.log(e);
+        log("getUrlList[err]:\n " + e);
         if (slug && slug.indexOf("http") > -1) {
             return slug;
         }
@@ -91,76 +109,144 @@ function getUrlList(slug, filtersJson) {
 }
 
 function getUrlSearch(keyword, filtersJson) {
-    if (filtersJson) {
-        var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-        try {
-            var filters = JSON.parse(fixedJson);
-            var page = parseInt(filters.page) || 1;
-            if (page > 1) {
-                return BASEURL + "/tim-kiem/trang-" + page + ".html?keyword=" + keyword;
-            } else {
-                return BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
+    try {
+        var resUrl = "";
+        if (filtersJson) {
+            var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
+            try {
+                var filters = JSON.parse(fixedJson);
+                var page = parseInt(filters.page) || 1;
+                if (page > 1) {
+                    resUrl = BASEURL + "/tim-kiem/trang-" + page + ".html?keyword=" + keyword;
+                } else {
+                    resUrl = BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
+                }
+            } catch (jsonErr) {
+                resUrl = BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
             }
-        } catch (jsonErr) {
-            return BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
+        } else {
+            resUrl = BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
         }
+
+        log("getUrlSearch[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+        return BASEURL + "/tim-kiem/?keyword=" + encodeURIComponent(keyword);
     }
 }
-/*
-// https://animehay09.site/tim-kiem/trang-3.html?keyword=girl
-// https://animehay09.site/phim-moi-cap-nhap/tat-ca-1.html
-// https://animehay09.site/lich-su
-// https://animehay09.site/the-loai/hanh-dong-2.html
-// https://animehay09.site/the-loai/hanh-dong-2.html/trang-5.html
-var BASEURL = "https://animehay09.site";
-var filtersJson = '{page:2}';
-console.log(getUrlList("/phim-moi-cap-nhap/tat-ca-1.html", filtersJson));
-//console.log(getUrlSearch("the boy"))
-*/
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+
+        var resUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() {
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCountries() {
+    try {
+        return "";
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() {
+    try {
+        return "";
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 
 function fixHref(href) {
-    if (!href) return '';
+    try {
+        if (!href) return '';
 
-    // 1. Loại bỏ khoảng trắng thừa ở đầu và cuối
-    let cleanHref = href.trim();
+        // 1. Loại bỏ khoảng trắng thừa ở đầu và cuối
+        let cleanHref = href.trim();
 
-    // 2. Các mẫu đường dẫn cần bỏ qua (không gắn thêm BASEURL)
-    const ignorePattern = /^(#|https?:\/\/|\/\/|mailto:|tel:|javascript:|data:|blob:)/i;
+        // 2. Các mẫu đường dẫn cần bỏ qua (không gắn thêm BASEURL)
+        const ignorePattern = /^(#|https?:\/\/|\/\/|mailto:|tel:|javascript:|data:|blob:)/i;
 
-    if (ignorePattern.test(cleanHref)) {
-        return cleanHref;
-    }
-
-    // 3. Xử lý trường hợp đường dẫn bắt đầu bằng dấu / (server-relative path)
-    if (cleanHref.startsWith('/')) {
-        try {
-            const urlObj = new URL(BASEURL);
-            return urlObj.origin + cleanHref;
-        } catch (e) {
-            return BASEURL + cleanHref;
+        if (ignorePattern.test(cleanHref)) {
+            log("fixHref[url]: \n" + cleanHref);
+            return cleanHref;
         }
-    }
 
-    // 4. Đường dẫn tương đối thông thường
-    return BASEURL + cleanHref;
+        // 3. Xử lý trường hợp đường dẫn bắt đầu bằng dấu / (server-relative path)
+        var resUrl = "";
+        if (cleanHref.startsWith('/')) {
+            try {
+                const urlObj = new URL(BASEURL);
+                resUrl = urlObj.origin + cleanHref;
+            } catch (e) {
+                resUrl = BASEURL + cleanHref;
+            }
+        } else {
+            // 4. Đường dẫn tương đối thông thường
+            resUrl = BASEURL + cleanHref;
+        }
+
+        log("fixHref[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("fixHref[err]:\n " + e);
+        return href || '';
+    }
 }
 
+function isValidMediaUrl(url) {
+    try {
+        log("isValidMediaUrl[url]: \n" + url);
+        if (!url || typeof url !== 'string') return false;
+        
+        var cleanUrl = url.trim();
+
+        // 1. Loại bỏ nếu dính chuỗi nối code JS, biến hoặc hàm (như _spEsc, +, ', ${...)
+        if (cleanUrl.indexOf('_spEsc') > -1 || 
+            cleanUrl.indexOf("'+") > -1 || 
+            cleanUrl.indexOf("+'") > -1 || 
+            cleanUrl.indexOf("${") > -1 ||
+            cleanUrl.indexOf("javascript:") > -1) {
+            return false;
+        }
+
+        // 2. Kiểm tra định dạng URL http/https hợp lệ (không chứa khoảng trắng, ngoặc đơn/kép, dấu +)
+        var httpPattern = /^https?:\/\/[^\s"'<>+]+$/i;
+        return httpPattern.test(cleanUrl);
+    } catch (e) {
+        log("isValidMediaUrl[err]:\n " + e);
+        return false;
+    }
+}
 
 function parseListResponse(html, $url) {
+    log("parseListResponse[url]: \n" + $url);
     try {
         var items = [];
         _$(html).find(".mc").each(function() {
@@ -168,34 +254,10 @@ function parseListResponse(html, $url) {
             href = fixHref(href);
             var title = this.find("a").attr("title");
             var src = this.find("img").attr("src");
-            src = fixHref(src)
+            src = fixHref(src);
 
             var episode_current = this.find(".mc__ep-badge").text().trim();
             var quality = this.find(".mc__score").text().trim();
-
-// Hàm kiểm tra URL có phải là link thật hay chứa mã JS rác
-function isValidMediaUrl(url) {
-    if (!url || typeof url !== 'string') return false;
-    
-    var cleanUrl = url.trim();
-
-    // 1. Loại bỏ nếu dính chuỗi nối code JS, biến hoặc hàm (như _spEsc, +, ', ${...)
-    if (cleanUrl.indexOf('_spEsc') > -1 || 
-        cleanUrl.indexOf("'+") > -1 || 
-        cleanUrl.indexOf("+'") > -1 || 
-        cleanUrl.indexOf("${") > -1 ||
-        cleanUrl.indexOf("javascript:") > -1) {
-        return false;
-    }
-
-    // 2. Kiểm tra định dạng URL http/https hợp lệ (không chứa khoảng trắng, ngoặc đơn/kép, dấu +)
-    var httpPattern = /^https?:\/\/[^\s"'<>+]+$/i;
-    return httpPattern.test(cleanUrl);
-}
-
-// =============================================================================
-// ĐOẠN XỬ LÝ TRONG HÀM PARSE CỦA BẠN
-// =============================================================================
 
             if (isValidMediaUrl(href)) {
                 var cleanThumb = (src || "").replace(/&amp;/g, '&').trim();
@@ -225,7 +287,7 @@ function isValidMediaUrl(url) {
             }
         });
     } catch (e) {
-        log("parseListResponse: " + e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url || "error_url",
@@ -241,21 +303,24 @@ function isValidMediaUrl(url) {
     }
 }
 
-/*
-var BASEURL = "https://animehay09.site/lich-su";
-//var BASEAPI = "https://k8s.onflixcdn.com/api";
-var htmlsource = $("#labHtmlEditorWrap #labHtmlTreeContainer .lab-dom-pure-text").html();
-JSON.parse(parseListResponse(sourceHTML, BASEURL));
-//var html = outerHTML;
-
-*/
-
-
-
 function parseSearchResponse(html, url) {
-    return parseListResponse(html, url);
+    log("parseSearchResponse[url]: \n" + url);
+    try {
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
 }
+
 function parseMovieDetail(html, url) {
+    log("parseMovieDetail[url]: \n" + url);
     try {
         // === BƯỚC 1: ĐỒNG NHẤT ID PHIM BẰNG REGEX META (Y hệt tác giả) ===
         var idMatch = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html) ||
@@ -298,7 +363,7 @@ function parseMovieDetail(html, url) {
         rmatch = html.match(/meta\s+property="og:title"\s+content="([^"]+)"/i);
         if (rmatch && rmatch[1]) lname = rmatch[1];
 
-        var ldes = _$(html).find("#aim-desc-content").text();
+        ldes = _$(html).find("#aim-desc-content").text();
         var year = 2026;
         var extra = "";
 
@@ -343,16 +408,17 @@ function parseMovieDetail(html, url) {
                 id: link,
                 name: name,
                 slug: name.replace(/[\s\S]*?(\d+)/, "tap-$1")
-            })
-        })
+            });
+        });
         servers.push({
             name: "Server",
             episodes: items
-        })
+        });
         servers = sortEpisodesByName(servers);
+
         // === BƯỚC 5: TRẢ VỀ KẾT QUẢ ĐỒNG NHẤT ID ===
         return JSON.stringify({
-            id: id, // BẮT BUỘC: ID phải là slug rút gọn của bộ phim để cả 2 lần fetch khớp nhau
+            id: id,
             title: lname,
             posterUrl: limg,
             backdropUrl: limg,
@@ -363,15 +429,15 @@ function parseMovieDetail(html, url) {
             status: status,
             category: category,
             episode_current: episode_current,
-            servers: servers, // Lần 1 (trang chi tiết) sẽ là []. Lần 2 (khi chạy qua extra) sẽ có đầy đủ tập
+            servers: servers,
             duration: lduran || "",
             casts: lactor || "",
             director: ldirec || "",
-            extra: extra // Lần 2 (trang xem phim) extra sẽ rỗng để dừng chu kỳ tải ngầm
+            extra: extra
         });
 
     } catch (e) {
-        log("parseMovieDetail:" + e)
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: slug || url || "error",
             title: "error",
@@ -380,57 +446,52 @@ function parseMovieDetail(html, url) {
     }
 }
 
-/*
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/9/refresh-source?lang=vi-VN
-
-
-BASEURL = "https://animehay09.site";
-var html = sourceHTML;
-var $url = "https://animehay09.site/thong-tin-phim/tenkou-saki-no-seiso-karen-na-bishoujo-ga-4780.html";
-JSON.parse(parseMovieDetail(sourceHTML, $url));
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/check-new-episodes?_t=1784684483895&_=1784684480875
-//*/
-
 function sortEpisodesByName(data) {
-    if (!Array.isArray(data)) return data;
+    try {
+        if (!Array.isArray(data)) return data;
 
-    data.forEach(function(server) {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort(function(a, b) {
-                var nameA = a.name || '';
-                var nameB = b.name || '';
+        data.forEach(function(server) {
+            if (server.episodes && Array.isArray(server.episodes)) {
+                server.episodes.sort(function(a, b) {
+                    var nameA = a.name || '';
+                    var nameB = b.name || '';
 
-                // Bắt chuỗi số đầu tiên xuất hiện trong tên (hỗ trợ cả số thập phân như 2.5)
-                var matchA = nameA.match(/\d+(\.\d+)?/);
-                var matchB = nameB.match(/\d+(\.\d+)?/);
+                    // Bắt chuỗi số đầu tiên xuất hiện trong tên (hỗ trợ cả số thập phân như 2.5)
+                    var matchA = nameA.match(/\d+(\.\d+)?/);
+                    var matchB = nameB.match(/\d+(\.\d+)?/);
 
-                var numA = matchA ? parseFloat(matchA[0]) : null;
-                var numB = matchB ? parseFloat(matchB[0]) : null;
+                    var numA = matchA ? parseFloat(matchA[0]) : null;
+                    var numB = matchB ? parseFloat(matchB[0]) : null;
 
-                // 1. Nếu cả 2 đều tìm thấy số -> so sánh theo giá trị số
-                if (numA !== null && numB !== null) {
-                    if (numA !== numB) {
-                        return numA - numB;
+                    // 1. Nếu cả 2 đều tìm thấy số -> so sánh theo giá trị số
+                    if (numA !== null && numB !== null) {
+                        if (numA !== numB) {
+                            return numA - numB;
+                        }
                     }
-                }
 
-                // 2. Nếu 1 bên có số, 1 bên không -> ưu tiên item có số đứng trước
-                if (numA !== null) return -1;
-                if (numB !== null) return 1;
+                    // 2. Nếu 1 bên có số, 1 bên không -> ưu tiên item có số đứng trước
+                    if (numA !== null) return -1;
+                    if (numB !== null) return 1;
 
-                // 3. Nếu cả 2 không có số (hoặc số bằng nhau) -> sắp xếp tự nhiên theo chuỗi
-                return nameA.localeCompare(nameB, undefined, {
-                    numeric: true,
-                    sensitivity: 'base'
+                    // 3. Nếu cả 2 không có số (hoặc số bằng nhau) -> sắp xếp tự nhiên theo chuỗi
+                    return nameA.localeCompare(nameB, undefined, {
+                        numeric: true,
+                        sensitivity: 'base'
+                    });
                 });
-            });
-        }
-    });
+            }
+        });
 
-    return data;
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
 
 function parseDetailResponse(html, url) {
+    log("parseDetailResponse[url]: \n" + url);
     try {
         var script = _$(html).find("script:content('wp_servers')").html();
         var embed = script.match(/AHS["'][^"']+["']([^"']+)["']/i);
@@ -438,17 +499,17 @@ function parseDetailResponse(html, url) {
         if (embed && embed[1]) {
             stream = embed[1];
         }
+        log("parseDetailResponse[url]: \n" + stream);
         return JSON.stringify({
             "url": stream,
-            "isEmbed": true, // Chuyển về false để ưu tiên ExoPlayer native
-            //"mimeType": "application/x-mpegURL", // Dùng biến mimeType đã xử lý
+            "isEmbed": true,
             "headers": {
                 "Referer": BASEURL,
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
         });
     } catch (e) {
-        log("stream error: " + e);
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({
             "url": "",
             "headers": {}
@@ -457,6 +518,7 @@ function parseDetailResponse(html, url) {
 }
 
 function parseEmbedResponse(html, url) {
+    log("parseEmbedResponse[url]: \n" + url);
     try {
         var linkstream = "";
 
@@ -466,9 +528,10 @@ function parseEmbedResponse(html, url) {
             linkstream = linkmatch[1].replace(/\\/g, "");
         }
 
+        log("parseEmbedResponse[url]: \n" + linkstream);
         return JSON.stringify({
             url: linkstream,
-            isEmbed: false, // Tắt Embed, ép VAX đẩy thẳng link cho ExoPlayer
+            isEmbed: false,
             mimeType: linkstream.indexOf(".m3u8") !== -1 ? "application/x-mpegURL" : "video/mp4",
             headers: {
                 "Referer": BASEURL,
@@ -476,29 +539,25 @@ function parseEmbedResponse(html, url) {
             }
         });
     } catch (e) {
-        log(e);
+        log("parseEmbedResponse[err]:\n " + e);
         return JSON.stringify({
             url: "",
             isEmbed: false
         });
     }
 }
-/*
-
-BASEURL = "https://animehay09.site";
-var html = sourceHTML;
-//JSON.parse(parseDetailResponse(sourceHTML, BASEURL))
-JSON.parse(parseEmbedResponse(sourceHTML, BASEURL))
-// 'AHS': 'https://ahay.stream/embed-jw/75913'
-
-*/
-
 
 function parseCategoriesResponse(apiResponseJson) {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
+
 
 function parseCountriesResponse(html) { return "[]"; }
 function parseYearsResponse(html) { return "[]"; }

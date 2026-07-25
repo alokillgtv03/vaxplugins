@@ -6,8 +6,9 @@ function getManifest() {
         "id": "bilutv",
         "name": "Nguồn Bilutv",
         "description": "Trang xem phim siêu hay.",
-        "version": "1.5",
-        "BASEURL": "https://bilutv.asia",
+        "version": "1.5.1",
+        "baseUrl": "https://bilutv.asia",
+      	"info":"Nguồn phim Bilutv. Nguồn phim dồi dào khá chất lượng.",
         "iconUrl": "https://bilutv.asia/img/bilutvlogo-ngang.jpg",
         "isEnabled": true,
         "type": "MOVIE",
@@ -22,32 +23,45 @@ function log(msg) {
         console.log("[PhimHDCS] " + msg);
     }
 }
-
 // https://bilutv.asia/danh-sach/phim-moi?page=2
 function getHomeSections() {
-    var listurl = `
+    try {
+        var listurl = `
 /the-loai/phim-18@@Phim 18+@@false
 /danh-sach/phim-bo@@Phim Bộ@@false
 /danh-sach/phim-le@@Phim Lẻ@@false
 /danh-sach/phim-moi@@Phim Mới@@true
 `;
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
-// ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -55,12 +69,13 @@ function getFilterConfig() {
 // =============================================================================
 function getUrlList(slug, filtersJson) {
     try {
+        log("getUrlList[url]: \n" + slug);
+
         var page = 1;
         var path = slug || "";
 
         // 1. Xử lý an toàn filtersJson nếu có truyền vào
         if (filtersJson) {
-            // Sửa lỗi JSON lỏng lẻo (thiếu nháy kép ở key, dư dấu phẩy)
             var fixedJson = filtersJson
                 .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
                 .replace(/:,/g, ':');
@@ -69,7 +84,6 @@ function getUrlList(slug, filtersJson) {
                 var filters = JSON.parse(fixedJson);
                 page = parseInt(filters.page) || 1;
 
-                // Ưu tiên lấy category làm đường dẫn (path) nếu có trong bộ lọc
                 if (filters.category) {
                     if (Array.isArray(filters.category) && filters.category.length > 0) {
                         path = filters.category[0].slug;
@@ -77,17 +91,16 @@ function getUrlList(slug, filtersJson) {
                         path = filters.category;
                     }
                 }
-            } catch (jsonErr) {
-                // Parse lỗi thì bỏ qua, dùng giá trị mặc định
-            }
+            } catch (jsonErr) {}
         }
 
-        // 2. Kiểm tra nếu path/slug là link tuyệt đối (chứa http)
+        // 2. Kiểm tra nếu path/slug là link tuyệt đối
         if (path && path.indexOf("http") > -1) {
             if (page > 1 && path.indexOf("page=") === -1) {
                 var sep = path.indexOf("?") > -1 ? "&" : "?";
                 path += sep + "page=" + page;
             }
+            log("getUrlList[url]: \n" + path);
             return path;
         }
 
@@ -101,19 +114,22 @@ function getUrlList(slug, filtersJson) {
             }
         }
 
-        // 4. Ghép tham số trang (tự động nhận biết ? hay &)
+        // 4. Ghép tham số trang
         if (page > 1 && resultUrl.indexOf("page=") === -1) {
             var separator = resultUrl.indexOf("?") > -1 ? "&" : "?";
             resultUrl += separator + "page=" + page;
         }
 
-        // 5. Chuẩn hóa loại bỏ dấu // thừa (giữ lại https://)
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log("Lỗi getUrlList: " + e.message);
+        log("getUrlList[err]:\n " + e);
         var fallback = BASEURL + (slug ? (slug.indexOf("http") > -1 ? slug : "/" + slug) : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var resUrl = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + resUrl);
+        return resUrl;
     }
 }
 
@@ -121,7 +137,6 @@ function getUrlSearch(keyword, filtersJson) {
     try {
         var page = 1;
 
-        // 1. Giải mã filtersJson để lấy trang (nếu có)
         if (filtersJson) {
             var fixedJson = filtersJson
                 .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
@@ -133,53 +148,81 @@ function getUrlSearch(keyword, filtersJson) {
             } catch (jsonErr) {}
         }
 
-        // 2. Tạo URL tìm kiếm kèm từ khóa đã mã hóa
         var encodedKeyword = encodeURIComponent(keyword || "");
         var resultUrl = BASEURL + "/?search=" + encodedKeyword;
 
-        // 3. Nếu trang > 1 thì nối thêm &page=
         if (page > 1) {
             resultUrl += "&page=" + page;
         }
 
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log("Lỗi getUrlSearch: " + e.message);
+        log("getUrlSearch[err]:\n " + e);
         var fallback = BASEURL + "/?search=" + encodeURIComponent(keyword || "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var resUrl = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + resUrl);
+        return resUrl;
     }
 }
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+
+        var resUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
 function getUrlCategories() {
-    return BASEURL;
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
 }
 
 function getUrlCountries() {
-    return "";
+    try {
+        return "";
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
 }
 
 function getUrlYears() {
-    return "";
+    try {
+        return "";
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
 }
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 function parseListResponse(html, $url) {
+    log("parseListResponse[url]: \n" + $url);
     try {
         var items = [];
 
         _$(html).find(".bs").find("a").each(function () {
             var year = "";
             var lang = "";
-            var current = this.find(".epx").text();;
+            var current = this.find(".epx").text();
             var quality = "HD";
             var href = this.attr("href");
             var title = this.attr("title");
@@ -209,6 +252,7 @@ function parseListResponse(html, $url) {
         });
 
     } catch (e) {
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url,
@@ -223,22 +267,35 @@ function parseListResponse(html, $url) {
         });
     }
 }
-//var BASEURL = "https://onflix.lat";
-//var BASEAPI = "https://k8s.onflixcdn.com/api";
-//var htmlsource = $("#labHtmlEditorWrap #labHtmlTreeContainer .lab-dom-pure-text").html();
-//JSON.parse(parseListResponse(outerHTML, BASEURL));
 
 function parseSearchResponse(html) {
-    return parseListResponse(html);
+    try {
+        return parseListResponse(html);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
 }
 
 function formatEpisode(numStr) {
-    var num = parseInt(numStr, 10);
-    if (isNaN(num)) return "01";
-    return num < 10 ? "0" + num : "" + num;
+    try {
+        var num = parseInt(numStr, 10);
+        if (isNaN(num)) return "01";
+        return num < 10 ? "0" + num : "" + num;
+    } catch (e) {
+        log("formatEpisode[err]:\n " + e);
+        return "01";
+    }
 }
 
 function parseMovieDetail(html, url) {
+    log("parseMovieDetail[url]: \n" + url);
     var lurl = "";
     var limg = "";
     var lname = "Đang cập nhật...";
@@ -266,15 +323,15 @@ function parseMovieDetail(html, url) {
             "").replace(/\s+/g, "");
         year = Number(year);
         status = _$(html).find('b:content("Status:")').parent().text().replace("Status:", "")
-            .replace(/\s\s/g, "");;
+            .replace(/\s\s/g, "");
         duration = _$(html).find('b:content("Thời lượng:")').parent().text().replace("Thời lượng:",
-            "").replace(/\s\s/g, "");;
+            "").replace(/\s\s/g, "");
         cast = _$(html).find('b:content("Diễn viên:")').parent().text().replace("Diễn viên:", "")
-            .replace(/\s\s/g, "");;
+            .replace(/\s\s/g, "");
         direc = _$(html).find('b:content("Đạo diễn:")').parent().text().replace("Đạo diễn:", "")
-            .replace(/\s\s/g, "");;
+            .replace(/\s\s/g, "");
         country = _$(html).find('b:content("Quốc gia:")').parent().text().replace("Quốc gia:", "")
-            .replace(/\s\s/g, "");;
+            .replace(/\s\s/g, "");
         category = _$(html).find('b:content("Định dạng:")').parent().text().replace("Định dạng:",
             "").replace(/\s\s/g, "");
         lang = _$(html).find('b:content("Chất lượng:")').parent().text().replace(
@@ -316,7 +373,7 @@ function parseMovieDetail(html, url) {
                 episodes: epiEMBED
             });
         } else {
-            var epiOne = _$(html).find(".bookmark").attr("href");;
+            var epiOne = _$(html).find(".bookmark").attr("href");
             var urlM3U8 = epiOne + "?tapplay=full&type=m3u8";
             var urlEMBED = epiOne + "?tapplay=full&type=embed";
             epiM3U8.push({
@@ -356,6 +413,7 @@ function parseMovieDetail(html, url) {
         });
 
     } catch (e) {
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: lurl,
             title: "Lỗi rồi bạn ơi. Tên miền đã bị đổi",
@@ -373,26 +431,20 @@ function parseMovieDetail(html, url) {
     }
 }
 
-//BASEURL = "https://phimnganhdc.com";
-//var html = outerHTML;
-//var $url = "https://phimnganhdc.com/hot-babe-remy-cheats-with-bbc/";
-//JSON.parse(parseMovieDetail(outerHTML,$url));
-
 function parseDetailResponse(html, url) {
+    log("parseDetailResponse[url]: \n" + url);
     try {
         var activePage = "";
-        // Bọc an toàn khi lấy tham số type và tapplay từ URL
         var matchType = url.match(/type=(\w+)/);
         var typeVD = matchType ? matchType[1] : "m3u8";
 
         var matchCurent = url.match(/tapplay=(\d+)/);
         var curentRaw = matchCurent ? matchCurent[1] : "1";
-        var curent = formatEpisode(curentRaw); // "01", "02"...
+        var curent = formatEpisode(curentRaw);
 
         if (url.indexOf("full") === -1) {
             var foundActive = false;
 
-            // Duyệt qua danh sách tập thực tế trên web để tìm tập khớp với tập giả lập
             _$(html).find(".episodelist").find("li").each(function (index, el) {
                 var link = _$(el).find("a").attr("href");
                 var text = _$(el).attr("data-name") || _$(el).text() || "";
@@ -401,20 +453,17 @@ function parseDetailResponse(html, url) {
                 var number = formatEpisode(numberRaw);
 
                 if (number === curent && link) {
-                    // Tạo url đích hoàn chỉnh chứa đủ thông tin để hàm parseEmbedResponse phía sau xử lý
                     activePage = link;
                     if (activePage.indexOf("http") === -1) {
                         activePage = BASEURL + (activePage.indexOf("/") === 0 ? "" : "/") +
                             activePage;
                     }
-                    // Giữ lại tham số để truyền tiếp cho bước sau
                     activePage += (activePage.indexOf("?") > -1 ? "&" : "?") + "tapplay=" +
                         number + "&type=" + typeVD;
                     foundActive = true;
                 }
             });
 
-            // Fallback: Nếu không parse được danh sách tập thực tế, dùng luôn URL hiện tại
             if (!foundActive) {
                 activePage = url;
             }
@@ -422,6 +471,7 @@ function parseDetailResponse(html, url) {
             activePage = url + (url.indexOf("?") > -1 ? "&" : "?") + "check=false";
         }
 
+        log("parseDetailResponse[url]: \n" + activePage);
         return JSON.stringify({
             "url": activePage,
             "isEmbed": true,
@@ -437,7 +487,7 @@ function parseDetailResponse(html, url) {
         });
 
     } catch (e) {
-        // Trả về chính URL truyền vào thay vì chuỗi rỗng để tránh làm chết luồng phát phim
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({
             "url": url,
             "isEmbed": true,
@@ -448,12 +498,8 @@ function parseDetailResponse(html, url) {
     }
 }
 
-//BASEURL = "https://phimnganhdc.com";
-//var html = outerHTML;
-//var $url = "https://phimnganhdc.com/hot-babe-remy-cheats-with-bbc/";
-//JSON.parse(parseDetailResponse(html, url))
-
 function parseEmbedResponse(html, url) {
+    log("parseEmbedResponse[url]: \n" + url);
     try {
         if (url.toLowerCase().includes(".m3u8")) {
             return JSON.stringify({
@@ -477,11 +523,12 @@ function parseEmbedResponse(html, url) {
                 streamUrl = _$(html).find('a[data-type="embed"]').attr("data-link");
             }
 
-            // Nếu không tìm thấy link qua thuộc tính data-link, thử tìm link trong thẻ iframe/embed dự phòng
             if (!streamUrl) {
                 streamUrl = _$(html).find('iframe').attr("src") || _$(html).find('embed').attr(
                     "src") || "";
             }
+
+            log("parseEmbedResponse[url]: \n" + streamUrl);
 
             var checkepi = "false";
             var typevideo = "true";
@@ -496,7 +543,7 @@ function parseEmbedResponse(html, url) {
                 checkepi = titleText.trim() + " - Tập " + curent;
             }
             var customJs = textJS(typevideo, checkepi, url, streamUrl);
-            // "Custom-Js": customJs.trim()
+
             if ($type == "m3u8") {
                 return JSON.stringify({
                     "url": streamUrl,
@@ -515,12 +562,9 @@ function parseEmbedResponse(html, url) {
                         "Referer": BASEURL,
                         "Origin": BASEURL,
                         "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-                        // Đánh lừa thuật toán Client Hints của tường lửa
                         "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
                         "Sec-Ch-Ua-Mobile": "?1",
                         "Sec-Ch-Ua-Platform": '"Android"',
-
-                        // Khai báo kiểu dữ liệu được chấp nhận giống như trình duyệt thật
                         "Accept": "*/*",
                         "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
                         "X-Requested-With": "com.android.chrome",
@@ -532,7 +576,7 @@ function parseEmbedResponse(html, url) {
         }
 
     } catch (e) {
-        log(e);
+        log("parseEmbedResponse[err]:\n " + e);
         return JSON.stringify({
             url: url,
             headers: {
@@ -541,37 +585,29 @@ function parseEmbedResponse(html, url) {
         });
     }
 }
-/*
-var html = outerHTML;
-var url = "https://bilutv.asia/phim/kinh-thanh-ky-tham/tap-tap-01-398150?tapplay=12&type=m3u8";
-JSON.parse(parseEmbedResponse(html, url))
-function textJS(typevideo, checkepi){
-    return `
-    typevideo = '${typevideo}';
-    checkepi = '${checkepi}';
-    `
-}
-*/
 
 function sortEpisodesByName(data) {
-    data.forEach(server => {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort((a, b) => {
-                // Sử dụng Regex để tìm số đứng ngay sau chữ "Tập" (Không phân biệt hoa thường)
-                const matchA = a.name.match(/Tập\s*(\d+)/i);
-                const matchB = b.name.match(/Tập\s*(\d+)/i);
+    try {
+        data.forEach(server => {
+            if (server.episodes && Array.isArray(server.episodes)) {
+                server.episodes.sort((a, b) => {
+                    const matchA = a.name.match(/Tập\s*(\d+)/i);
+                    const matchB = b.name.match(/Tập\s*(\d+)/i);
 
-                // Nếu tìm thấy số thì chuyển thành kiểu Int, nếu không thấy thì mặc định là 0
-                const numA = matchA ? parseInt(matchA[1], 10) : 0;
-                const numB = matchB ? parseInt(matchB[1], 10) : 0;
+                    const numA = matchA ? parseInt(matchA[1], 10) : 0;
+                    const numB = matchB ? parseInt(matchB[1], 10) : 0;
 
-                // Sắp xếp tăng dần: Số nhỏ xếp trước (lên trên), số lớn xếp sau (xuống dưới)
-                return numA - numB;
-            });
-        }
-    });
-    return data;
+                    return numA - numB;
+                });
+            }
+        });
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
+
 
 function textJS($links, checkepi, url, stream) {
     // Sử dụng biến $url từ tham số truyền vào thay vì ghi cứng link
