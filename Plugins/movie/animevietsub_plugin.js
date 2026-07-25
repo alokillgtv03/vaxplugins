@@ -431,18 +431,9 @@ function customJS(initialLink){
     let overlay = document.createElement('div');
     overlay.id = 'loading-overlay';
     Object.assign(overlay.style, {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: '#000',
-        zIndex: '999998',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
+        position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+        backgroundColor: '#000', zIndex: '999998', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         pointerEvents: 'none'
     });
@@ -451,7 +442,6 @@ function customJS(initialLink){
         <div style="margin-top: 12px; font-size: 12px; color: #a1a1aa;">Đang tải...</div>
         <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
     \`;
-    
     if (document.body) document.body.appendChild(overlay);
     else document.documentElement.appendChild(overlay);
 
@@ -560,118 +550,104 @@ function customJS(initialLink){
 
         if (overlay) document.body.appendChild(overlay);
 
-        // THANH NÚT CHỌN TẬP CỐ ĐỊNH GÓC TRÊN PHẢI
+        // NÚT CHỌN TẬP GÓC TRÊN PHẢI (Pointer-events auto để bấm được)
         let container = document.createElement("div");
         container.id = "floating-select-box";
         Object.assign(container.style, {
-            position: "fixed",
-            top: "12px",
-            right: "16px",
-            zIndex: "999999",
-            transition: "opacity 0.4s ease, visibility 0.4s ease"
+            position: "fixed", top: "12px", right: "16px", zIndex: "999999",
+            transition: "opacity 0.3s ease, visibility 0.3s ease",
+            pointerEvents: "auto"
         });
 
-        // POPUP XẾP 6 Ô 1 HÀNG GỌN GÀNG
+        // POPUP 6 Ô 1 HÀNG (Pointer-events auto)
         let popupGrid = document.createElement("div");
         popupGrid.id = "episode-grid-popup";
         Object.assign(popupGrid.style, {
-            position: "fixed",
-            top: "46px",
-            right: "16px",
-            zIndex: "1000000",
-            backgroundColor: "rgba(18, 18, 20, 0.95)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            padding: "8px",
-            borderRadius: "10px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.8)",
-            width: "270px",
-            maxHeight: "260px",
-            overflowY: "auto",
-            display: "none",
-            gridTemplateColumns: "repeat(6, 1fr)", // ĐÃ CHỈNH 6 Ô 1 HÀNG
-            gap: "4px",
-            transition: "opacity 0.4s ease, visibility 0.4s ease"
+            position: "fixed", top: "46px", right: "16px", zIndex: "1000000",
+            backgroundColor: "rgba(18, 18, 20, 0.95)", backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255, 255, 255, 0.1)", padding: "8px", borderRadius: "10px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.8)", width: "270px", maxHeight: "260px",
+            overflowY: "auto", display: "none", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px",
+            transition: "opacity 0.3s ease, visibility 0.3s ease",
+            pointerEvents: "auto"
         });
 
-        // NÚT MŨI TÊN TRÁI / PHẢI
+        // NÚT CHUYỂN TẬP TRÁI / PHẢI
         let btnSidePrev = document.createElement("div");
         btnSidePrev.innerHTML = "&#10094;";
         Object.assign(btnSidePrev.style, {
             position: "fixed", left: "12px", top: "50%", transform: "translateY(-50%)",
-            width: "36px", height: "36px", borderRadius: "50%",
-            backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)",
+            width: "38px", height: "38px", borderRadius: "50%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.1)", transition: "opacity 0.4s ease, visibility 0.4s ease"
+            border: "1px solid rgba(255,255,255,0.15)", transition: "opacity 0.3s ease, visibility 0.3s ease",
+            pointerEvents: "auto"
         });
 
         let btnSideNext = document.createElement("div");
         btnSideNext.innerHTML = "&#10095;";
         Object.assign(btnSideNext.style, {
             position: "fixed", right: "12px", top: "50%", transform: "translateY(-50%)",
-            width: "36px", height: "36px", borderRadius: "50%",
-            backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)",
+            width: "38px", height: "38px", borderRadius: "50%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.1)", transition: "opacity 0.4s ease, visibility 0.4s ease"
+            border: "1px solid rgba(255,255,255,0.15)", transition: "opacity 0.3s ease, visibility 0.3s ease",
+            pointerEvents: "auto"
         });
 
-        // TỰ ĐỘNG ẨN UI SAU 3s - 10s KHÔNG THAO TÁC
+        // LỚP PHỦ CẢM ỨNG XUYÊN QUA (Chủ yếu để kích hoạt lại UI khi chạm/di chuột)
+        let touchTriggerArea = document.createElement("div");
+        Object.assign(touchTriggerArea.style, {
+            position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh",
+            zIndex: "999990", pointerEvents: "none" // Xuyên qua để bấm play video OK
+        });
+
+        // XỬ LÝ ẨN / HIỆN UI
         let hideControlsTimer = null;
         let isPopupOpen = false;
 
         function showUI() {
-            container.style.opacity = "1";
-            container.style.visibility = "visible";
-            btnSidePrev.style.opacity = "1";
-            btnSidePrev.style.visibility = "visible";
-            btnSideNext.style.opacity = "1";
-            btnSideNext.style.visibility = "visible";
+            container.style.opacity = "1"; container.style.visibility = "visible";
+            btnSidePrev.style.opacity = "1"; btnSidePrev.style.visibility = "visible";
+            btnSideNext.style.opacity = "1"; btnSideNext.style.visibility = "visible";
 
             if (isPopupOpen) {
                 popupGrid.style.opacity = "1";
                 popupGrid.style.visibility = "visible";
             }
-
             resetHideTimer();
         }
 
         function hideUI() {
-            // Nếu không mở popup chọn tập thì ẩn các nút đi
-            if (!isPopupOpen) {
-                container.style.opacity = "0";
-                container.style.visibility = "hidden";
-                btnSidePrev.style.opacity = "0";
-                btnSidePrev.style.visibility = "hidden";
-                btnSideNext.style.opacity = "0";
-                btnSideNext.style.visibility = "hidden";
-            } else {
-                // Nếu đang mở popup chọn tập mà ngưng tương tác thì ẩn cả popup lẫn nút
-                popupGrid.style.opacity = "0";
-                popupGrid.style.visibility = "hidden";
-                container.style.opacity = "0";
-                container.style.visibility = "hidden";
-                btnSidePrev.style.opacity = "0";
-                btnSidePrev.style.visibility = "hidden";
-                btnSideNext.style.opacity = "0";
-                btnSideNext.style.visibility = "hidden";
+            container.style.opacity = "0"; container.style.visibility = "hidden";
+            btnSidePrev.style.opacity = "0"; btnSidePrev.style.visibility = "hidden";
+            btnSideNext.style.opacity = "0"; btnSideNext.style.visibility = "hidden";
+            
+            if (isPopupOpen) {
+                popupGrid.style.opacity = "0"; popupGrid.style.visibility = "hidden";
                 isPopupOpen = false;
-                setTimeout(() => { popupGrid.style.display = "none"; }, 400);
+                setTimeout(() => { popupGrid.style.display = "none"; }, 300);
             }
         }
 
         function resetHideTimer() {
             clearTimeout(hideControlsTimer);
-            hideControlsTimer = setTimeout(hideUI, 4000); // 4 giây không tương tác sẽ ẩn
+            hideControlsTimer = setTimeout(hideUI, 4000); // 4s ẩn nút
         }
 
-        // Bắt sự kiện di chuyển/chạm để hiện UI trở lại
-        ['mousemove', 'touchstart', 'click', 'keydown'].forEach(evt => {
-            document.addEventListener(evt, showUI, { passive: true });
+        // Bắt sự kiện di chuyển/chạm vào màn hình để HIỆN LẠI UI
+        ['mousemove', 'touchstart', 'click'].forEach(evt => {
+            window.addEventListener(evt, showUI, { passive: true });
         });
 
-        // IFRAME PHÁT VIDEO
+        // Khi người dùng bấm vào iframe (trình phát video), window bị mất focus -> Gọi showUI để hẹn giờ tự ẩn
+        window.addEventListener('blur', () => {
+            showUI();
+        });
+
+        // IFRAME VIDEO
         if (initLink) {
             let newIframe = document.createElement("iframe");
             newIframe.className = "frameMain";
@@ -696,14 +672,15 @@ function customJS(initialLink){
             document.body.appendChild(newIframe);
         }
 
+        document.body.appendChild(touchTriggerArea);
         document.body.appendChild(container);
         document.body.appendChild(popupGrid);
         document.body.appendChild(btnSidePrev);
         document.body.appendChild(btnSideNext);
 
-        showUI(); // Khởi tạo đếm ngược ẩn UI
+        showUI();
 
-        // DỮ LIỆU TẬP PHIM
+        // DỮ LIỆU TẬP
         const listFrame = new Array(allEpisodes.length);
         if (allEpisodes[currentPlayingIndex] && initLink) {
             listFrame[currentPlayingIndex] = {
@@ -760,9 +737,9 @@ function customJS(initialLink){
                 popupGrid.style.visibility = "hidden";
                 setTimeout(() => { popupGrid.style.display = "none"; }, 300);
             }
+            showUI();
         }
 
-        // BẮT SỰ KIỆN CLICK / CHẠM RA NGOÀI ĐỂ ẨN POPUP
         const closePopupOutside = (e) => {
             if (isPopupOpen && !container.contains(e.target) && !popupGrid.contains(e.target)) {
                 togglePopup(false);
@@ -771,11 +748,7 @@ function customJS(initialLink){
 
         document.addEventListener("click", closePopupOutside, true);
         document.addEventListener("touchstart", closePopupOutside, true);
-        window.addEventListener("blur", () => {
-            if (isPopupOpen) togglePopup(false);
-        });
 
-        // RENDER GIAO DIỆN CHUẨN GỌN
         function updateSelectUI() {
             const validFrames = listFrame.filter(Boolean);
             container.innerHTML = "";
@@ -786,19 +759,10 @@ function customJS(initialLink){
             const btnEpRed = document.createElement("button");
             btnEpRed.innerHTML = \`<span>\${currentTitleText}</span> <span style="font-size: 9px; margin-left: 1px;">▼</span>\`;
             Object.assign(btnEpRed.style, {
-                height: "26px",
-                padding: "0 10px",
-                borderRadius: "5px",
-                border: "none",
-                backgroundColor: "#e50914",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: "700",
-                display: "flex",
-                alignItems: "center",
-                gap: "3px",
-                boxShadow: "0 2px 6px rgba(229, 9, 20, 0.4)"
+                height: "26px", padding: "0 10px", borderRadius: "5px", border: "none",
+                backgroundColor: "#e50914", color: "#fff", cursor: "pointer",
+                fontSize: "11px", fontWeight: "700", display: "flex", alignItems: "center",
+                gap: "3px", boxShadow: "0 2px 6px rgba(229, 9, 20, 0.4)"
             });
             btnEpRed.onclick = (e) => {
                 e.stopPropagation();
@@ -823,25 +787,18 @@ function customJS(initialLink){
             popupGrid.innerHTML = "";
             validFrames.forEach(item => {
                 const epBtn = document.createElement("button");
-                // Lấy mỗi số tập ngắn gọn (ví dụ "01", "02")
                 let shortName = item.title.replace(/Tập\\s*/i, '').trim();
                 if (shortName.length === 1) shortName = '0' + shortName;
                 epBtn.textContent = shortName;
                 
                 let isCurrent = (item.index === currentPlayingIndex);
                 Object.assign(epBtn.style, {
-                    height: "32px",
-                    borderRadius: "4px",
+                    height: "32px", borderRadius: "4px",
                     border: isCurrent ? "1px solid #e50914" : "1px solid rgba(255, 255, 255, 0.06)",
                     backgroundColor: isCurrent ? "#e50914" : "rgba(255, 255, 255, 0.05)",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    fontWeight: isCurrent ? "700" : "400",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0"
+                    color: "#fff", cursor: "pointer", fontSize: "11px",
+                    fontWeight: isCurrent ? "700" : "400", display: "flex",
+                    alignItems: "center", justifyContent: "center", padding: "0"
                 });
 
                 epBtn.onclick = (e) => {
@@ -860,6 +817,7 @@ function customJS(initialLink){
 })();
   `;
 }
+
 
 /*
 function parseEmbedResponse(htmlContent, url) {
