@@ -7,7 +7,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "animevietsub",
         "name": "AnimeVietSub",
-        "version": "1.1.1",
+        "version": "1.1.2",
         "baseUrl": "https://animevietsub.wiki",
         "iconUrl": "https://animevietsub.wiki/statics/default/images/logo.png",
         "isEnabled": true,
@@ -425,7 +425,6 @@ function parseDetailResponse(htmlContent, pageUrl) {
     }
 }
 
-
 function customJS(initialLink){
   return `
 (function() {
@@ -552,17 +551,25 @@ function customJS(initialLink){
 
         if (overlay) document.body.appendChild(overlay);
 
-        // NÚT CHỌN TẬP ĐỎ (MẶC ĐỊNH 0.5 OPACITY)
+        let isPopupOpen = false;
+
+        // BỘ QUẢN LÝ ĐỘ MỜ TẤT CẢ UI (MẶC ĐỊNH 0.2, KHI TƯƠNG TÁC SẼ BẬT 1.0)
+        function setAllUIOpacity(opacityValue) {
+            container.style.opacity = opacityValue;
+            btnSidePrev.style.opacity = opacityValue;
+            btnSideNext.style.opacity = opacityValue;
+            popupGrid.style.opacity = opacityValue;
+        }
+
+        // NÚT CHỌN TẬP ĐỎ
         let container = document.createElement("div");
         container.id = "floating-select-box";
         Object.assign(container.style, {
             position: "fixed", top: "12px", right: "16px", zIndex: "999999",
-            opacity: "0.5", transition: "opacity 0.2s ease", pointerEvents: "auto"
+            opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
         });
-        container.onmouseenter = () => container.style.opacity = "1";
-        container.onmouseleave = () => { container.style.opacity = "0.5"; };
 
-        // POPUP LƯỚI TẬP PHIM (CŨNG GIỮ 0.5 OPACITY, RÊ VÀO SẼ SÁNG 1.0)
+        // POPUP LƯỚI TẬP PHIM
         let popupGrid = document.createElement("div");
         popupGrid.id = "episode-grid-popup";
         Object.assign(popupGrid.style, {
@@ -571,12 +578,10 @@ function customJS(initialLink){
             border: "1px solid rgba(255, 255, 255, 0.1)", padding: "8px", borderRadius: "10px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.8)", width: "270px", maxHeight: "240px",
             overflowY: "auto", display: "none", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px",
-            opacity: "0.5", transition: "opacity 0.2s ease", pointerEvents: "auto"
+            opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
         });
-        popupGrid.onmouseenter = () => popupGrid.style.opacity = "1";
-        popupGrid.onmouseleave = () => popupGrid.style.opacity = "0.5";
 
-        // 2 NÚT CHUYỂN TẬP TRAI / PHẢI (MẶC ĐỊNH 0.5 OPACITY)
+        // 2 NÚT CHUYỂN TẬP MỚI
         let btnSidePrev = document.createElement("div");
         btnSidePrev.innerHTML = "&#10094;";
         Object.assign(btnSidePrev.style, {
@@ -585,11 +590,9 @@ function customJS(initialLink){
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.15)", opacity: "0.5", transition: "opacity 0.2s ease",
+            border: "1px solid rgba(255,255,255,0.15)", opacity: "0.2", transition: "opacity 0.2s ease",
             pointerEvents: "auto"
         });
-        btnSidePrev.onmouseenter = () => btnSidePrev.style.opacity = "1";
-        btnSidePrev.onmouseleave = () => btnSidePrev.style.opacity = "0.5";
 
         let btnSideNext = document.createElement("div");
         btnSideNext.innerHTML = "&#10095;";
@@ -599,15 +602,20 @@ function customJS(initialLink){
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
-            border: "1px solid rgba(255,255,255,0.15)", opacity: "0.5", transition: "opacity 0.2s ease",
+            border: "1px solid rgba(255,255,255,0.15)", opacity: "0.2", transition: "opacity 0.2s ease",
             pointerEvents: "auto"
         });
-        btnSideNext.onmouseenter = () => btnSideNext.style.opacity = "1";
-        btnSideNext.onmouseleave = () => btnSideNext.style.opacity = "0.5";
 
-        let isPopupOpen = false;
+        // XỬ LÝ SỰ KIỆN HOVER VÀ TOUCH TRÊN PC / MOBILE
+        [container, btnSidePrev, btnSideNext, popupGrid].forEach(el => {
+            el.addEventListener("mouseenter", () => setAllUIOpacity("1"));
+            el.addEventListener("mouseleave", () => {
+                if (!isPopupOpen) setAllUIOpacity("0.2");
+            });
+            el.addEventListener("touchstart", () => setAllUIOpacity("1"), { passive: true });
+        });
 
-        // IFRAME PHÁT VIDEO (Cho phép thao tác bấm xuyên qua các khoảng trống)
+        // IFRAME PHÁT VIDEO
         if (initLink) {
             let newIframe = document.createElement("iframe");
             newIframe.className = "frameMain";
@@ -685,8 +693,10 @@ function customJS(initialLink){
             isPopupOpen = forceState !== undefined ? forceState : !isPopupOpen;
             if (isPopupOpen) {
                 popupGrid.style.display = "grid";
+                setAllUIOpacity("1");
             } else {
                 popupGrid.style.display = "none";
+                setAllUIOpacity("0.2");
             }
         }
 
@@ -723,12 +733,14 @@ function customJS(initialLink){
 
             btnSidePrev.onclick = (e) => {
                 e.stopPropagation();
+                setAllUIOpacity("1");
                 if (currentPlayingIndex > 0 && listFrame[currentPlayingIndex - 1]) {
                     changeEpisode(currentPlayingIndex - 1);
                 }
             };
             btnSideNext.onclick = (e) => {
                 e.stopPropagation();
+                setAllUIOpacity("1");
                 if (currentPlayingIndex < listFrame.length - 1 && listFrame[currentPlayingIndex + 1]) {
                     changeEpisode(currentPlayingIndex + 1);
                 }
@@ -767,7 +779,6 @@ function customJS(initialLink){
 })();
   `;
 }
-
 
 /*
 function parseEmbedResponse(htmlContent, url) {
