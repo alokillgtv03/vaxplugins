@@ -5,7 +5,7 @@ function getManifest() {
       "id": "phimfun",
       "name": "Nguồn Phim Fun",
       "description": "Nguồn phim mới.",
-      "version": "1.0.6",
+      "version": "1.0.7",
       "info": "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim.",
       "baseUrl": "https://phimfun.net",
       "iconUrl": "https://phimfun.net/Content/PhimFun/Imgs/phimFun.png",
@@ -665,7 +665,19 @@ function getMainLogicCode(config) {
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             * { box-sizing: border-box !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important; }
             #framePlay { position: fixed !important; top: 50% !important; left: 50% !important; transform-origin: center center !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 1 !important; display: block !important; transition: width 0.15s ease, height 0.15s ease, transform 0.15s ease !important; }
-            #iframe-event-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 10 !important; background: transparent !important; cursor: pointer !important; }
+            #iframe-event-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 10 !important;
+    background: transparent !important;
+    cursor: pointer !important;
+
+    pointer-events: none !important;
+    touch-action: manipulation !important;
+}
             .floating-control-ui { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.4s ease !important; }
             .floating-control-ui.active-show { opacity: 1 !important; pointer-events: auto !important; }
             #center-play-notice { position: fixed !important; top: calc(50% + 50px) !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 999999 !important; background: rgba(15, 15, 18, 0.92) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; color: #fff !important; padding: 12px 24px !important; border-radius: 30px !important; font-size: 14px !important; font-weight: 600 !important; box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important; pointer-events: none !important; transition: opacity 0.3s ease, transform 0.3s ease !important; opacity: 0; text-align: center !important; white-space: nowrap !important; }
@@ -722,15 +734,15 @@ function getMainLogicCode(config) {
             }
             notice.textContent = text;
             requestAnimationFrame(function() { notice.style.opacity = '1'; });
-            let overlayEvt = document.getElementById('iframe-event-overlay');
-            if (overlayEvt) overlayEvt.style.display = 'block';
+           let overlayEvt = document.getElementById('iframe-event-overlay');
+if (overlayEvt) overlayEvt.style.pointerEvents = 'auto';
         }
 
         function hideCenterPlayNotice() {
             let notice = document.getElementById('center-play-notice');
             if (notice) notice.style.opacity = '0';
             let overlayEvt = document.getElementById('iframe-event-overlay');
-            if (overlayEvt) overlayEvt.style.display = 'none';
+if (overlayEvt) overlayEvt.style.pointerEvents = 'none';
         }
 
         function showHistoryPrompt(savedSrvIdx, savedEpIdx, savedEpName, nextEpIdx, nextEpName) {
@@ -787,7 +799,7 @@ function getMainLogicCode(config) {
                 if (popupGrid) popupGrid.style.display = "none";
                 if (scalePopupGrid) scalePopupGrid.style.display = "none";
                 let overlayEvt = document.getElementById('iframe-event-overlay');
-                if (overlayEvt) overlayEvt.style.display = 'block';
+if (overlayEvt) overlayEvt.style.pointerEvents = 'auto';
             }, AUTO_HIDE_TIME);
         }
 
