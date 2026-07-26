@@ -157,7 +157,6 @@ function parseDetailResponse(html,url) {
 }
 
 
-
 function runjS() {
   return `
 (function initEnhancedVideoSniffer() {
@@ -166,27 +165,29 @@ function runjS() {
     var hasDispatchedAny = false;
 
     // ==========================================
-    // ⚙️ CẤU HÌNH TOÀN CỤC & DANH SÁCH WORKER
+    // ⚙️ CẤU HÌNH TOÀN CỤC (GLOBAL CONFIG)
     // ==========================================
-    // Tự động xoay vòng và dự phòng khi có lỗi
+    // 1. Chế độ trình phát:
+    // "EXO"    -> Chuyển URL cho Android Native ExoPlayer
+    // "CUSTOM" -> Dùng ArtPlayer nhúng HTML5 (Hỗ trợ M3U8, MP4, Fetch API Custom)
+    var PLAYER_MODE = "EXO"; 
+
+    // 2. Bật/Tắt Proxy Worker
+    var PROXY_ENABLED = true; 
+
+    // 3. Danh sách Cloudflare Workers (Cân bằng tải & Dự phòng Failover)
     var WORKER_POOL = [
       "https://soft-surf-c11d.alokillgtv.workers.dev",
       "https://soft-water-25b0.alokillgtv02.workers.dev"
-      // Bạn có thể thêm worker thứ 3, 4 vào đây dễ dàng:
-      // "https://worker-so-3.workers.dev"
     ];
-    
-    // Chỉ số Worker đang được chọn phát hiện tại
     var activeWorkerIndex = Math.floor(Math.random() * WORKER_POOL.length);
     
+    // 4. Các cấu hình tùy chỉnh khác
     var CUSTOM_REFERER = "https://play2.cdn-xvideos-xnxx.xyz";
-    var PROXY_ENABLED = false; // chỉ định dùng proxy worker của cloudflare 
-
     var STREAM_URL_REGEX = /https?:\\/\\/[^\\s"'<>]*(?:sanstream\\.xyz|m3u8|mp4|cdn=r2)[^\\s"'<>]*/i;
     var REPLACE_EXTENSION_ENABLED = false; 
     var REPLACE_FROM = ".html";           
     var REPLACE_TO = ".m3u8";             
-    var MIME = "application/x-mpegURL"; 
 
     var ENABLE_FILTER = false; 
     var ALLOWED_DOMAINS = ["sanstream.xyz", "*.sanstream.xyz"];
@@ -203,7 +204,7 @@ function runjS() {
       } catch (e) {}
     }
 
-    bridgeLog('🎬 [Sniffer v5.2] Khởi chạy chế độ Web Player Clean DOM + Multi-Worker Failover...');
+    bridgeLog('🎬 [Sniffer v6.0] Khởi chạy với PLAYER_MODE = ' + PLAYER_MODE);
 
     function isDomainAllowed(url) {
       try {
@@ -268,7 +269,7 @@ function runjS() {
       }
     }
 
-    // Hàm dựng Proxy URL dựa theo index của Worker trong Pool
+    // Dựng Proxy URL dựa theo index của Worker
     function buildProxyUrl(targetUrl, workerIdx) {
       try {
         if (!PROXY_ENABLED || !WORKER_POOL || WORKER_POOL.length === 0) {
@@ -280,7 +281,7 @@ function runjS() {
         var encodedReferer = encodeURIComponent(CUSTOM_REFERER || window.location.href);
         var encodedUA = encodeURIComponent(navigator.userAgent);
 
-        var finalProxy = selectedWorker + "?url=" + encodedUrl + "&referer=" + encodedReferer + "&ua=" + encodedUA + "&file=.m3u8";
+        var finalProxy = selectedWorker + "?url=" + encodedUrl + "&referer=" + encodedReferer + "&ua=" + encodedUA;
         bridgeLog('🔗 [Worker #' + (workerIdx % WORKER_POOL.length) + ' Proxy Built]: ' + finalProxy);
         return finalProxy;
       } catch (e) {
@@ -289,117 +290,147 @@ function runjS() {
     }
 
     // ==========================================
-    // 🧹 CLEAN DOM VÀ TẠO PLAYER VỚI FAILOVER AUTOMATION
+    // 📺 ĐIỀU HƯỚNG PHÁT THÔNG QUA PLAYER_MODE
     // ==========================================
-    function renderCustomWebPlayer(rawStreamUrl) {
-      bridgeLog('🚀 Đang xóa DOM cũ và tạo Player mới...');
+    function dispatchMediaStream(rawStreamUrl) {
+      var playUrl = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
 
-      // 1. Dọn sạch toàn bộ HTML cũ
+      if (PLAYER_MODE === "EXO") {
+        // --- CHẾ ĐỘ 1: GỬI URL NATIVE CHO EXOPLAYER ---
+        bridgeLog('📱 [EXO MODE] Đang chuyển URL sang Native ExoPlayer: ' + playUrl);
+        
+        if (window.SnifferBridge && typeof window.SnifferBridge.playVideo === 'function') {
+          window.SnifferBridge.playVideo(playUrl, CUSTOM_REFERER);
+        } else {
+          bridgeLog('⚠️ Không thấy SnifferBridge.playVideo, fallback Intent...');
+          window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\//, '') + "#Intent;scheme=https;type=video/*;end";
+        }
+      } else {
+        // --- CHẾ ĐỘ 2: NHỦNG ARTPLAYER ĐA NĂNG TRÊN WEBVIEW ---
+        bridgeLog('🎨 [CUSTOM MODE] Nhúng ArtPlayer (Hỗ trợ MP4 + M3U8 Fetch)');
+        loadAndRenderArtPlayer(playUrl, rawStreamUrl);
+      }
+    }
+
+    // Tải thư viện ArtPlayer & hls.js từ CDN
+    function loadAndRenderArtPlayer(initialPlayUrl, rawStreamUrl) {
+      bridgeLog('📥 Đang tải CDN ArtPlayer.js & hls.js...');
+
+      var loadedCount = 0;
+      function checkLoaded() {
+        loadedCount++;
+        if (loadedCount >= 2) {
+          renderArtPlayer(initialPlayUrl, rawStreamUrl);
+        }
+      }
+
+      // 1. Load hls.js
+      if (typeof Hls === 'undefined') {
+        var scriptHls = document.createElement('script');
+        scriptHls.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+        scriptHls.onload = checkLoaded;
+        document.head.appendChild(scriptHls);
+      } else {
+        checkLoaded();
+      }
+
+      // 2. Load ArtPlayer.js
+      if (typeof Artplayer === 'undefined') {
+        var scriptArt = document.createElement('script');
+        scriptArt.src = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js';
+        scriptArt.onload = checkLoaded;
+        document.head.appendChild(scriptArt);
+      } else {
+        checkLoaded();
+      }
+    }
+
+    // ==========================================
+    // 🎨 DỰNG TRÌNH PHÁT ARTPLAYER ĐA NĂNG
+    // ==========================================
+    function renderArtPlayer(playUrl, rawStreamUrl) {
+      bridgeLog('🚀 Dọn dẹp DOM và khởi tạo ArtPlayer UI...');
+
       document.getElementsByTagName('html')[0].innerHTML = '';
       
-      // 2. Thiết lập lại Body tràn viền
       document.body.style.backgroundColor = '#000000';
       document.body.style.margin = '0';
       document.body.style.padding = '0';
       document.body.style.width = '100vw';
       document.body.style.height = '100vh';
       document.body.style.overflow = 'hidden';
-      document.body.style.display = 'flex';
-      document.body.style.justifyContent = 'center';
-      document.body.style.alignItems = 'center';
 
-      // 3. Tạo thẻ Video Fullscreen Controls Autoplay
-      var video = document.createElement('video');
-      video.id = 'customHlsPlayer';
-      video.controls = true;
-      video.autoplay = true;
-      video.muted = false;
-      video.playsInline = true;
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
-      video.setAttribute('x5-playsinline', '');
-      video.style.width = '100%';
-      video.style.height = '100%';
-      video.style.objectFit = 'contain';
+      var container = document.createElement('div');
+      container.id = 'artplayer-container';
+      container.style.width = '100%';
+      container.style.height = '100%';
+      document.body.appendChild(container);
 
-      document.body.appendChild(video);
+      var isM3U8 = rawStreamUrl.indexOf('.m3u8') !== -1 || playUrl.indexOf('.m3u8') !== -1;
 
-      var hlsInstance = null;
-      var failedWorkersCount = 0;
+      // Cấu hình ArtPlayer API
+      window.art = new Artplayer({
+        container: '#artplayer-container',
+        url: playUrl,
+        type: isM3U8 ? 'm3u8' : 'mp4',
+        autoplay: true,
+        isLive: false,
+        fullscreen: true,
+        fullscreenWeb: true,
+        pip: true,
+        setting: true,
+        flip: true,
+        playbackRate: true,
+        aspectRatio: true,
+        autoOrientation: true,
+        customType: {
+          m3u8: function (video, url, art) {
+            if (Hls.isSupported()) {
+              if (art.hls) art.hls.destroy();
 
-      // 4. Hàm phát Video bằng hls.js hoặc Native HLS
-      function startPlayback(workerIndex) {
-        var proxyUrl = buildProxyUrl(rawStreamUrl, workerIndex);
+              var hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                // Tùy biến FetchLoader nếu cần can thiệp Header API
+                fLConfig: {
+                  maxRetry: 2
+                }
+              });
 
-        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-          if (hlsInstance) {
-            hlsInstance.destroy();
-          }
+              hls.loadSource(url);
+              hls.attachMedia(video);
+              art.hls = hls;
 
-          bridgeLog('📺 Đang phát qua Worker #' + (workerIndex % WORKER_POOL.length) + ': ' + WORKER_POOL[workerIndex % WORKER_POOL.length]);
-          
-          hlsInstance = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            manifestLoadingMaxRetry: 2, // Thử lại tối đa 2 lần trước khi báo lỗi
-            fragLoadingMaxRetry: 2
-          });
+              // Quản lý Failover Worker tự động nếu m3u8 bị lỗi
+              hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                  bridgeLog('⚠️ Error Worker in ArtPlayer, rotating worker...');
+                  activeWorkerIndex = (activeWorkerIndex + 1) % WORKER_POOL.length;
+                  var nextProxy = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
+                  art.switchUrl(nextProxy);
+                }
+              });
 
-          hlsInstance.loadSource(proxyUrl);
-          hlsInstance.attachMedia(video);
+              art.on('destroy', function () {
+                hls.destroy();
+              });
 
-          hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            failedWorkersCount = 0; // Reset lại đếm lỗi nếu tải thành công
-            video.play().catch(function(e) {
-              bridgeLog('⚠️ Autoplay bị chặn, chuyển muted để phát tiếp...');
-              video.muted = true;
-              video.play();
-            });
-            if (video.requestFullscreen) { video.requestFullscreen(); }
-            else if (video.webkitRequestFullscreen) { video.webkitRequestFullscreen(); }
-          });
-
-          // BẮT LỖI TỰ ĐỘNG ĐỔI WORKER KHI CÓ SỰ CỐ NETWORK HOẶC 403/500
-          hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-            if (data.fatal) {
-              failedWorkersCount++;
-              bridgeLog('⚠️ Lỗi Worker #' + (workerIndex % WORKER_POOL.length) + ' (' + data.type + '). Đang thử Worker kế tiếp...');
-
-              if (failedWorkersCount < WORKER_POOL.length) {
-                // Nhảy sang Worker kế tiếp trong Array
-                activeWorkerIndex = (workerIndex + 1) % WORKER_POOL.length;
-                startPlayback(activeWorkerIndex);
-              } else {
-                bridgeLog('❌ TẤT CẢ WORKER TRONG LIST ĐỀU LỖI/BỊ CHẶN!');
-              }
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = url;
+            } else {
+              art.notice.show = 'Trình duyệt không hỗ trợ phát HLS';
             }
-          });
-
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          bridgeLog('🍎 Sử dụng Native HLS Player (Safari/iOS)');
-          video.src = proxyUrl;
-          video.addEventListener('loadedmetadata', function () {
-            video.play();
-            if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
-          });
-        } else {
-          bridgeLog('❌ Trình duyệt không hỗ trợ HLS');
+          }
         }
-      }
+      });
 
-      // 5. Tải động thư viện hls.js
-      if (typeof Hls === 'undefined') {
-        bridgeLog('📥 Đang tải thư viện hls.js...');
-        var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-        script.onload = function() { startPlayback(activeWorkerIndex); };
-        script.onerror = function() {
-          bridgeLog('❌ Không thể tải hls.js CDN');
-        };
-        document.head.appendChild(script);
-      } else {
-        startPlayback(activeWorkerIndex);
-      }
+      window.art.on('ready', function() {
+        bridgeLog('✅ ArtPlayer đã sẵn sàng phát!');
+        window.art.play().catch(function() {
+          window.art.muted = true;
+          window.art.play();
+        });
+      });
     }
 
     function processCandidateUrl(rawUrl) {
@@ -425,34 +456,25 @@ function runjS() {
             if (baseUrlPart.indexOf(REPLACE_FROM) !== -1) {
               baseUrlPart = baseUrlPart.replace(REPLACE_FROM, REPLACE_TO);
               finalUrl = baseUrlPart + queryPart;
-              bridgeLog('🔄 [Replaced URL]: ' + finalUrl);
             }
           } else {
             if (absoluteUrl.indexOf(REPLACE_FROM) !== -1) {
               finalUrl = absoluteUrl.replace(REPLACE_FROM, REPLACE_TO);
-              bridgeLog('🔄 [Replaced URL]: ' + finalUrl);
             }
           }
         }
 
-        if (!isDomainAllowed(finalUrl)) {
-          bridgeLog('🛡️ [Domain Blocked]: ' + finalUrl);
-          return;
-        }
+        if (!isDomainAllowed(finalUrl)) return;
 
         if (processedUrls[finalUrl]) return;
         processedUrls[finalUrl] = true;
-
-        bridgeLog('⏳ Đang kiểm tra link...');
 
         checkUrlPlayable(finalUrl, function(isPlayable) {
           if (hasDispatchedAny) return;
           if (!isPlayable) return;
 
           hasDispatchedAny = true;
-          
-          // Render giao diện phát video với cơ chế Auto-Failover
-          renderCustomWebPlayer(finalUrl);
+          dispatchMediaStream(finalUrl);
         });
 
       } catch (errDispatch) {
@@ -468,7 +490,6 @@ function runjS() {
             try { if (url) processCandidateUrl(url); } catch (e) {}
             return originalOpen.apply(this, arguments);
           };
-          bridgeLog('🔌 Đã bọc XMLHttpRequest.open');
         }
 
         if (typeof window.fetch === 'function') {
@@ -480,7 +501,6 @@ function runjS() {
             } catch (e) {}
             return originalFetch.apply(this, arguments);
           };
-          bridgeLog('🔌 Đã bọc window.fetch');
         }
       } catch (e) {}
     })();
@@ -513,7 +533,6 @@ function runjS() {
 })();
   `;
 }
-
 
 
 

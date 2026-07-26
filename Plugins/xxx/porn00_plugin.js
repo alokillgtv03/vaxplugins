@@ -1,13 +1,14 @@
-
 BASEURL = "https://www.porn00.tv";
+
+
 
 function getManifest() {
     return JSON.stringify({
         "id": "porn00",
         "name": "Porn00",
-        "description": "Nguồn XXX Hay",
-        "version": "1.8",
-        "BASEURL": "https://www.porn00.tv",
+        "info": "Nguồn XXX Hay, chất lượng cao. Nên đôi khi load chậm tí, chịu khó chờ nhé.",
+        "version": "1.9",
+        "baseUrl": "https://www.porn00.tv",
         "iconUrl": "https://www.porn00.tv/static/images/logo.png",
         "isEnabled": true,
         "isAdult": true,
@@ -15,53 +16,66 @@ function getManifest() {
         "playerType": "exoplayer"
     });
 }
-// https://www.porn00.tv/latest-vids/4/
+
+DEV = "false";
+function log(msg) {
+  	if(DEV){
+			if (typeof console !== 'undefined' && console.log) {
+          console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      }
+    }
+}
+
+
 function getHomeSections() {
-    return JSON.stringify([
-        { "slug": "/latest-vids/", "title": "Phim Có Nội Dung", "type": "Grid" }
-    ]);
+    try {
+        return JSON.stringify([
+            { "slug": "/latest-vids/", "title": "Phim Có Nội Dung", "type": "Grid" }
+        ]);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+    }
 }
 
-// ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+    }
 }
-// =============================================================================
-// URL GENERATION
-// ===================================================================
+
 function getUrlList(slug, filtersJson) {
     try {
-        // 1. Kiểm tra nếu slug là link tuyệt đối (chứa http) và không có bộ lọc thì trả về luôn
-        if (slug && slug.indexOf("http") > -1 || slug.indexOf("search/") > -1) {
-            // thường là link search sẽ bị trả về ở đây
+        if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
         let page = 1;
         let path = slug || "";
         
-        // 2. Xử lý an toàn filtersJson nếu có truyền vào
         if (filtersJson) {
-            // Nếu có số trang hoặc  có menu categ
-            // Sửa lỗi nếu JSON thiếu dấu ngoặc kép ở key hoặc sai cú pháp cơ bản
             let fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
                 .replace(/:,/g, ':');
-            // Sửa lỗi nếu truyền kiểu {"page",24} thành {"page":24}
             
             try {
                 let filters = JSON.parse(fixedJson);
                 page = parseInt(filters.page) || 1;
                 
-                // Nếu có category trong JSON, ưu tiên lấy category làm đường dẫn (path)
                 if (filters.category) {
                     if (Array.isArray(filters.category) && filters.category.length > 0) {
                         path = filters.category[0].slug;
@@ -70,64 +84,106 @@ function getUrlList(slug, filtersJson) {
                     }
                 }
             } catch (jsonErr) {
-                //console.log("JSON parse lỗi, dùng giá trị mặc định");
+                // Ignore inner json parse error
             }
         }
         
-        
-        // 4. Chuẩn hóa path (Xóa dấu gạch chéo thừa ở đầu/cuối để tránh nhân đôi dấu //)        
-        // 5. Nối chuỗi URL kết quả
         let resultUrl = BASEURL;
         if (path) {
             resultUrl += path;
         }
-        // https://www.tranny.one/recent/?mix=true&pageId=2&_=1783573720196
         if (page > 1 && resultUrl.indexOf("filter=latest") == -1) {
             resultUrl += page + "/";
         }
-        // Trả về kết quả, chỉ gộp dấu // ở phần path, giữ nguyên https://
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        let finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
         
     } catch (e) {
-        // console.log("Lỗi hệ thống: " + e.message);
-        // Trả về URL gốc an toàn nếu có lỗi
+        log("getUrlList[err]:\n " + e);
         let fallback = BASEURL + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        let finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalFallback);
+        return finalFallback;
     }
 }
-// https://www.porn00.tv/category-name/4k/6/
-// https://www.porn00.tv/latest-vids/4/
 
-//BASEURL = "https://www.trannymovs.com";
-//filtersJson = '{"page":5,"category":[{"slug":"/categories/ladyboy/","name":"ladyboy"}]}';
-//filtersJson = '{"page":13}';
-//console.log(getUrlList("", filtersJson));
-// https://www.porn00.tv/searching/blacked/
 
 function getUrlSearch(keyword, filtersJson) {
-    return BASEURL + "/searching/" + encodeURIComponent(keyword) + "/";
+    try {
+         var page = 1;
+            if (filtersJson) {
+                var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                    .replace(/:,/g, ':');
+                var filters = JSON.parse(fixedJson);
+                page = parseInt(filters.page) || 1;
+                // https://www.porn00.tv/searching/girl/?mode=async&function=get_block&block_id=list_videos_videos_list_search_result&q=girl&category_ids=&sort_by=&from_videos=6&from_albums=6&_=1785073114459
+              
+                var url = BASEURL + "/searching/" + encodeURIComponent(keyword) + "/?q=" +encodeURIComponent(keyword)+ "&from_videos="+page+"&from_albums="+page;
+                log("getUrlSearchPage[url]: \n" + url);
+                return url
+                
+            }
+        
+        var url = BASEURL + "/searching/" + encodeURIComponent(keyword) + "/";
+        log("getUrlSearch[url]: \n" + url);
+        return url;
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+    }
 }
+
+
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + slug;
+    try {
+        if (!slug) {
+            log("getUrlDetail[url]: \n");
+            return "";
+        }
+        if (slug.indexOf('http') === 0) {
+            log("getUrlDetail[url]: \n" + slug);
+            return slug;
+        }
+        var url = BASEURL + slug;
+        log("getUrlDetail[url]: \n" + url);
+        return url;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() {
+    try {
+        var url = BASEURL;
+        log("getUrlCategories[url]: \n" + url);
+        return url;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+    }
+}
 
-// =============================================================================
-// PARSERS
-// =============================================================================
+function getUrlCountries() {
+    try {
+        log("getUrlCountries[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+    }
+}
 
+function getUrlYears() {
+    try {
+        log("getUrlYears[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+    }
+}
 
 function parseListResponse(html, $url) {
     try {
         var items = [];
-        //.thumb_rel item
-        // 
         var regexList = `
 <div class=[^>]+item[^>]*>[\\s\\S]*?
 <a[^>]+href=["']([^"']+)["'][^>]*
@@ -136,16 +192,10 @@ title=["']([^"']+)["'][^>]*>[\\s\\S]*?
 `;
         regexList = regexList.replace(/\r|\n|\t/g, "");
         regmath = new RegExp(regexList, "g");
-//regmath.exec(html)
         var matchList;
-        // regexList.exec(html)
         while ((matchList = regmath.exec(html)) !== null) {
             if (matchList[1] && matchList[1].indexOf("http") > -1) {
                 var cleanThumb = matchList[3].replace(/&amp;/g, '&');
-                // var imgorigin = matchList[0].match(/data-webp=["']([^"']+)["']/i);
-                //if(imgorigin && imgorigin[1]){
-                //   cleanThumb = imgorigin[1];
-                //}
                 
                 items.push({
                     "id": matchList[1],
@@ -164,6 +214,7 @@ title=["']([^"']+)["'][^>]*>[\\s\\S]*?
             "pagination": { "currentPage": currentPage, "totalPages": totalPages }
         });
     } catch (e) {
+        log("parseListResponse[err]:\n " + e);
         var items = [];
         items.push({
             "id": $url,
@@ -174,115 +225,114 @@ title=["']([^"']+)["'][^>]*>[\\s\\S]*?
         return JSON.stringify({ "items": items, "pagination": { "currentPage": 1, "totalPages": 1 } });
     }
 }
-///*
-//html = $("html")[0].outerHTML;
-//JSON.parse(parseListResponse(html));
-// Bỏ dấu / ở đầu chuỗi
-//*/
 
 function parseSearchResponse(html) {
-    return parseListResponse(html);
-}
-
-
-
-
-function parseMovieDetail(html,$url) {
-    var lurl = "";
-    var limg = "";
-    var lname = "Đang cập nhật...";
-    var ldes = "Không có mô tả.";
-    var streamUrl = ""; // ĐÃ SỬA: Khai báo rõ ràng biến streamUrl tránh lỗi Global leak
-
-    var rmatch = html.match(/link\s+rel="canonical"\s+href=["']([^"']+)["']/i);
-    if (rmatch && rmatch[1]) { lurl = rmatch[1] }
-
-    rmatch = html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i);
-    if (rmatch && rmatch[1]) { limg = rmatch[1]; }
-
-    rmatch = html.match(/<title>([^<]+)/i);
-    if (rmatch && rmatch[1]) { lname = rmatch[1]; }
-
-    rmatch = html.match(/meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
-    if (rmatch && rmatch[1]) { ldes = rmatch[1]; }
-		var stream1 = "";
-		var stream2 = "";
-		var streamname1 = "";
-		var streamname2 = "";
-		var epi = [];
-		var script = html.match(/var\s+flashvars\s+=\s+({[\s\S]*?}\;)/i);
-		if (script && script[1]) {
-			var jsonObj = new Function(`return ${script[1]}`)();
-			if (jsonObj.video_alt_url && jsonObj.video_alt_url.match(/http|.mp4/)) {
-				stream1 = jsonObj.video_alt_url;
-				streamname1 = "Độ Phân Giải: " + jsonObj.video_alt_url_text;
-				epi.push({ id: stream1 + "#video.m3u8", name: streamname1, slug: "full" });
-				stream2 = jsonObj.video_url;
-				streamname2 = "Độ Phân Giải: " + jsonObj.video_url_text;
-				epi.push({ id: stream2 + "#video.m3u8", name: streamname2, slug: "full" });
-			} else {
-				stream1 = jsonObj.video_url;
-				streamname1 = "Độ Phân Giải: " + jsonObj.video_url_text;
-				epi.push({ id: stream1 + "#video.m3u8", name: streamname1, slug: "full" });
-			}
-		}
-    
-    var $return = {
-        id: $url,
-        title: lname,
-        posterUrl: limg,
-        backdropUrl: limg,
-        description: "",
-        servers: [
-            {
-                name: "Servers: ",
-                episodes: epi
-            }
-        ],
-        quality: "HD",
-        year: 2026,
-        rating: 8.5,
-        status: "Full",
-        duration: "N/A",
-        casts: "N/A",
-        director: "N/A",
-        category: "18+"
+    try {
+        return parseListResponse(html);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
     }
-    var $objreturn = $return;
-    $return.description = ldes + "\r\n\r\n\r\n\r\n\r\n\r\n" + JSON.stringify($objreturn);
-    return JSON.stringify($return);
 }
 
-/*
-BASEURL = "https://www.justporn.com";
-var html = $("html")[0].outerHTML;
-var $url = "https://www.justporn.com/video/18058/hot-babe-remy-cheats-with-bbc/";
-JSON.parse(parseMovieDetail(html,$url))
-*/
+function parseMovieDetail(html, $url) {
+    try {
+        var lurl = "";
+        var limg = "";
+        var lname = "Đang cập nhật...";
+        var ldes = "Không có mô tả.";
+        var streamUrl = "";
+
+        var rmatch = html.match(/link\s+rel="canonical"\s+href=["']([^"']+)["']/i);
+        if (rmatch && rmatch[1]) { lurl = rmatch[1] }
+
+        rmatch = html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i);
+        if (rmatch && rmatch[1]) { limg = rmatch[1]; }
+
+        rmatch = html.match(/<title>([^<]+)/i);
+        if (rmatch && rmatch[1]) { lname = rmatch[1]; }
+
+        rmatch = html.match(/meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
+        if (rmatch && rmatch[1]) { ldes = rmatch[1]; }
+        var stream1 = "";
+        var stream2 = "";
+        var streamname1 = "";
+        var streamname2 = "";
+        var epi = [];
+        var script = html.match(/var\s+flashvars\s+=\s+({[\s\S]*?}\;)/i);
+        if (script && script[1]) {
+            var jsonObj = new Function(`return ${script[1]}`)();
+            if (jsonObj.video_alt_url && jsonObj.video_alt_url.match(/http|.mp4/)) {
+                stream1 = jsonObj.video_alt_url;
+                streamname1 = "Độ Phân Giải: " + jsonObj.video_alt_url_text;
+                epi.push({ id: stream1 + "#video.m3u8", name: streamname1, slug: "full" });
+                stream2 = jsonObj.video_url;
+                streamname2 = "Độ Phân Giải: " + jsonObj.video_url_text;
+                epi.push({ id: stream2 + "#video.m3u8", name: streamname2, slug: "full" });
+            } else {
+                stream1 = jsonObj.video_url;
+                streamname1 = "Độ Phân Giải: " + jsonObj.video_url_text;
+                epi.push({ id: stream1 + "#video.m3u8", name: streamname1, slug: "full" });
+            }
+        }
+        
+        var $return = {
+            id: $url,
+            title: lname,
+            posterUrl: limg,
+            backdropUrl: limg,
+            description: "",
+            servers: [
+                {
+                    name: "Servers: ",
+                    episodes: epi
+                }
+            ],
+            quality: "HD",
+            year: 2026,
+            rating: 8.5,
+            status: "Full",
+            duration: "N/A",
+            casts: "N/A",
+            director: "N/A",
+            category: "18+"
+        };
+        var $objreturn = $return;
+        $return.description = ldes + "\r\n\r\n\r\n\r\n\r\n\r\n" + JSON.stringify($objreturn);
+        return JSON.stringify($return);
+    } catch (e) {
+        log("parseMovieDetail[err]:\n " + e);
+    }
+}
 
 function parseDetailResponse(html, url) {
-	try {
-		return JSON.stringify({
-			"url": "",
-			"isEmbed": false,
-			"mimeType": "video/mp4",
-			"headers": {
-				"Referer": BASEURL,
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-			},
-			"subtitles": []
-		});
-		
-	} catch (e) {
-		return JSON.stringify({ "url": "", "headers": {} });
-	}
+    try {
+        return JSON.stringify({
+            "url": "",
+            "isEmbed": false,
+            "mimeType": "video/mp4",
+            "headers": {
+                "Referer": BASEURL,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            "subtitles": []
+        });
+        
+    } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
 }
 
 function parseCategoriesResponse(apiResponseJson) {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+    }
 }
+
 
 function parseCountriesResponse(html) { return "[]"; }
 function parseYearsResponse(html) { return "[]"; }

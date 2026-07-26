@@ -3,3 +3,6 @@ cd "/public"
 p
 p
 p
+p
+p
+p
