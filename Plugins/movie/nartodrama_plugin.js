@@ -10,8 +10,8 @@ function getManifest() {
         "baseUrl": "https://edge.narto-drama.com",
         "iconUrl": "https://narto-drama.com/narto-drama-logo-compressed.png",
         "isEnabled": true,
-        "type": "MOVIE",
-        "playerTpye": "shortfilm",
+       "type": "shortfilm",
+        "playerType": "exoplayer",
       "subtitleCat": true
     })
 };
