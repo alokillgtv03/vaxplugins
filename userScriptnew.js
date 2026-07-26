@@ -5326,7 +5326,7 @@ input#labJsSearchInput,#labJsGotoInput { width: 40px!important; }
                         const baseGasUrl = "https://script.google.com/macros/s/AKfycbyxM6-_Q-DG_2l1hm1bM_ASVA74OPywVPk3hpm2FbpT78gGzBEpDN81Ty6tla8DTO27/exec";
                         const checkParam = (selectedMode === 'gas_scraper') ? "true" : "false";
                         const renderParam = $renderToggle.is(':checked') ? "true" : "false";
-
+// https://script.google.com/macros/s/AKfycbyxM6-_Q-DG_2l1hm1bM_ASVA74OPywVPk3hpm2FbpT78gGzBEpDN81Ty6tla8DTO27/exec?url=&check=&render
                         finalRequestUrl = `${baseGasUrl}?url=${encodeURIComponent(targetUrl)}&check=${checkParam}&render=${renderParam}`;
                     }
 

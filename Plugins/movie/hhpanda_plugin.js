@@ -1,11 +1,12 @@
 var BASEURL = "https://hhpanda.st"; 
+var LOGGER = false;
 // https://www.whoreshub.com/categories/4k-porn/
 function getManifest() {
     return JSON.stringify({
       "id": "hhpanda",
       "name": "Nguồn HHPanda",
       "description": "Anime siêu hay.",
-      "version": "1.1.7",
+      "version": "1.1.9",
       "info": "Nguồn phim hoạt hình chất lượng cao, tuy nhiên cơ chế chiếu phát của nó rất khó chịu. Chỉ phát được trên máy chủ của họ còn phát qua app sẽ bị mất góc không tràn viền.\r\nVì thế đã tích hợp bộ chỉnh kích cỡ video vào bên trong video. Bạn có thể chỉnh sao cho vừa màn hình. Chỉ cần chỉnh 1 lần là các lần sau sẽ dùng như vậy.",
       "baseUrl": "https://hhpanda.st",
       "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp",
@@ -16,33 +17,46 @@ function getManifest() {
 };
 
 function log(msg) {
-    if (typeof nativeLog !== 'undefined') {
-        nativeLog("["+BASEURL+"] " + msg);
-    } else if (typeof console !== 'undefined' && console.log) {
-        console.log("["+BASEURL+"] " + msg);
+  	if(LOGGER == "true"){
+			if (typeof console !== 'undefined' && console.log) {
+          console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      }
     }
 }
 
 function getHomeSections() {
-    var listurl = '[{\"link\":\"/moi-cap-nhat/\",\"name\":\"Phim Mới\"}]';
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = '[{\"link\":\"/moi-cap-nhat/\",\"name\":\"Phim Mới\"}]';
+        var menulist = buildMenu(listurl, true);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
-
-
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl,"filter");
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl, "filter");
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -51,6 +65,7 @@ function getFilterConfig() {
 function getUrlList(slug, filtersJson) {
     try {
         if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
 
@@ -79,85 +94,159 @@ function getUrlList(slug, filtersJson) {
         if (page > 1) {
             resultUrl += "/page/" + page;
         }
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
     } catch (e) {
-        console.log(e);
+        log("getUrlList[err]:\n " + e);
         if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
         var fallback = BASEURL + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalFallback);
+        return finalFallback;
     }
 }
 
 function getUrlSearch(keyword, filtersJson) {
-    if (filtersJson) {
-        var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-        try {
-            var filters = JSON.parse(fixedJson);
-            var page = parseInt(filters.page) || 1;
-            if (page > 1) {
-                return BASEURL + "/page/" + page + "?s=" + encodeURIComponent(keyword);
-            } else {
-                return BASEURL + "?s=" + encodeURIComponent(keyword);
+    try {
+        var resUrl = "";
+        if (filtersJson) {
+            var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
+            try {
+                var filters = JSON.parse(fixedJson);
+                var page = parseInt(filters.page) || 1;
+                if (page > 1) {
+                    resUrl = BASEURL + "/page/" + page + "?s=" + encodeURIComponent(keyword);
+                } else {
+                    resUrl = BASEURL + "?s=" + encodeURIComponent(keyword);
+                }
+            } catch (jsonErr) {
+                resUrl = BASEURL + "?s=" + encodeURIComponent(keyword);
             }
-        } catch (jsonErr) {
-            return BASEURL + "?s=" + encodeURIComponent(keyword);
+        } else {
+            resUrl = BASEURL + "?s=" + encodeURIComponent(keyword);
         }
+        log("getUrlSearch[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+        var fallbackUrl = BASEURL + "?s=" + encodeURIComponent(keyword || "");
+        log("getUrlSearch[url]: \n" + fallbackUrl);
+        return fallbackUrl;
     }
 }
-/*
-// https://hhpanda.st/page/3?s=h%E1%BA%AFn
-// https://hhpanda.st/the-loai/tu-tien/page/3
-
-var BASEURL = "https://hhpanda.st";
-var filtersJson = '{page:2}';
-console.log(getUrlList(getUrlSearch("ggiet", filtersJson), filtersJson));
-//console.log(getUrlSearch("the boy"))
-*/
-
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        if (!slug) {
+            log("getUrlDetail[url]: \n");
+            return "";
+        }
+        if (slug.indexOf('http') === 0) {
+            log("getUrlDetail[url]: \n" + slug);
+            return slug;
+        }
+        var resUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + resUrl);
+        return resUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() {
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCountries() {
+    try {
+        log("getUrlCountries[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() {
+    try {
+        log("getUrlYears[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 
 function fixHref(href) {
-    if (!href) return '';
+    try {
+        if (!href) return '';
 
-    // 1. Loại bỏ khoảng trắng thừa ở đầu và cuối
-    let cleanHref = href.trim();
+        // 1. Loại bỏ khoảng trắng thừa ở đầu và cuối
+        let cleanHref = href.trim();
 
-    // 2. Các mẫu đường dẫn cần bỏ qua (không gắn thêm BASEURL)
-    const ignorePattern = /^(#|https?:\/\/|\/\/|mailto:|tel:|javascript:|data:|blob:)/i;
+        // 2. Các mẫu đường dẫn cần bỏ qua (không gắn thêm BASEURL)
+        const ignorePattern = /^(#|https?:\/\/|\/\/|mailto:|tel:|javascript:|data:|blob:)/i;
 
-    if (ignorePattern.test(cleanHref)) {
-        return cleanHref;
-    }
-
-    // 3. Xử lý trường hợp đường dẫn bắt đầu bằng dấu / (server-relative path)
-    if (cleanHref.startsWith('/')) {
-        try {
-            const urlObj = new URL(BASEURL);
-            return urlObj.origin + cleanHref;
-        } catch (e) {
-            return BASEURL + cleanHref;
+        if (ignorePattern.test(cleanHref)) {
+            return cleanHref;
         }
-    }
 
-    // 4. Đường dẫn tương đối thông thường
-    return BASEURL + cleanHref;
+        // 3. Xử lý trường hợp đường dẫn bắt đầu bằng dấu / (server-relative path)
+        if (cleanHref.startsWith('/')) {
+            try {
+                const urlObj = new URL(BASEURL);
+                return urlObj.origin + cleanHref;
+            } catch (e) {
+                return BASEURL + cleanHref;
+            }
+        }
+
+        // 4. Đường dẫn tương đối thông thường
+        return BASEURL + cleanHref;
+    } catch (e) {
+        log("fixHref[err]:\n " + e);
+        return href || '';
+    }
 }
 
+function isValidMediaUrl(url) {
+    try {
+        if (!url || typeof url !== 'string') return false;
+
+        var cleanUrl = url.trim();
+
+        // 1. Loại bỏ nếu dính chuỗi nối code JS, biến hoặc hàm (như _spEsc, +, ', ${...)
+        if (cleanUrl.indexOf('_spEsc') > -1 ||
+            cleanUrl.indexOf("'+") > -1 ||
+            cleanUrl.indexOf("+'") > -1 ||
+            cleanUrl.indexOf("${") > -1 ||
+            cleanUrl.indexOf("javascript:") > -1) {
+            return false;
+        }
+
+        // 2. Kiểm tra định dạng URL http/https hợp lệ (không chứa khoảng trắng, ngoặc đơn/kép, dấu +)
+        var httpPattern = /^https?:\/\/[^\s"'<>+]+$/i;
+        return httpPattern.test(cleanUrl);
+    } catch (e) {
+        log("isValidMediaUrl[err]:\n " + e);
+        return false;
+    }
+}
 
 function parseListResponse(html, $url) {
     try {
@@ -167,43 +256,19 @@ function parseListResponse(html, $url) {
             href = fixHref(href);
             var title = this.find("a").attr("title");
             var src = this.find("img").attr("src");
-            src = fixHref(src)
+            src = fixHref(src);
 
             var episode_current = this.find(".status").text().trim();
             var quality = this.find(".mc__score").text().trim();
 
-// Hàm kiểm tra URL có phải là link thật hay chứa mã JS rác
-function isValidMediaUrl(url) {
-    if (!url || typeof url !== 'string') return false;
-    
-    var cleanUrl = url.trim();
-
-    // 1. Loại bỏ nếu dính chuỗi nối code JS, biến hoặc hàm (như _spEsc, +, ', ${...)
-    if (cleanUrl.indexOf('_spEsc') > -1 || 
-        cleanUrl.indexOf("'+") > -1 || 
-        cleanUrl.indexOf("+'") > -1 || 
-        cleanUrl.indexOf("${") > -1 ||
-        cleanUrl.indexOf("javascript:") > -1) {
-        return false;
-    }
-
-    // 2. Kiểm tra định dạng URL http/https hợp lệ (không chứa khoảng trắng, ngoặc đơn/kép, dấu +)
-    var httpPattern = /^https?:\/\/[^\s"'<>+]+$/i;
-    return httpPattern.test(cleanUrl);
-}
-
-// =============================================================================
-// ĐOẠN XỬ LÝ TRONG HÀM PARSE CỦA BẠN
-// =============================================================================
-
             if (isValidMediaUrl(href)) {
                 var cleanThumb = (src || "").replace(/&amp;/g, '&').trim();
-                
+
                 // Đảm bảo cleanThumb cũng là link ảnh hợp lệ, nếu không có thì fallback
                 if (cleanThumb && cleanThumb.indexOf('http') !== 0) {
                     cleanThumb = 'https:' + cleanThumb;
                 }
-            
+
                 items.push({
                     "id": href.trim(),
                     "title": (title || "").trim(),
@@ -224,7 +289,7 @@ function isValidMediaUrl(url) {
             }
         });
     } catch (e) {
-        log("parseListResponse: " + e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url || "error_url",
@@ -240,20 +305,18 @@ function isValidMediaUrl(url) {
     }
 }
 
-/*
-var BASEURL = "https://hhpanda.st";
-//var BASEAPI = "https://k8s.onflixcdn.com/api";
-JSON.parse(parseListResponse(sourceHTML, BASEURL));
-//var html = outerHTML;
-
-*/
-
-
-
-
 function parseSearchResponse(html, url) {
-    return parseListResponse(html, url);
+    try {
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": { "currentPage": 1, "totalPages": 1 }
+        });
+    }
 }
+
 function parseMovieDetail(html, url) {
     try {
         // === BƯỚC 1: ĐỒNG NHẤT ID PHIM BẰNG REGEX META (Y hệt tác giả) ===
@@ -300,22 +363,7 @@ function parseMovieDetail(html, url) {
         var ldes = _$(html).find(".video-item").find("article").text();
         var year = 2026;
         var extra = "";
-        /*
-                var rawText = _$(html).find(".aim-hero__meta").find("span:first").text();
 
-                // 1. Dùng Regex lọc chính xác 4 chữ số năm (dạng 19xx hoặc 20xx)
-                var match = rawText.match(/\b(19|20)\d{2}\b/);
-
-                if (match) {
-                    // 2. Ép kiểu về Số Nguyên bằng parseInt với cơ số 10
-                    year = parseInt(match[0], 10);
-                }
-
-                // 3. Chốt chặn an toàn: Nếu parse thất bại (NaN), trả về năm mặc định
-                if (isNaN(year)) {
-                    year = 2026;
-                }
-                */
         status = _$(html).find(".hh3d-info").find("span").parent().text(" - ");
 
         var categoryResult = [];
@@ -330,14 +378,10 @@ function parseMovieDetail(html, url) {
             }
         });
 
-        // THÊM DÒNG NÀY: Chuyển mảng thành Chuỗi nối nhau bằng dấu phẩy
         category = categoryResult.join(", ");
-
         episode_current = _$(html).find("span.new-ep").text();
-        //rating = _$(html).find(".kksr-legend").text();
 
         var servers = [];
-
 
         _$(html).find("#halim-list-server").find(".halim-server").each(function() {
             var $namesv = this.find(".halim-server-name").text();
@@ -351,19 +395,19 @@ function parseMovieDetail(html, url) {
                         id: id,
                         name: name,
                         slug: slug
-                    })
-                })
-            })
+                    });
+                });
+            });
             servers.push({
                 name: $namesv,
                 episodes: items
-            })
-        })
+            });
+        });
         servers = sortEpisodesByName(servers);
-        //console.log(JSON.stringify(servers));
+
         // === BƯỚC 5: TRẢ VỀ KẾT QUẢ ĐỒNG NHẤT ID ===
         return JSON.stringify({
-            id: id, // BẮT BUỘC: ID phải là slug rút gọn của bộ phim để cả 2 lần fetch khớp nhau
+            id: id,
             title: lname,
             posterUrl: limg,
             backdropUrl: limg,
@@ -374,15 +418,15 @@ function parseMovieDetail(html, url) {
             status: status,
             category: category,
             episode_current: episode_current,
-            servers: servers, // Lần 1 (trang chi tiết) sẽ là []. Lần 2 (khi chạy qua extra) sẽ có đầy đủ tập
+            servers: servers,
             duration: lduran || "",
             casts: lactor || "",
             director: ldirec || "",
-            extra: extra // Lần 2 (trang xem phim) extra sẽ rỗng để dừng chu kỳ tải ngầm
+            extra: extra
         });
 
     } catch (e) {
-        log("parseMovieDetail:" + e)
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: slug || url || "error",
             title: "error",
@@ -392,54 +436,44 @@ function parseMovieDetail(html, url) {
 }
 
 function sortEpisodesByName(data) {
-    if (!Array.isArray(data)) return data;
+    try {
+        if (!Array.isArray(data)) return data;
 
-    data.forEach(function(server) {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort(function(a, b) {
-                var nameA = a.name || '';
-                var nameB = b.name || '';
+        data.forEach(function(server) {
+            if (server.episodes && Array.isArray(server.episodes)) {
+                server.episodes.sort(function(a, b) {
+                    var nameA = a.name || '';
+                    var nameB = b.name || '';
 
-                // Bắt chuỗi số đầu tiên xuất hiện trong tên (hỗ trợ cả số thập phân như 2.5)
-                var matchA = nameA.match(/\d+(\.\d+)?/);
-                var matchB = nameB.match(/\d+(\.\d+)?/);
+                    var matchA = nameA.match(/\d+(\.\d+)?/);
+                    var matchB = nameB.match(/\d+(\.\d+)?/);
 
-                var numA = matchA ? parseFloat(matchA[0]) : null;
-                var numB = matchB ? parseFloat(matchB[0]) : null;
+                    var numA = matchA ? parseFloat(matchA[0]) : null;
+                    var numB = matchB ? parseFloat(matchB[0]) : null;
 
-                // 1. Nếu cả 2 đều tìm thấy số -> so sánh theo giá trị số
-                if (numA !== null && numB !== null) {
-                    if (numA !== numB) {
-                        return numA - numB;
+                    if (numA !== null && numB !== null) {
+                        if (numA !== numB) {
+                            return numA - numB;
+                        }
                     }
-                }
 
-                // 2. Nếu 1 bên có số, 1 bên không -> ưu tiên item có số đứng trước
-                if (numA !== null) return -1;
-                if (numB !== null) return 1;
+                    if (numA !== null) return -1;
+                    if (numB !== null) return 1;
 
-                // 3. Nếu cả 2 không có số (hoặc số bằng nhau) -> sắp xếp tự nhiên theo chuỗi
-                return nameA.localeCompare(nameB, undefined, {
-                    numeric: true,
-                    sensitivity: 'base'
+                    return nameA.localeCompare(nameB, undefined, {
+                        numeric: true,
+                        sensitivity: 'base'
+                    });
                 });
-            });
-        }
-    });
+            }
+        });
 
-    return data;
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
-/*
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/9/refresh-source?lang=vi-VN
-
-
-BASEURL = "https://hhpanda.st";
-var html = sourceHTML;
-var $url = "https://hhpanda.st";
-JSON.parse(parseMovieDetail(sourceHTML, $url));
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/check-new-episodes?_t=1784684483895&_=1784684480875
-*/
-
 
 function parseDetailResponse(html, pageUrl) {
     try {
@@ -472,19 +506,17 @@ function parseDetailResponse(html, pageUrl) {
             maxEpi = this.find(".halim-episode").find("a").length;
 
             this.find(".halim-episode").each(function() {
-                type = this.find("a:first").attr("data-sv")
-            })
+                type = this.find("a:first").attr("data-sv");
+            });
 
             servers.push({
                 name: $namesv,
                 type: type,
                 maxEpi: maxEpi
-            })
-        })
+            });
+        });
         $dataSv.servers = servers;
-        // // https://hhpanda.st/player/player.php?action=dox_ajax_player&post_id=17033&chapter_st=tap-3&type=tiktik&sv=2
 
-        //_$(html).find("#halim-ajax-list-server").find("span");
         var serverHQ = [];
         _$(html).find("#halim-ajax-list-server").find("span").each(function() {
             var name = this.text();
@@ -492,12 +524,12 @@ function parseDetailResponse(html, pageUrl) {
             serverHQ.push({
                 nname: name,
                 type: type
-            })
-        })
+            });
+        });
         $dataSv.HQ = serverHQ;
-        
-       // var bypassJs = customJS(link);
+
         var bypassJs = customJS($dataSv);
+        log("parseDetailResponse[url]: \n" + framelink);
         return JSON.stringify({
             url: framelink,
             isEmbed: false,
@@ -509,7 +541,7 @@ function parseDetailResponse(html, pageUrl) {
             subtitles: []
         });
     } catch (e) {
-        log("parseDetailResponse error: " + e.message);
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({
             url: "",
             isEmbed: false,
@@ -518,6 +550,7 @@ function parseDetailResponse(html, pageUrl) {
         });
     }
 }
+
 /*
 
 BASEURL = "https://animehay09.site";
@@ -539,6 +572,46 @@ function customJS(config) {
     const INITIAL_SHOW_TIME = 10000;   // Thời gian hiện rõ thanh điều khiển (ms)
 
     const CONFIG = ${JSON.stringify(config)};
+
+    // --- HELPER: BỌC LƯU BỘ NHỚ AN TOÀN CHỐNG SECURITY ERROR ---
+    const memoryStore = {};
+    function bridgeLog(msg) {
+      try {
+        if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+          window.SnifferBridge.log(String(msg));
+        } else if (typeof console !== 'undefined' && console.log) {
+          console.log('[SNIFFER LOG]', msg);
+        }
+      } catch (e) {}
+    }
+    
+    function safeGetStorage(key) {
+        try {
+            if (window.localStorage) {
+            		//bridgeLog("Đã đọc dược Localstore")
+                return localStorage.getItem(key);
+            }
+            return memoryStore[key] !== undefined ? memoryStore[key] : null;
+        } catch (e) {
+        		//bridgeLog("Lỗi Localstore: " + e)
+            return memoryStore[key] !== undefined ? memoryStore[key] : null;
+        }
+    }
+
+    function safeSetStorage(key, value) {
+        try {
+            if (window.localStorage) {
+            		//bridgeLog("Đã lưu dược Localstore")
+                localStorage.setItem(key, value);
+            } else {
+            		//bridgeLog("Đã lưu dược memoryStore")
+                memoryStore[key] = String(value);
+            }
+        } catch (e) {
+        		//bridgeLog("Đã xảy ra lỗi localStorage: " + e)
+            memoryStore[key] = String(value);
+        }
+    }
 
     // --- 0. INJECT CSS STYLES ---
     let styleTag = document.getElementById('custom-player-styles');
@@ -576,26 +649,26 @@ function customJS(config) {
             }
 
             .floating-control-ui {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
 
-    transition:
-        opacity 0.5s ease,
-        visibility 0.5s ease,
-        transform 0.2s ease,
-        background-color 0.2s ease !important;
-}
+                transition:
+                    opacity 0.5s ease,
+                    visibility 0.5s ease,
+                    transform 0.2s ease,
+                    background-color 0.2s ease !important;
+            }
 
-.floating-control-ui.show-ui,
-.floating-control-ui:hover,
-.floating-control-ui:focus-within,
-.floating-control-ui:active,
-.floating-control-ui.initial-show {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-}
+            .floating-control-ui.show-ui,
+            .floating-control-ui:hover,
+            .floating-control-ui:focus-within,
+            .floating-control-ui:active,
+            .floating-control-ui.initial-show {
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+            }
 
             .floating-nav-item:hover {
                 background-color: #e50914 !important;
@@ -702,19 +775,19 @@ function customJS(config) {
     let currentTapStr = CONFIG.taphientai;
     let currentTapNum = parseInt(currentTapStr.replace('tap-', ''), 10) || 1;
 
-    // Lấy thông số từ Storage (Mặc định W: 700px, H: 400px, Scale: 1.0)
+    // Lấy thông số từ Storage (Sử dụng safeGetStorage)
     function getSavedWidth() {
-        const saved = localStorage.getItem(widthStorageKey);
+        const saved = safeGetStorage(widthStorageKey);
         return saved ? parseInt(saved, 10) : 700;
     }
 
     function getSavedHeight() {
-        const saved = localStorage.getItem(heightStorageKey);
+        const saved = safeGetStorage(heightStorageKey);
         return saved ? parseInt(saved, 10) : 400;
     }
 
     function getSavedScale() {
-        const saved = localStorage.getItem(scaleStorageKey);
+        const saved = safeGetStorage(scaleStorageKey);
         return saved ? parseFloat(saved) : 1.0;
     }
 
@@ -731,9 +804,9 @@ function customJS(config) {
             iframe.style.setProperty('transform', \`translate(-50%, -50%) scale(\${s})\`, 'important');
         }
 
-        localStorage.setItem(widthStorageKey, w);
-        localStorage.setItem(heightStorageKey, h);
-        localStorage.setItem(scaleStorageKey, s);
+        safeSetStorage(widthStorageKey, w);
+        safeSetStorage(heightStorageKey, h);
+        safeSetStorage(scaleStorageKey, s);
 
         const wInput = document.getElementById("iframe-w-input");
         const hInput = document.getElementById("iframe-h-input");
@@ -746,26 +819,22 @@ function customJS(config) {
         renderScaleGrid();
     }
 
-function triggerInitialShow() {
-
-    const elements =
-        document.querySelectorAll('.floating-control-ui');
-
-    elements.forEach(el => {
-        el.classList.add('show-ui');
-    });
-
-    clearTimeout(window.fadeTimer);
-
-    window.fadeTimer = setTimeout(() => {
+    function triggerInitialShow() {
+        const elements = document.querySelectorAll('.floating-control-ui');
 
         elements.forEach(el => {
-            el.classList.remove('show-ui');
-            el.classList.remove('initial-show');
+            el.classList.add('show-ui');
         });
 
-    }, INITIAL_SHOW_TIME);
-}checkHistoryAndStart();
+        clearTimeout(window.fadeTimer);
+
+        window.fadeTimer = setTimeout(() => {
+            elements.forEach(el => {
+                el.classList.remove('show-ui');
+                el.classList.remove('initial-show');
+            });
+        }, INITIAL_SHOW_TIME);
+    }
 
     function addTouchSupport(el) {
         if (!el) return;
@@ -847,7 +916,7 @@ function triggerInitialShow() {
             hq: currentHQ,
             tap: "tap-" + currentTapNum
         };
-        localStorage.setItem(storageKey, JSON.stringify(state));
+        safeSetStorage(storageKey, JSON.stringify(state));
     }
 
     // --- 4. TẠO KHUNG GIAO DIỆN CƠ BẢN ---
@@ -1241,7 +1310,7 @@ function triggerInitialShow() {
     function checkHistoryAndStart() {
         initBaseLayout();
 
-        const savedDataRaw = localStorage.getItem(storageKey);
+        const savedDataRaw = safeGetStorage(storageKey);
         let savedState = null;
         let savedTapNum = null;
 
@@ -1400,18 +1469,19 @@ function triggerInitialShow() {
         });
     }
 
-    // KHỞI CHẠY
-document.addEventListener('touchstart', function() {
-    triggerInitialShow();
-}, { passive: true });
+    // EVENT LISTENERS & KHỞI CHẠY DUY NHẤT
+    document.addEventListener('touchstart', function() {
+        triggerInitialShow();
+    }, { passive: true });
 
-document.addEventListener('mousedown', function() {
-    triggerInitialShow();
-});
+    document.addEventListener('mousedown', function() {
+        triggerInitialShow();
+    });
 
-document.addEventListener('mousemove', function() {
-    triggerInitialShow();
-});
+    document.addEventListener('mousemove', function() {
+        triggerInitialShow();
+    });
+
     checkHistoryAndStart();
 })();
     `;

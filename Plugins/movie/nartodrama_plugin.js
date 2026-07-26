@@ -1,47 +1,65 @@
 var BASEURL = "https://edge.narto-drama.com"; 
-
+var DEV = false;
 function getManifest() {
     return JSON.stringify({
         "id": "nartodrama",
         "name": "Phim Ngắn Narto",
         "description": "Phim Ngắn lồng tiếng vietsub hay",
-        "version": "1.1.6",
+        "version": "1.1.7",
         "info": "Nguồn phim ngắn siêu hay, một vài bộ phim nên xem theo chiều dọc. App có hỗ trợ nhé. Hãy nhấn thử lại nếu không tải được video.",
         "baseUrl": "https://edge.narto-drama.com",
         "iconUrl": "https://narto-drama.com/narto-drama-logo-compressed.png",
         "isEnabled": true,
         "type": "MOVIE",
-        "playerTpye": "exoplayer",
+        "playerTpye": "shortfilm",
       "subtitleCat": true
     })
 };
 
 function log(msg) {
-    if (typeof nativeLog !== 'undefined') {
-        nativeLog("[gamomephim] " + msg);
-    } else if (typeof console !== 'undefined' && console.log) {
-        console.log("[gamomephim] " + msg);
+  	if(DEV){
+      if (typeof nativeLog !== 'undefined') {
+          nativeLog("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      } else if (typeof console !== 'undefined' && console.log) {
+          console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      }
     }
 }
 
+
 function getHomeSections() {
-    var listurl = '[{\"link\":\"/?lang=vi-VN\",\"name\":\"Phim Mới\"}]';
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = '[{\"link\":\"/?lang=vi-VN\",\"name\":\"Phim Mới\"}]';
+        var menulist = buildMenu(listurl, true);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -49,6 +67,8 @@ function getFilterConfig() {
 // =============================================================================
 function getUrlList(slug, filtersJson) {
     try {
+        log("getUrlList[url]: \n" + slug);
+
         // 1. Kiểm tra nếu slug là link tuyệt đối (chứa http)
         if (slug && slug.indexOf("http") > -1) {
             if (slug.indexOf("search") > -1 && filtersJson) {
@@ -61,10 +81,13 @@ function getUrlList(slug, filtersJson) {
 
                     if (pageSearch > 1 && slug.indexOf("page=") === -1) {
                         var sepSearch = slug.indexOf("?") > -1 ? "&" : "?";
-                        return slug + sepSearch + "page=" + pageSearch;
+                        var resSearch = slug + sepSearch + "page=" + pageSearch;
+                        log("getUrlList[url]: \n" + resSearch);
+                        return resSearch;
                     }
                 } catch (jsonErr) {}
             }
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
 
@@ -104,15 +127,20 @@ function getUrlList(slug, filtersJson) {
         }
 
         // 5. Làm sạch dấu // thừa ở path (giữ nguyên https://)
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log(e);
+        log("getUrlList[err]:\n " + e);
         if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
             return slug;
         }
         var fallback = BASEURL + (slug ? (slug.indexOf("/") === 0 ? slug : "/" + slug) : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalFallback);
+        return finalFallback;
     }
 }
 
@@ -141,25 +169,60 @@ function getUrlSearch(keyword, filtersJson) {
             resultUrl += "&page=" + page;
         }
 
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalUrl);
+        return finalUrl;
 
     } catch (e) {
-        console.log(e);
+        log("getUrlSearch[err]:\n " + e);
         var fallback = BASEURL + "/search?lang=vi-VN&q=" + encodeURIComponent(keyword || "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        var finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalFallback);
+        return finalFallback;
     }
 }
 
-
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+        var detailUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + detailUrl);
+        return detailUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() { 
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL; 
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCountries() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
@@ -167,6 +230,7 @@ function getUrlYears() { return ""; }
 
 function parseListResponse(html, $url) {
     try {
+        log("parseListResponse[url]: \n" + $url);
         var items = [];
         _$(html).find("article[class*='card']").each(function() {
             var href = this.attr("data-watch-url");
@@ -202,7 +266,7 @@ function parseListResponse(html, $url) {
             }
         });
     } catch (e) {
-        log("parseListResponse: " + e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url || "error_url",
@@ -218,21 +282,27 @@ function parseListResponse(html, $url) {
     }
 }
 
-/*
-var BASEURL = "https://narto-drama.com";
-//var BASEAPI = "https://k8s.onflixcdn.com/api";
-var htmlsource = $("#labHtmlEditorWrap #labHtmlTreeContainer .lab-dom-pure-text").html();
-JSON.parse(parseListResponse(sourceHTML, BASEURL));
-//var html = outerHTML;
-
-*/
 function parseSearchResponse(html, url) {
-    return parseListResponse(html, url);
+    try {
+        log("parseSearchResponse[url]: \n" + url);
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
 }
 
 function parseMovieDetail(html, url) {
     try {
-        // === BƯỚC 1: ĐỒNG NHẤT ID PHIM BẰNG REGEX META (Y hệt tác giả) ===
+        log("parseMovieDetail[url]: \n" + url);
+        
+        // === BƯỚC 1: ĐỒNG NHẤT ID PHIM BẰNG REGEX META ===
         var idMatch = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html) ||
             /<meta\s+property="og:url"\s+content="([^"]+)"/i.exec(html);
         var id = idMatch ? idMatch[1] : (url || "");
@@ -273,45 +343,43 @@ function parseMovieDetail(html, url) {
         var year = 2026;
         var extra = "";
         category = _$(html).find(".movie-tag-pill").textAll(" - ");
-        episode_current = _$(html).find(".movie-sub").text();;
+        episode_current = _$(html).find(".movie-sub").text();
         var rawScript = _$(html).find('script:content("episodeItemsRaw = [{")').html();
         var $objepi = "";
         var servers = [];
         var items = [];
-        var episodes = rawScript.match(/(?:const|let|var)\s+episodeItemsRaw\s*=\s*(\[[\s\S]*?\])(?:;|\n|$)/i)
-        if (episodes[1] && episodes) {
+        var episodes = rawScript.match(/(?:const|let|var)\s+episodeItemsRaw\s*=\s*(\[[\s\S]*?\])(?:;|\n|$)/i);
+        if (episodes && episodes[1]) {
             $objepi = JSON.parse(episodes[1]);
         }
         var urlmatch = "";
         if (id.indexOf("/detail/watch/") > -1) {
             urlmatch = id.match(/(?<=\/watch\/)[^/]+/i);
-            urlmatch[0] = "watch/" + urlmatch[0].replace(/\/(\d+)$/g, "")
+            urlmatch[0] = "watch/" + urlmatch[0].replace(/\/(\d+)$/g, "");
         } else {
             urlmatch = id.match(/(?<=\/detail\/)[^?]+/i);
-            urlmatch[0] = urlmatch[0].replace(/\/(\d+)$/g, "")
+            urlmatch[0] = urlmatch[0].replace(/\/(\d+)$/g, "");
         }
         var slug = urlmatch[0];
         for (var $j = 0; $j < $objepi.length; $j++) {
             var $movie = $objepi[$j];
             var $number = $movie.number;
-            var link = "https://edge.narto-drama.com/e/rs/detail/" + slug + "/" + $number + "/refresh-source?lang=vi-VN&force=1"
+            var link = "https://edge.narto-drama.com/e/rs/detail/" + slug + "/" + $number + "/refresh-source?lang=vi-VN&force=1";
 
             var item = {
                 id: link,
                 name: "Tập " + $number,
                 slug: "Tap-" + $number
-            }
-            items.push(item)
+            };
+            items.push(item);
         }
         servers.push({
             name: "Server",
             episodes: items
         });
 
-        // Tạo chuỗi mô tả ẩn JSON servers giống hệt tác giả
-        // === BƯỚC 5: TRẢ VỀ KẾT QUẢ ĐỒNG NHẤT ID ===
         return JSON.stringify({
-            id: id, // BẮT BUỘC: ID phải là slug rút gọn của bộ phim để cả 2 lần fetch khớp nhau
+            id: id,
             title: lname,
             posterUrl: limg,
             backdropUrl: limg,
@@ -322,15 +390,15 @@ function parseMovieDetail(html, url) {
             status: status,
             category: category,
             episode_current: episode_current,
-            servers: servers, // Lần 1 (trang chi tiết) sẽ là []. Lần 2 (khi chạy qua extra) sẽ có đầy đủ tập
+            servers: servers,
             duration: lduran || "",
             casts: lactor || "",
             director: ldirec || "",
-            extra: extra // Lần 2 (trang xem phim) extra sẽ rỗng để dừng chu kỳ tải ngầm
+            extra: extra
         });
 
     } catch (e) {
-        log("parseMovieDetail:" + e)
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: slug || url || "error",
             title: "error",
@@ -338,19 +406,10 @@ function parseMovieDetail(html, url) {
         });
     }
 }
-/*
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/9/refresh-source?lang=vi-VN
-
-
-BASEURL = "https://phimnganhdc.com";
-var html = sourceHTML;
-var $url = "https://phimnganhdc.com/hot-babe-remy-cheats-with-bbc/";
-JSON.parse(parseMovieDetail(outerHTML,$url));
-// https://edge.narto-drama.com/e/rs/detail/watch/tro-choi-cong-so/check-new-episodes?_t=1784684483895&_=1784684480875
-*/
 
 function parseDetailResponse(html, url) {
     try {
+        log("parseDetailResponse[url]: \n" + url);
         var $objmv = JSON.parse(html);
         var rawStream = $objmv.direct_play_url || $objmv.play_url || "";
         var $subtitle = $objmv.direct_subtitle_url || "";
@@ -365,20 +424,15 @@ function parseDetailResponse(html, url) {
 
         // 1. PHÂN LOẠI CHÍNH XÁC
         if (lowerStream.includes(".mp4")) {
-            // Trường hợp 1: File MP4 (như trong Log của bạn)
             mimeType = "video/mp4";
-            
-            // Thêm #.m3u8 cho ExoPlayer nếu chưa có
             if (!finalStreamUrl.endsWith("#.m3u8")) {
                 finalStreamUrl += "#.m3u8";
             }
         } 
         else if (lowerStream.includes(".m3u8")) {
-            // Trường hợp 2: Stream HLS chuẩn
             mimeType = "application/x-mpegURL";
         } 
         else {
-            // Trường hợp 3: Link ẩn đuôi (không có .mp4 hay .m3u8 trong URL)
             mimeType = "application/x-mpegURL";
             if (!finalStreamUrl.endsWith("#.m3u8")) {
                 finalStreamUrl += "#.m3u8";
@@ -402,7 +456,7 @@ function parseDetailResponse(html, url) {
             });
         }
 
-        log("Final Stream: " + finalStreamUrl + " | Mime: " + mimeType);
+        log("parseDetailResponse[url]: \n" + finalStreamUrl);
 
         return JSON.stringify({
             "url": finalStreamUrl,
@@ -415,7 +469,7 @@ function parseDetailResponse(html, url) {
             "subtitles": listsub
         });
     } catch (e) {
-        log("stream error: " + e);
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({
             "url": "",
             "headers": {}
@@ -423,32 +477,56 @@ function parseDetailResponse(html, url) {
     }
 }
 
-
-
-
 function sortEpisodesByName(data) {
-    data.forEach(function(server) {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort(function(a, b) {
-                var matchA = a.name.match(/Tập\s*(\d+)/i);
-                var matchB = b.name.match(/Tập\s*(\d+)/i);
-                var numA = matchA ? parseInt(matchA[1], 10) : 0;
-                var numB = matchB ? parseInt(matchB[1], 10) : 0;
-                return numA - numB;
+    try {
+        if (data && Array.isArray(data)) {
+            data.forEach(function(server) {
+                if (server.episodes && Array.isArray(server.episodes)) {
+                    server.episodes.sort(function(a, b) {
+                        var matchA = a.name.match(/Tập\s*(\d+)/i);
+                        var matchB = b.name.match(/Tập\s*(\d+)/i);
+                        var numA = matchA ? parseInt(matchA[1], 10) : 0;
+                        var numB = matchB ? parseInt(matchB[1], 10) : 0;
+                        return numA - numB;
+                    });
+                }
             });
         }
-    });
-    return data;
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
 
 function parseCategoriesResponse(apiResponseJson) {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
-function parseCountriesResponse(html) { return "[]"; }
-function parseYearsResponse(html) { return "[]"; }
+function parseCountriesResponse(html) {
+    try {
+        return "[]";
+    } catch (e) {
+        log("parseCountriesResponse[err]:\n " + e);
+        return "[]";
+    }
+}
+
+function parseYearsResponse(html) {
+    try {
+        return "[]";
+    } catch (e) {
+        log("parseYearsResponse[err]:\n " + e);
+        return "[]";
+    }
+}
 
 function getLISTmenu() {
     return `[{\"link\":\"https://narto-drama.com/search?lang=vi-VN&q=l%E1%BB%93ng+ti%E1%BA%BFng\",\"name\":\"Lồng Tiếng\"},{\"link\":\"https://narto-drama.com/search?lang=vi-VN&q=kinh+d%E1%BB%8B\",\"name\":\"Kinh Dị\"},{\"link\":\"https://narto-drama.com/tag/bi-an-than-phan?lang=vi-VN&tab-provider=bibishort\",\"name\":\"Thân Phận Bí Ẩn\"},{\"link\":\"https://narto-drama.com/tag/hien-dai?lang=vi-VN&tab-provider=bibishort\",\"name\":\"Hiện Đại\"},{\"link\":\"https://narto-drama.com/tag/bao-thu?lang=vi-VN&tab-provider=bibishort\",\"name\":\"Báo Thù\"}]`;

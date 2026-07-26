@@ -1,5 +1,5 @@
 
-BASEURL = "https://animevietsub.wiki"
+BASEURL = "https://animevietsub.ad"
 DEV = false;
 
 function getManifest() {
@@ -7,9 +7,9 @@ function getManifest() {
         "id": "animevietsub",
         "name": "AnimeVietSub",
         "version": "1.1.2",
-        "baseUrl": "https://animevietsub.wiki",
+        "baseUrl": "https://animevietsub.ad",
       	"info": "Nguồn phim Anime chất lượng. Nguồn này hay bị nhà mạng chặn. Các bạn hãy dùng APP 1.1.1.1 hoặc DNS và DPI trên app để xem nhé.",
-        "iconUrl": "https://animevietsub.wiki/statics/default/images/logo.png",
+        "iconUrl": "https://animevietsub.ad/statics/default/images/logo.png",
         "isEnabled": true,
         "type": "MOVIE",
         "playerType": "embed"
@@ -415,7 +415,9 @@ function parseDetailResponse(htmlContent, pageUrl) {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Referer": pageUrl || "https://animevietsub.wiki/",
-                "Custom-Js": bypassJs
+              	"Block-Ads": "true",
+                "Custom-Js": bypassJs,
+
             },
             subtitles: []
         });
@@ -425,84 +427,56 @@ function parseDetailResponse(htmlContent, pageUrl) {
     }
 }
 
-
-
 function customJS(initialLink){
   return `
 (function() {
+    // 0. XỬ LÝ LỖI LOCALSTORAGE (Memory Fallback tránh SecurityError)
+    const memoryStore = {};
+    function safeGetStorage(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            return memoryStore[key] || null;
+        }
+    }
+    function safeSetStorage(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            memoryStore[key] = String(value);
+        }
+    }
 
-    const noop = function(){};
-
-    window.alert = noop;
-
-    window.confirm = function() {
-        return false;
-    };
-
-    window.prompt = function() {
-        return null;
-    };
-
-    window.open = function() {
-        return null;
-    };
-
-    try {
-
-        const block = function() {
-            console.log("Navigation blocked");
-        };
-
-        Location.prototype.assign = block;
-        Location.prototype.replace = block;
-
-    } catch(e) {}
-
-    window.addEventListener("beforeunload", function(e) {
-        e.stopImmediatePropagation();
-        e.preventDefault();
-    }, true);
-
-})();
-(function() {
-
-    // 1. CHÈN NGAY CSS VÀO HEAD VÀ BẬT LOADING OVERLAY CHE PHỦ TOÀN BỘ WEBSITE
+    // 1. CSS & LOADING LAYER (Tránh từ khóa 'overlay' hay 'popup' khiến AdBlocker ẩn)
     let styleTag = document.createElement('style');
     styleTag.textContent = \`
         margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000;
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes v-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     \`;
     if (document.head) document.head.appendChild(styleTag);
     else document.documentElement.appendChild(styleTag);
 
-    let overlay = document.createElement('div');
-    overlay.id = 'loading-overlay';
-    Object.assign(overlay.style, {
+    let loaderBlock = document.createElement('section');
+    loaderBlock.id = 'v-loader-layer';
+    Object.assign(loaderBlock.style, {
         position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-        backgroundColor: '#000', zIndex: '999998', display: 'flex', flexDirection: 'column',
+        backgroundColor: '#000', zIndex: '80', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', color: '#fff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         pointerEvents: 'none', opacity: '1', transition: 'opacity 0.3s ease'
     });
-    overlay.innerHTML = \`
-        <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #e50914; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite;"></div>
+    loaderBlock.innerHTML = \`
+        <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #e50914; border-radius: 50%; width: 36px; height: 36px; animation: v-spin 0.8s linear infinite;"></div>
         <div style="margin-top: 12px; font-size: 12px; color: #a1a1aa;">Đang tải...</div>
     \`;
     
-    if (document.body) document.body.appendChild(overlay);
-    else document.documentElement.appendChild(overlay);
+    if (document.body) document.body.appendChild(loaderBlock);
+    else document.documentElement.appendChild(loaderBlock);
 
-    // Chặn quảng cáo
-    window.addEventListener('click', function(e) {
-        if (!e.target.closest('#floating-select-box') && !e.target.closest('#episode-grid-popup')) {
-            let aTag = e.target.closest('a');
-            if (aTag && (aTag.target === '_blank' || aTag.href)) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
-        }
-    }, true);
-    window.open = function() { return null; };
+    // Vô hiệu hóa window.open an toàn
+    try {
+        window.open = function() { return null; };
+    } catch(e) {}
 
     function init() {
         const episodeLinks = document.querySelectorAll(".episode .episode-link");
@@ -521,25 +495,26 @@ function customJS(initialLink){
             }
         });
 
-        const storageKey = "anime_history_" + window.location.pathname.replace(/[^a-zA-Z0-9]/g, "_");
-        let savedIndex = localStorage.getItem(storageKey);
+        const storageKey = "v_hist_" + window.location.pathname.replace(/[^a-zA-Z0-9]/g, "_");
+        let savedIndex = safeGetStorage(storageKey);
 
         if (savedIndex !== null) {
             savedIndex = parseInt(savedIndex, 10);
             if (currentPlayingIndex !== savedIndex && currentPlayingIndex !== savedIndex + 1) {
-                if (overlay) overlay.remove();
+                if (loaderBlock) loaderBlock.remove();
                 let savedEpObj = allEpisodes[savedIndex] || { title: "Tập " + (savedIndex + 1) };
                 let currentEpObj = allEpisodes[currentPlayingIndex] || { title: "Tập " + (currentPlayingIndex + 1) };
 
-                let modalOverlay = document.createElement('div');
-                Object.assign(modalOverlay.style, {
+                let confirmDialog = document.createElement('aside');
+                confirmDialog.id = 'v-confirm-dialog';
+                Object.assign(confirmDialog.style, {
                     position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
                     backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(10px)',
-                    zIndex: '1000005', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: '90', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 });
 
-                modalOverlay.innerHTML = \`
+                confirmDialog.innerHTML = \`
                     <div style="background: #141416; border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; width: 290px; color: #fff; text-align: center;">
                         <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Phát hiện lịch sử xem</div>
                         <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 16px; line-height: 1.4;">
@@ -551,27 +526,27 @@ function customJS(initialLink){
                         </div>
                     </div>
                 \`;
-                document.body.appendChild(modalOverlay);
+                document.body.appendChild(confirmDialog);
 
                 document.getElementById('btn-resume-saved').onclick = () => {
-                    localStorage.setItem(storageKey, savedIndex);
+                    safeSetStorage(storageKey, savedIndex);
                     window.location.href = allEpisodes[savedIndex].url;
                 };
                 document.getElementById('btn-resume-current').onclick = () => {
-                    localStorage.setItem(storageKey, currentPlayingIndex);
-                    modalOverlay.remove();
-                    document.documentElement.appendChild(overlay);
-                    runApp(currentPlayingIndex, overlay, allEpisodes);
+                    safeSetStorage(storageKey, currentPlayingIndex);
+                    confirmDialog.remove();
+                    document.documentElement.appendChild(loaderBlock);
+                    runApp(currentPlayingIndex, loaderBlock, allEpisodes);
                 };
                 return;
             }
         }
 
-        localStorage.setItem(storageKey, currentPlayingIndex);
-        runApp(currentPlayingIndex, overlay, allEpisodes);
+        safeSetStorage(storageKey, currentPlayingIndex);
+        runApp(currentPlayingIndex, loaderBlock, allEpisodes);
     }
 
-    function runApp(currentPlayingIndex, overlay, allEpisodes) {
+    function runApp(currentPlayingIndex, loaderBlock, allEpisodes) {
         let initLink = "` + (initialLink || '') + `";
         if (!initLink) {
             try {
@@ -595,63 +570,67 @@ function customJS(initialLink){
         document.body.innerHTML = "";
         document.body.style.cssText = "margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;background:#000;position:relative;";
 
-        if (overlay) document.body.appendChild(overlay);
+        if (loaderBlock) document.body.appendChild(loaderBlock);
 
-        let isPopupOpen = false;
+        let isMenuOpen = false;
 
         function setAllUIOpacity(opacityValue) {
-            container.style.opacity = opacityValue;
+            navContainer.style.opacity = opacityValue;
             btnSidePrev.style.opacity = opacityValue;
             btnSideNext.style.opacity = opacityValue;
-            popupGrid.style.opacity = opacityValue;
+            epGridPanel.style.opacity = opacityValue;
         }
 
-        let container = document.createElement("div");
-        container.id = "floating-select-box";
-        Object.assign(container.style, {
-            position: "fixed", top: "12px", right: "16px", zIndex: "999999",
+        // Đổi container thành thẻ <nav id="v-player-nav">
+        let navContainer = document.createElement("nav");
+        navContainer.id = "v-player-nav";
+        Object.assign(navContainer.style, {
+            position: "fixed", top: "12px", right: "16px", zIndex: "95",
             opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
         });
 
-        let popupGrid = document.createElement("div");
-        popupGrid.id = "episode-grid-popup";
-        Object.assign(popupGrid.style, {
-            position: "fixed", top: "46px", right: "16px", zIndex: "1000000",
+        // Đổi popup grid thành thẻ <menu id="v-ep-grid">
+        let epGridPanel = document.createElement("menu");
+        epGridPanel.id = "v-ep-grid";
+        Object.assign(epGridPanel.style, {
+            position: "fixed", top: "46px", right: "16px", zIndex: "96",
             backgroundColor: "rgba(18, 18, 20, 0.95)", backdropFilter: "blur(12px)",
             border: "1px solid rgba(255, 255, 255, 0.1)", padding: "8px", borderRadius: "10px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.8)", width: "270px", maxHeight: "240px",
             overflowY: "auto", display: "none", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px",
-            opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto"
+            opacity: "0.2", transition: "opacity 0.2s ease", pointerEvents: "auto", margin: "0"
         });
 
-        let btnSidePrev = document.createElement("div");
+        let btnSidePrev = document.createElement("button");
+        btnSidePrev.id = "v-btn-prev";
         btnSidePrev.innerHTML = "&#10094;";
         Object.assign(btnSidePrev.style, {
             position: "fixed", left: "12px", top: "50%", transform: "translateY(-50%)",
             width: "38px", height: "38px", borderRadius: "50%",
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
+            fontSize: "14px", cursor: "pointer", zIndex: "94", userSelect: "none",
             border: "1px solid rgba(255,255,255,0.15)", opacity: "0.2", transition: "opacity 0.2s ease",
             pointerEvents: "auto"
         });
 
-        let btnSideNext = document.createElement("div");
+        let btnSideNext = document.createElement("button");
+        btnSideNext.id = "v-btn-next";
         btnSideNext.innerHTML = "&#10095;";
         Object.assign(btnSideNext.style, {
             position: "fixed", right: "12px", top: "50%", transform: "translateY(-50%)",
             width: "38px", height: "38px", borderRadius: "50%",
             backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
             color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "14px", cursor: "pointer", zIndex: "999995", userSelect: "none",
+            fontSize: "14px", cursor: "pointer", zIndex: "94", userSelect: "none",
             border: "1px solid rgba(255,255,255,0.15)", opacity: "0.2", transition: "opacity 0.2s ease",
             pointerEvents: "auto"
         });
 
-        [container, btnSidePrev, btnSideNext, popupGrid].forEach(el => {
+        [navContainer, btnSidePrev, btnSideNext, epGridPanel].forEach(el => {
             el.addEventListener("mouseenter", () => setAllUIOpacity("1"));
             el.addEventListener("mouseleave", () => {
-                if (!isPopupOpen) setAllUIOpacity("0.2");
+                if (!isMenuOpen) setAllUIOpacity("0.2");
             });
             el.addEventListener("touchstart", () => setAllUIOpacity("1"), { passive: true });
         });
@@ -672,16 +651,16 @@ function customJS(initialLink){
             });
 
             newIframe.onload = function() {
-                if (overlay) {
-                    overlay.style.opacity = "0";
-                    setTimeout(() => overlay.remove(), 300);
+                if (loaderBlock) {
+                    loaderBlock.style.opacity = "0";
+                    setTimeout(() => loaderBlock.remove(), 300);
                 }
             };
             document.body.appendChild(newIframe);
         }
 
-        document.body.appendChild(container);
-        document.body.appendChild(popupGrid);
+        document.body.appendChild(navContainer);
+        document.body.appendChild(epGridPanel);
         document.body.appendChild(btnSidePrev);
         document.body.appendChild(btnSideNext);
 
@@ -714,8 +693,8 @@ function customJS(initialLink){
             const ep = listFrame[targetIndex];
             if (ep && ep.link) {
                 currentPlayingIndex = targetIndex;
-                const storageKey = "anime_history_" + window.location.pathname.replace(/[^a-zA-Z0-9]/g, "_");
-                localStorage.setItem(storageKey, currentPlayingIndex);
+                const storageKey = "v_hist_" + window.location.pathname.replace(/[^a-zA-Z0-9]/g, "_");
+                safeSetStorage(storageKey, currentPlayingIndex);
 
                 const targetIframe = document.querySelector(".frameMain");
                 if (targetIframe) {
@@ -723,39 +702,40 @@ function customJS(initialLink){
                     let autoUrl = cleanLink.includes("?") ? cleanLink + "&autoplay=1&t=" + Date.now() : cleanLink + "?autoplay=1&t=" + Date.now();
                     targetIframe.src = autoUrl;
                 }
-                togglePopup(false);
+                toggleMenu(false);
                 updateSelectUI();
             }
         }
 
-        function togglePopup(forceState) {
-            isPopupOpen = forceState !== undefined ? forceState : !isPopupOpen;
-            if (isPopupOpen) {
-                popupGrid.style.display = "grid";
+        function toggleMenu(forceState) {
+            isMenuOpen = forceState !== undefined ? forceState : !isMenuOpen;
+            if (isMenuOpen) {
+                epGridPanel.style.display = "grid";
                 setAllUIOpacity("1");
             } else {
-                popupGrid.style.display = "none";
+                epGridPanel.style.display = "none";
                 setAllUIOpacity("0.2");
             }
         }
 
-        const closePopupOutside = (e) => {
-            if (isPopupOpen && !container.contains(e.target) && !popupGrid.contains(e.target)) {
-                togglePopup(false);
+        const closeMenuOutside = (e) => {
+            if (isMenuOpen && !navContainer.contains(e.target) && !epGridPanel.contains(e.target)) {
+                toggleMenu(false);
             }
         };
 
-        document.addEventListener("click", closePopupOutside, true);
-        document.addEventListener("touchstart", closePopupOutside, true);
+        document.addEventListener("click", closeMenuOutside, true);
+        document.addEventListener("touchstart", closeMenuOutside, true);
 
         function updateSelectUI() {
             const validFrames = listFrame.filter(Boolean);
-            container.innerHTML = "";
+            navContainer.innerHTML = "";
 
             let currentEpObj = listFrame[currentPlayingIndex];
             let currentTitleText = currentEpObj ? currentEpObj.title : ("Tập " + (currentPlayingIndex + 1));
 
             const btnEpRed = document.createElement("button");
+            btnEpRed.id = "v-btn-selector";
             btnEpRed.innerHTML = \`<span>\${currentTitleText}</span> <span style="font-size: 9px; margin-left: 1px;">▼</span>\`;
             Object.assign(btnEpRed.style, {
                 height: "26px", padding: "0 10px", borderRadius: "5px", border: "none",
@@ -765,10 +745,10 @@ function customJS(initialLink){
             });
             btnEpRed.onclick = (e) => {
                 e.stopPropagation();
-                togglePopup();
+                toggleMenu();
             };
 
-            container.appendChild(btnEpRed);
+            navContainer.appendChild(btnEpRed);
 
             btnSidePrev.onclick = (e) => {
                 e.stopPropagation();
@@ -785,7 +765,7 @@ function customJS(initialLink){
                 }
             };
 
-            popupGrid.innerHTML = "";
+            epGridPanel.innerHTML = "";
             validFrames.forEach(item => {
                 const epBtn = document.createElement("button");
                 let shortName = item.title.replace(/Tập\\s*/i, '').trim();
@@ -806,14 +786,13 @@ function customJS(initialLink){
                     e.stopPropagation();
                     changeEpisode(item.index);
                 };
-                popupGrid.appendChild(epBtn);
+                epGridPanel.appendChild(epBtn);
             });
         }
 
         allEpisodes.forEach(episode => fetchPage(episode));
     }
 
-    // Chờ cho trang web load hoàn tất rồi mới chạy logic trích xuất tập phim và dựng giao diện
     if (document.readyState === 'complete') init();
     else window.addEventListener('load', init);
 })();

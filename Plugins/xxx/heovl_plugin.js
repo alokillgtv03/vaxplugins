@@ -4,13 +4,14 @@ function getManifest() {
         "id": "heovl",
         "name": "Heovl",
         "description": "XXX Hay",
-        "version": "1.4",
-        "BASEURL": "https://heovl.im",
+        "version": "1.5",
+      	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
+        "baseUrl": "https://heovl.im",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
-        "playerType": "embed"
+        "playerType": "embedtoexoplay"
     });
 }
 
@@ -272,20 +273,13 @@ function parseMovieDetail(html,ourl) {
                 var sourceUrl = sourcebutton.match(/data-source=["']([\s\S]*?)["']/i);
                 if(sourceUrl && sourceUrl[1]){
                     //console.log(sourceUrl[1])
-                    if (j === 0) {
-                        episodes.push({
-                            id: sourceUrl[1],
-                            name: "Server Full",
-                            slug: "tap-0"
-                        });
-                    
-                    } // Server đầu tiên làm ID chính
-                   
+									if(sourceUrl[1].indexOf("zabitcdn.name") > -1){
                     episodes.push({
                         id: sourceUrl[1],
                         name: "Server " + (j + 1),
                         slug: "tap-" + (j + 1)
                     });
+                  }
                 }
 
             }
@@ -296,12 +290,13 @@ function parseMovieDetail(html,ourl) {
             
             if (iframeMatch && iframeMatch[1]) {
                 lurl = iframeMatch[1];
-                
-                episodes.push({
-                    id: lurl,
-                    name: "Server 1",
-                    slug: "tap-1"
-                });
+               if(lurl.indexOf("zabitcdn.name") > -1){
+                  episodes.push({
+                      id: lurl,
+                      name: "Server 1",
+                      slug: "tap-1"
+                  });
+               }
             }
         }
         
@@ -359,7 +354,7 @@ function parseDetailResponse(html,url) {
 function parseEmbedResponse(html, sourceUrl) {
         
 
-        var customjs = textJS(html, sourceUrl);
+        var customjs = runjS();
         customjs += `
         function runScript($msg){
             //showToast("${sourceUrl}", duration = 60000)
@@ -378,131 +373,333 @@ function parseEmbedResponse(html, sourceUrl) {
     return JSON.stringify({ url: "", isEmbed: false });
 }
 
-function textJS(html, $url) {
-// ĐÃ SỬA: Chuẩn hóa lại cú pháp escape ký tự \$ trong Template Literals
-    return `
-function showToast(message, duration = 7000) {
-    // 1. Kiểm tra xem trên màn hình đã có "khung chứa" Toast chưa, nếu chưa thì tự tạo bằng JS
-    let container = document.getElementById('global-toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'global-toast-container';
-        
-        // Ép CSS trực tiếp bằng JS để đặt khung ở góc dưới bên phải màn hình
-        Object.assign(container.style, {
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            zIndex: '99999',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
+function runjS() {
+  return `
+(function initEnhancedVideoSniffer() {
+  try {
+    var processedUrls = {};
+    var hasDispatchedAny = false;
+    var HTMLRAW = true;
+
+    // ==========================================
+    // CẤU HÌNH BỘ LỌC TÊN MIỀN
+    // ==========================================
+    var ENABLE_FILTER = true; // true: Bật lọc | false: Tắt lọc (lấy mọi link stream hợp lệ)
+    var ALLOWED_DOMAINS = [
+      "zabitcdn.name",
+      "*.zabitcdn.name"
+      // Thêm các domain khác tại đây (hỗ trợ tên miền thuần, hoặc có * ở đầu/cuối)
+    ];
+
+    function isDomainAllowed(url) {
+      // Nếu tắt bộ lọc thì cho qua tất cả
+      if (!ENABLE_FILTER) return true;
+
+      try {
+        var parsedUrl = new URL(url);
+        var hostname = parsedUrl.hostname.toLowerCase();
+
+        if (!ALLOWED_DOMAINS || ALLOWED_DOMAINS.length === 0) {
+          return true;
+        }
+
+        for (var j = 0; j < ALLOWED_DOMAINS.length; j++) {
+          var pattern = ALLOWED_DOMAINS[j].toLowerCase().trim();
+          
+          // Xử lý dạng có dấu * (ví dụ: *zabitcdn*)
+          if (pattern.indexOf('*') !== -1) {
+            var cleanPattern = pattern.replace(/\\*/g, '');
+            if (hostname.indexOf(cleanPattern) !== -1) {
+              return true;
+            }
+          } 
+          // Xử lý dạng tên miền thuần hoặc đủ http
+          else {
+            var cleanDomain = pattern.replace(/^https?:\\/\\//, '').replace(/\\/.*/, '');
+            if (hostname === cleanDomain || hostname.endsWith('.' + cleanDomain)) {
+              return true;
+            }
+          }
+        }
+
+        return false; // Không khớp domain nào trong danh sách cho phép
+      } catch (e) {
+        return true; // Nếu lỗi parse URL thì cho qua
+      }
+    }
+
+    // ==========================================
+    // 1. HELPER: LOGGING BRIDGE
+    // ==========================================
+    function bridgeLog(msg) {
+      try {
+        if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+          window.SnifferBridge.log(String(msg));
+        } else if (typeof console !== 'undefined' && console.log) {
+          console.log('[SNIFFER LOG]', msg);
+        }
+      } catch (e) {}
+    }
+
+    function debounce(fn, delay) {
+      var timer = null;
+      return function () {
+        var context = this, args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          fn.apply(context, args);
+        }, delay);
+      };
+    }
+
+    bridgeLog('🎬 [Sniffer v3.2] Khởi chạy với Bộ lọc Domain tùy chỉnh.');
+
+    // ==========================================
+    // 2. HÀM KIỂM TRA LINK SỐNG / CHẾT
+    // ==========================================
+    function checkUrlPlayable(url, callback) {
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('HEAD', url, true);
+        xhr.timeout = 3000;
+
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var status = xhr.status;
+            if ((status >= 200 && status < 300) || status === 206 || status === 0) {
+              bridgeLog('🟢 [URL OK - Status ' + status + ']: ' + url);
+              callback(true);
+            } else {
+              bridgeLog('🚫 [URL Chết - Status ' + status + ']: Bỏ qua link -> ' + url);
+              callback(false);
+            }
+          }
+        };
+
+        xhr.onerror = function () { callback(true); };
+        xhr.ontimeout = function () { callback(false); };
+        xhr.send();
+      } catch (e) {
+        callback(true);
+      }
+    }
+
+    // ==========================================
+    // 3. HÀM TRUYỀN DỮ LIỆU SANG NATIVE
+    // ==========================================
+    function dispatchToNative(videoUrl) {
+      try {
+        if (!videoUrl || typeof videoUrl !== 'string') return;
+        if (hasDispatchedAny) return;
+
+        if (videoUrl.indexOf('blob:') === 0) return;
+        if (videoUrl.indexOf('.ts') !== -1 && videoUrl.indexOf('.m3u8') === -1) return;
+
+        // KIỂM TRA BỘ LỌC TÊN MIỀN
+        if (!isDomainAllowed(videoUrl)) {
+          bridgeLog('🛡️ [Domain Filter] Bỏ qua link không thuộc danh sách cho phép: ' + videoUrl);
+          return;
+        }
+
+        if (processedUrls[videoUrl]) return;
+        processedUrls[videoUrl] = true;
+
+        bridgeLog('🔍 Đang kiểm tra link candidate: ' + videoUrl);
+
+        checkUrlPlayable(videoUrl, function(isPlayable) {
+          if (hasDispatchedAny) return;
+          if (!isPlayable) return;
+
+          hasDispatchedAny = true;
+          bridgeLog('📌 [SUCCESS] Link SỐNG & Hợp lệ! Gửi sang Native: ' + videoUrl);
+
+          var headersObj = {
+            "Referer": window.location.href,
+            "User-Agent": navigator.userAgent
+          };
+          var headersJson = JSON.stringify(headersObj);
+          var dispatched = false;
+
+          if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+            try {
+              window.SnifferBridge.play(videoUrl, headersJson);
+              dispatched = true;
+            } catch (e1) {}
+          }
+
+          if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.m3u8Detected) {
+            try {
+              window.webkit.messageHandlers.m3u8Detected.postMessage(videoUrl);
+              dispatched = true;
+            } catch (e2) {}
+          }
         });
-        document.body.appendChild(container);
+
+      } catch (errDispatch) {}
     }
-    
-    // 2. Tạo phần tử Toast mới hoàn toàn bằng JS
-    const toast = document.createElement('div');
-    toast.innerText = message;
-    
-    // Ép CSS giao diện cho cục Toast (màu bo góc, bóng mờ, hiệu ứng hiện hình)
-    Object.assign(toast.style, {
-        background: 'rgba(50, 50, 50, 0.95)',
-        color: '#fff',
-        padding: '12px 24px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-        fontFamily: 'sans-serif',
-        fontSize: '14px',
-        minWidth: '200px',
-        transition: 'all 0.3s ease',
-        transform: 'translateX(120%)', // Ban đầu nằm ẩn bên ngoài màn hình
-        opacity: '0'
-    });
-    
-    // Đưa cục Toast vào khung chứa
-    container.appendChild(toast);
-    
-    // 3. Tạo hiệu ứng bay từ bên phải vào (Slide In) sau 10 mili-giây
-    setTimeout(() => {
-        toast.style.transform = 'translateX(0)';
-        toast.style.opacity = '1';
-    }, 10);
-    
-    // 4. Tạo hiệu ứng mờ dần (Fade Out) và XÓA HOÀN TOÀN khỏi màn hình khi hết thời gian
-    setTimeout(() => {
-        toast.style.transform = 'translateX(120%)';
-        toast.style.opacity = '0';
-        
-        // Chờ hiệu ứng ẩn chạy xong 300ms rồi xóa hẳn thẻ HTML này đi cho sạch bộ nhớ
-        setTimeout(() => {
-            toast.remove();
-            // Nếu không còn thông báo nào nữa thì xóa luôn cái khung lớn cho gọn
-            if (container.childElementCount === 0) {
-                container.remove();
-            }
-        }, 300);
-    }, duration);
-}
 
-function initCustomVideoFix() {
-    const style = document.createElement('style');
-    
-    // Dùng dấu nháy đơn và nối chuỗi bằng dấu cộng để dễ nhìn, không bị trùng backtick
-    var customcss = 'body { background: black; overflow: hidden; }#comments,header,footer,.entry-actions,.entry-header,.entry-info,.entry-content,#related-posts,.entry-content + .mt-2 {display:none}body * {background: black;}';
-    
-    style.innerHTML = customcss; // ĐÃ SỬA: Xóa dấu nháy đơn thừa
-    document.head.appendChild(style);
-    //showToast("Chèn css mới", duration = 3000)
-    if (typeof jwplayer === "function") {
-        const player = jwplayer("previewPlayer");
-        if (player && typeof player.getMute === "function") {
-            if (player.getMute()) {
-                player.setMute(false);
-                showToast("Đã bật tiếng", duration = 3000)
-            }
-            player.setVolume(100);
+    // ==========================================
+    // INTERCEPTOR & SCANNERS
+    // ==========================================
+    (function initNetworkInterceptor() {
+      try {
+        var isMediaUrl = function (url) {
+          if (!url || typeof url !== 'string') return false;
+          if (url.indexOf('blob:') === 0) return false;
+          return (
+            url.indexOf('.m3u8') !== -1 ||
+            url.indexOf('.mp4') !== -1 ||
+            url.indexOf('manifest') !== -1 ||
+            url.indexOf('playlist') !== -1
+          );
+        };
+
+        if (typeof XMLHttpRequest !== 'undefined') {
+          var originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            try {
+              if (!hasDispatchedAny && isMediaUrl(url)) {
+                var absoluteUrl = new URL(url, document.baseURI || window.location.href).href;
+                dispatchToNative(absoluteUrl);
+              }
+            } catch (e) {}
+            return originalOpen.apply(this, arguments);
+          };
         }
+
+        if (typeof window.fetch === 'function') {
+          var originalFetch = window.fetch;
+          window.fetch = function (input, init) {
+            try {
+              var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+              if (!hasDispatchedAny && isMediaUrl(url)) {
+                var absoluteUrl = new URL(url, document.baseURI || window.location.href).href;
+                dispatchToNative(absoluteUrl);
+              }
+            } catch (e) {}
+            return originalFetch.apply(this, arguments);
+          };
+        }
+      } catch (e) {}
+    })();
+
+    function scanVideoElements() {
+      if (hasDispatchedAny) return;
+      try {
+        var videos = document.getElementsByTagName('video');
+        for (var i = 0; i < videos.length; i++) {
+          if (hasDispatchedAny) break;
+          var v = videos[i];
+          if (v.currentSrc && v.currentSrc.indexOf('blob:') !== 0) dispatchToNative(v.currentSrc);
+          if (v.src && v.src.indexOf('blob:') !== 0) dispatchToNative(v.src);
+
+          var sources = v.getElementsByTagName('source');
+          for (var j = 0; j < sources.length; j++) {
+            if (hasDispatchedAny) break;
+            if (sources[j].src && sources[j].src.indexOf('blob:') !== 0) dispatchToNative(sources[j].src);
+          }
+        }
+      } catch (e) {}
     }
-    
-    // Biến cờ (flag) để tránh việc hiển thị Toast liên tục gây rác màn hình khi nút đang được nhấn
-    let isSkipping = false;
 
-    const checkAndClick = setInterval(() => {
-        const skipButton = document.getElementById("skip-ad");
+    function scanFullHtml() {
+      if (hasDispatchedAny) return;
+      try {
+        var mediaRegex = /https?:\\/\\/[^\\s"'<>]+\\.(?:m3u8|mp4)(?:[?#][^\\s"'<>]*)?/gi;
+        var elementsWithAttr = document.querySelectorAll('[src], [data-src], [data-url], [href]');
         
-        if (skipButton) {
-            // Kiểm tra xem nút có bị ẩn bằng CSS không (nếu có thuộc tính display: none hoặc opacity: 0 thì bỏ qua)
-            const style = window.getComputedStyle(skipButton);
-            if (style.display === 'none' || style.visibility === 'hidden') return;
-
-            skipButton.click();
-            console.log("🎯 Đã phát hiện và kích hoạt nút bỏ qua quảng cáo!");
-
-            // Chỉ hiện toast 1 lần cho mỗi đợt skip để đỡ spam giao diện
-            if (!isSkipping) {
-                isSkipping = true;
-                showToast("Đã bỏ qua quảng cáo", 3000);
-                
-                // Reset lại trạng thái sau 2 giây để sẵn sàng cho quảng cáo tiếp theo (nếu có)
-                setTimeout(() => { isSkipping = false; }, 2000);
+        for (var i = 0; i < elementsWithAttr.length; i++) {
+          if (hasDispatchedAny) break;
+          var el = elementsWithAttr[i];
+          var attrs = ['src', 'data-src', 'data-url', 'href'];
+          for (var a = 0; a < attrs.length; a++) {
+            var val = el.getAttribute(attrs[a]);
+            if (val && val.indexOf('blob:') !== 0 && (val.indexOf('.m3u8') !== -1 || val.indexOf('.mp4') !== -1)) {
+              try {
+                dispatchToNative(new URL(val, document.baseURI || window.location.href).href);
+              } catch (e) {
+                dispatchToNative(val);
+              }
             }
-            
-            // LƯU Ý: ĐÃ XÓA clearInterval(checkAndClick) ở đây để script tiếp tục chạy
-            // đề phòng trường hợp có nhiều quảng cáo nối tiếp nhau.
+          }
         }
-    }, 250); // 250ms là khoảng thời gian vừa đủ, không gây lag trình duyệt
-    //runScript("sssssssss");
+
+        var scripts = document.getElementsByTagName('script');
+        for (var k = 0; k < scripts.length; k++) {
+          if (hasDispatchedAny) break;
+          var sc = scripts[k];
+          if (sc.textContent) {
+            var match;
+            while ((match = mediaRegex.exec(sc.textContent)) !== null) {
+              if (match[0].indexOf('blob:') !== 0) {
+                dispatchToNative(match[0]);
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    function start30sTimeoutMonitor() {
+      setTimeout(function () {
+        if (hasDispatchedAny) return;
+        scanFullHtml();
+        setTimeout(function () {
+          if (!hasDispatchedAny) {
+            var timeoutMsg = '❌ [30s Timeout]: Không tìm thấy link stream hợp lệ!';
+            bridgeLog(timeoutMsg);
+            if (HTMLRAW == true) {
+              bridgeLog(document.getElementsByTagName("html")[0].outerHTML);
+            }
+          }
+        }, 3500);
+      }, 30000);
+    }
+
+    function autoClick() {
+      try {
+        setTimeout(function () {
+          var nodes = document.querySelectorAll('div[aria-label="Phát"], #btnResume, button[id*="Resume"], button[id*="resume"]');
+          if (nodes && nodes.length > 0) nodes[0].click();
+        }, 500);
+      } catch (err) {}
+    }
+
+    function startDOMSniffing() {
+      try {
+        scanVideoElements();
+        var debouncedVideoScan = debounce(scanVideoElements, 400);
+        if (typeof MutationObserver !== 'undefined') {
+          var observer = new MutationObserver(function () {
+            if (!hasDispatchedAny) debouncedVideoScan();
+          });
+          observer.observe(document.body || document.documentElement, {
+            childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'data-src', 'data-url']
+          });
+        }
+      } catch (errSniff) {}
+    }
+
+    function handleMainExecution() {
+      try {
+        autoClick();
+        startDOMSniffing();
+        start30sTimeoutMonitor();
+      } catch (errExec) {}
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      handleMainExecution();
+    } else {
+      window.addEventListener('load', handleMainExecution);
+      setTimeout(handleMainExecution, 1000);
+    }
+
+  } catch (globalErr) {}
+})();
+  `;
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCustomVideoFix);
-} else {
-    initCustomVideoFix();
-}
-
-`;
-}
 
 // KHỚP MẪU ROPHIMFAKE: Trả về chuỗi text thuần túy thay vì gọi JSON.stringify
 //function parseCategoriesResponse(html) { return "[]"}

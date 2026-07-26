@@ -7,48 +7,64 @@ var BASEAPI = "https://www.shortflix.net/api/search?limit=100&language=vi_VN&lan
 var CURSOR_CACHE = {};
 var URL_TO_PAGE_MAP = {};
 var URL_TO_PATH_MAP = {};
-
+var DEV = FALSE;
 function getManifest() {
     return JSON.stringify({
         "id": "shortflix",
         "name": "Phim Ngắn Shortflix",
         "description": "Phim Ngắn lồng tiếng vietsub hay",
-        "version": "1.2.2",
+        "version": "1.2.4",
         "info": "Phim ngắn nên chia thành nhiều tập. Có thể dùng cách vuốt để qua tập và nên xem bằng chiều dọc.",
         "baseUrl": "https://www.shortflix.net",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/shortflix.png",
         "isEnabled": true,
-        "type": "MOVIE",
+        "type": "shortfilm",
         "playerType": "exoplayer"
     });
 }
 
 function log(msg) {
-    if (typeof nativeLog !== 'undefined') {
-        nativeLog("[gamomephim] " + msg);
-    } else if (typeof console !== 'undefined' && console.log) {
-        console.log("[gamomephim] " + msg);
+  	if(DEV){
+      if (typeof nativeLog !== 'undefined') {
+          nativeLog("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      } else if (typeof console !== 'undefined' && console.log) {
+          console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+      }
+    }
+}
+function getHomeSections() {
+    try {
+        var listurl = '[{\"link\":\"&sortBy=last_episode_at\",\"name\":\"Phim Mới\"}]';
+        var menulist = buildMenu(listurl, true);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+        return JSON.stringify([]);
     }
 }
 
-function getHomeSections() {
-    var listurl = '[{\"link\":\"&sortBy=last_episode_at\",\"name\":\"Phim Mới\"}]';
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
-}
-
 function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
 
 function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify({
-        category: menulist
-    });
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
 }
 
 // =============================================================================
@@ -56,49 +72,60 @@ function getFilterConfig() {
 // =============================================================================
 
 function encodeBase64(str) {
-    if (typeof btoa !== 'undefined') {
-        try { return btoa(str); } catch (e) {}
+    try {
+        if (typeof btoa !== 'undefined') {
+            try { return btoa(str); } catch (e) {}
+        }
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        var output = '';
+        for (var block, charCode, idx = 0, map = chars;
+            str.charAt(idx | 0) || (map = '=', idx % 1);
+            output += map.charAt(63 & block >> 8 - idx % 1 * 8)) {
+            charCode = str.charCodeAt(idx += 3/4);
+            block = block << 8 | charCode;
+        }
+        return output;
+    } catch (e) {
+        log("encodeBase64[err]:\n " + e);
+        return "";
     }
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    var output = '';
-    for (var block, charCode, idx = 0, map = chars;
-        str.charAt(idx | 0) || (map = '=', idx % 1);
-        output += map.charAt(63 & block >> 8 - idx % 1 * 8)) {
-        charCode = str.charCodeAt(idx += 3/4);
-        block = block << 8 | charCode;
-    }
-    return output;
 }
 
 function decodeBase64(str) {
-    if (typeof atob !== 'undefined') {
-        try { return atob(str); } catch (e) {}
+    try {
+        if (typeof atob !== 'undefined') {
+            try { return atob(str); } catch (e) {}
+        }
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        var output = '';
+        str = String(str).replace(/=+$/, '');
+        for (var bc = 0, bs, buffer, idx = 0;
+            buffer = str.charAt(idx++);
+            ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+        ) {
+            buffer = chars.indexOf(buffer);
+        }
+        return output;
+    } catch (e) {
+        log("decodeBase64[err]:\n " + e);
+        return "";
     }
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    var output = '';
-    str = String(str).replace(/=+$/, '');
-    for (var bc = 0, bs, buffer, idx = 0;
-        buffer = str.charAt(idx++);
-        ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
-    ) {
-        buffer = chars.indexOf(buffer);
-    }
-    return output;
 }
 
 function parseCursor(cursorBase64) {
-    if (!cursorBase64) return null;
     try {
+        if (!cursorBase64) return null;
         var jsonStr = decodeBase64(cursorBase64);
         return JSON.parse(jsonStr);
     } catch (e) {
+        log("parseCursor[err]:\n " + e);
         return null;
     }
 }
 
 function createCursor(lastItem) {
-    if (!lastItem) return "";
     try {
+        if (!lastItem) return "";
         var rawOrder = lastItem.orderValue || lastItem.updatedAt || lastItem.publishedAt || lastItem.last_episode_at || 0;
         var orderVal = Number(rawOrder);
         
@@ -115,7 +142,7 @@ function createCursor(lastItem) {
         
         return encodeBase64(JSON.stringify(cursorObj));
     } catch (e) {
-        log("createCursor Error: " + e);
+        log("createCursor[err]:\n " + e);
         return "";
     }
 }
@@ -126,7 +153,7 @@ function createCursor(lastItem) {
 
 function getUrlList(slug, filtersJson) {
     try {
-        log("getUrlList-slug: " + slug + " | filters: " + filtersJson);
+        log("getUrlList[url]: \n" + slug);
         
         var page = 1;
         var path = slug || "";
@@ -177,36 +204,79 @@ function getUrlList(slug, filtersJson) {
         URL_TO_PAGE_MAP[resultUrl] = page;
         URL_TO_PATH_MAP[resultUrl] = path;
 
-        log("getUrlList Output: " + resultUrl);
+        log("getUrlList[url]: \n" + resultUrl);
         return resultUrl;
 
     } catch (e) {
-        log("getUrlList Exception: " + e);
-        return slug || BASEAPI;
+        log("getUrlList[err]:\n " + e);
+        var fallback = slug || BASEAPI;
+        log("getUrlList[url]: \n" + fallback);
+        return fallback;
     }
 }
 
 function getUrlSearch(keyword, filtersJson) {
-    return BASEAPI + "&q=" + encodeURIComponent(keyword);
+    try {
+        var searchUrl = BASEAPI + "&q=" + encodeURIComponent(keyword || "");
+        log("getUrlSearch[url]: \n" + searchUrl);
+        return searchUrl;
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+        var fallbackUrl = BASEAPI + "&q=" + encodeURIComponent(keyword || "");
+        log("getUrlSearch[url]: \n" + fallbackUrl);
+        return fallbackUrl;
+    }
 }
 
 function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+        var detailUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + detailUrl);
+        return detailUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
 }
 
-function getUrlCategories() { return BASEURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() { 
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL; 
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCountries() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
 
 // =============================================================================
 // PARSERS
 // =============================================================================
 
 function parseListResponse(html, $url) {
-    log("listurl Get:" + $url);
     try {
+        log("parseListResponse[url]: \n" + $url);
         var items = [];
         var $data = JSON.parse(html);
         var nextCursor = "";
@@ -273,7 +343,7 @@ function parseListResponse(html, $url) {
         });
 
     } catch (e) {
-        log("parseListResponse Error: " + e);
+        log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
                 "id": $url,
@@ -291,11 +361,24 @@ function parseListResponse(html, $url) {
 }
 
 function parseSearchResponse(html, url) {
-    return parseListResponse(html, url);
+    try {
+        log("parseSearchResponse[url]: \n" + url);
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "nextCursor": "",
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
 }
 
 function parseScript(rawScript) {
-    const result = {
+    var result = {
         success: false,
         data: {},
         embedHtml: ''
@@ -306,18 +389,18 @@ function parseScript(rawScript) {
     }
     
     try {
-        let cleaned = rawScript.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        var cleaned = rawScript.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
         cleaned = cleaned.replace(/[\r\n]+/g, ' ');
         
-        const videoKey = '"video":{';
-        const videoIndex = cleaned.indexOf(videoKey);
+        var videoKey = '"video":{';
+        var videoIndex = cleaned.indexOf(videoKey);
         
         if (videoIndex !== -1) {
-            const startIndex = videoIndex + videoKey.length - 1;
-            let braceCount = 0;
-            let endIndex = -1;
+            var startIndex = videoIndex + videoKey.length - 1;
+            var braceCount = 0;
+            var endIndex = -1;
             
-            for (let i = startIndex; i < cleaned.length; i++) {
+            for (var i = startIndex; i < cleaned.length; i++) {
                 if (cleaned[i] === '{') {
                     braceCount++;
                 } else if (cleaned[i] === '}') {
@@ -330,21 +413,21 @@ function parseScript(rawScript) {
             }
             
             if (endIndex !== -1) {
-                const videoJsonStr = cleaned.substring(startIndex, endIndex);
+                var videoJsonStr = cleaned.substring(startIndex, endIndex);
                 result.data = JSON.parse(videoJsonStr);
                 result.success = true;
                 return result;
             }
         }
         
-        const regexMatch = cleaned.match(/"video"\s*:\s*(\{[\s\S]*?\})\s*,\s*"tags"/);
+        var regexMatch = cleaned.match(/"video"\s*:\s*(\{[\s\S]*?\})\s*,\s*"tags"/);
         if (regexMatch && regexMatch[1]) {
             result.data = JSON.parse(regexMatch[1]);
             result.success = true;
         }
         
     } catch (error) {
-        console.error("SafeParser Error:", error);
+        log("parseScript[err]:\n " + error);
     }
     
     return result;
@@ -352,6 +435,7 @@ function parseScript(rawScript) {
 
 function parseMovieDetail(html, url) {
     try {
+        log("parseMovieDetail[url]: \n" + url);
         var id = url;
         var lname = "Đang cập nhật...";
         var limg = "";
@@ -424,7 +508,7 @@ function parseMovieDetail(html, url) {
             extra: extra
         });
     } catch (e) {
-        log(e);
+        log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: url || "error",
             title: "Lỗi tải thông tin chi tiết",
@@ -435,6 +519,7 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
     try {
+        log("parseDetailResponse[url]: \n" + url);
         var tap = url.match(/tap=(\d+)/i);
         var tapVal = tap && tap[1] !== undefined ? tap[1] : "1";
         
@@ -466,6 +551,7 @@ function parseDetailResponse(html, url) {
             $subtitle = $video.subtitles[0].fileUrl;
         }
         
+        log("parseDetailResponse[url]: \n" + $linkstream);
         return JSON.stringify({
             "url": $linkstream,
             "isEmbed": false,
@@ -480,6 +566,7 @@ function parseDetailResponse(html, url) {
             }]
         });
     } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
         return JSON.stringify({
             "url": "",
             "headers": {}
@@ -488,25 +575,38 @@ function parseDetailResponse(html, url) {
 }
 
 function sortEpisodesByName(data) {
-    data.forEach(function(server) {
-        if (server.episodes && Array.isArray(server.episodes)) {
-            server.episodes.sort(function(a, b) {
-                var matchA = a.name.match(/Tập\s*(\d+)/i);
-                var matchB = b.name.match(/Tập\s*(\d+)/i);
-                var numA = matchA ? parseInt(matchA[1], 10) : 0;
-                var numB = matchB ? parseInt(matchB[1], 10) : 0;
-                return numA - numB;
+    try {
+        if (data && Array.isArray(data)) {
+            data.forEach(function(server) {
+                if (server.episodes && Array.isArray(server.episodes)) {
+                    server.episodes.sort(function(a, b) {
+                        var matchA = a.name.match(/Tập\s*(\d+)/i);
+                        var matchB = b.name.match(/Tập\s*(\d+)/i);
+                        var numA = matchA ? parseInt(matchA[1], 10) : 0;
+                        var numB = matchB ? parseInt(matchB[1], 10) : 0;
+                        return numA - numB;
+                    });
+                }
             });
         }
-    });
-    return data;
+        return data;
+    } catch (e) {
+        log("sortEpisodesByName[err]:\n " + e);
+        return data;
+    }
 }
 
 function parseCategoriesResponse(apiResponseJson) {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
 }
+
 
 function parseCountriesResponse(html) { return "[]"; }
 function parseYearsResponse(html) { return "[]"; }

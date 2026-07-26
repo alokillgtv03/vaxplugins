@@ -1,19 +1,20 @@
 // =============================================================================
 // VAAPP Plugin - Xhamster (Bản vá chuẩn hóa theo cấu trúc Core mới nhất)
 // =============================================================================
-
+BASEURL = "https://phimsexsuong3x.net";
 function getManifest() {
     return JSON.stringify({
         "id": "haysex",          
         "name": "HaySex",
         "description": "XXX Hay",
-        "version": "1.1",             
+        "version": "1.2.2",    
+      	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://phimsexsuong3x.net",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico", 
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
-        "playerType": "embedtoexoplay"
+        "playerType": "embed"
     });
 }
 
@@ -57,22 +58,22 @@ function getUrlList(slug, filtersJson) {
         var page = filters.page || 1;
         
         if (page > 1) {
-            return "https://phimsexsuong3x.net/" + slug + "/page/" + page;
+            return BASEURL + "/" + slug + "/page/" + page;
         }
-        return "https://phimsexsuong3x.net/" + slug;
+        return BASEURL + "/" + slug;
     } catch (e) {
-        return "https://phimsexsuong3x.net/" + slug;
+        return BASEURL + "/" + slug;
     }
 }
 
 function getUrlSearch(keyword, filtersJson) {
-    return "https://phimsexsuong3x.net/?s=" + encodeURIComponent(keyword);
+    return BASEURL + "/" + encodeURIComponent(keyword);
 }
 
 function getUrlDetail(slug) {
     if (!slug) return "";
     if (slug.indexOf('http') === 0) return slug;
-    return "https://phimsexsuong3x.net/" + slug;
+    return BASEURL + "/" + slug;
 }
 
 function getUrlCategories() { return ""; }
@@ -208,64 +209,35 @@ function parseMovieDetail(html) {
     });
 }
 
-function parseDetailResponse(html) {
+function parseDetailResponse(html,url) {
     try {
+      
       /*
       var rmatch = html.match(/link\s+rel="canonical"\s+href="([^"]+)"/i);
     if (rmatch && rmatch[1]) { lurl = rmatch[1]; }
     */
-		var customJs = `
-function initCustomVideoFix() {
-  // 1. Chèn CSS dọn dẹp giao diện (ẩn footer, sidebar, navbar...)
-  const style = document.createElement('style');
-  style.innerHTML = '';
-  document.head.appendChild(style);
-  
-  const player = jwplayer("previewPlayer");
-
-// 2. Kiểm tra xem player có tồn tại và đang bị tắt tiếng hay không
-if (player && typeof player.getMute === "function") {
-    if (player.getMute()) {
-        player.setMute(false); // Bật tiếng (Bỏ chế độ Mute)
-        console.log("Đã bật tiếng video!");
-    } else {
-        console.log("Video đã có tiếng sẵn từ trước.");
-    }
-
-    // Tiện tay nếu bạn muốn đảm bảo âm thanh ở mức to nhất (ví dụ: 100%)
-    player.setVolume(100); 
-} else {
-    console.error("Không tìm thấy đối tượng JW Player hoặc player chưa sẵn sàng.");
-}
-
-
-}
-  // 2. Dùng setInterval để đợi trình phát video v0:480p:,1280x720:720p:,1920x10
-
-// Kiểm tra trạng thái trang để kích hoạt hàm an toàn nhất
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initCustomVideoFix);
-} else {
-  initCustomVideoFix();
-}
-`;
+		var customJs = "";
 		var streamUrl = "";
         var rmatch = html.match(/iframe[\s\S]*?data-src="([\s\S]*?)"/i);
    	 if (rmatch && rmatch[1]) { streamUrl = rmatch[1]; }
-   
+   console.log("Đang xử lý: " + rmatch[1])
 return JSON.stringify({
     url: streamUrl,
     headers: {
-        "Referer": "https://phimsexsuong3x.net",
-        "Origin": "https://phimsexsuong3x.net",
+        "Referer": BASEURL,
+        "Origin": BASEURL,
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Custom-Js": customJs.trim()
+        "Custom-Js": customJs,
+      "Block-Ads": "true"
     }
 });
     } catch (error) {
         return JSON.stringify({ url: "", headers: {} });
     }
 }
+
+
+
 
 function parseCategoriesResponse(html) { return "[]"; }
 function parseCountriesResponse(html) { return "[]"; }
