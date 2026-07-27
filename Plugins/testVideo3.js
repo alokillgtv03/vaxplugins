@@ -418,8 +418,8 @@ function runjS() {
 
     var CUSTOM_REFERER = window.location.href;
 
-    // 🚀 REGEX TỔNG QUÁT BẮT LINK MEDIA & API
-    var STREAM_URL_REGEX = /https?:\\/\\/[^\\s"'<>]*(?:m3u8|mp4|streaming|stream|playlist|embed|sanstream\\.xyz|cdn=|\\/hls\\/|\\?id=)[^\\s"'>]*/i;
+    // 🚀 REGEX TỔNG QUÁT BẮT LINK MEDIA & API (Hỗ trợ cả link tuyệt đối http:// và link tương đối /)
+    var STREAM_URL_REGEX = /(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+)(?:m3u8|mp4|streaming|stream|playlist|embed|sanstream\\.xyz|cdn=|\\/hls\\/|\\?id=)[^\\s"'>]*/i;
 
     // 🎯 HÀNG ĐỢI (QUEUE) LƯU TẤT CẢ LINK SNIFFER BẮT ĐƯỢC
     var snifferQueue = [];
@@ -429,11 +429,16 @@ function runjS() {
     var ENABLE_FILTER = false; 
     var BLOCKED_DOMAINS = ["ads.example.com", "*.adnetwork.com"];
 
-    // ⏱️ TĂNG TIMEOUT LÊN 20 SÂY ĐỂ CHỜ TRANG MẸ/ADS KHỞI TẠO XHR
+    // ⏱️ TIMEOUT TOÀN CỤC CHỜ XHR & DOM RENDER
     var SNIFFER_TIMEOUT_MS = 20000;
     var HTMLRAW = false;
     var ENDEMBED = true; 
     
+    // Biến hỗ trợ cơ chế retry & observer
+    var executionRetries = 0;
+    var maxExecutionRetries = 10;
+    var videoObserver = null;
+
     activeWorkerIndex = Math.floor(Math.random() * WORKER_POOL.length);
 
     function bridgeLog(msg) {
@@ -509,18 +514,19 @@ function runjS() {
     }
 
     // =========================================================================
-    // 📡 GET LINK JS: Tối ưu Bắt & Bắn Link ngay lập tức (< 1s)
+    // 📡 GET LINK JS: Tối ưu Bắt & Chuyển đổi Absolute URL
     // =========================================================================
-    function getLinkJS() {
+    function getLinkJS(rawUrl, sourceName) {
         return `
     function getLinkJS(rawUrl, sourceName) {
       try {
         if (!rawUrl || typeof rawUrl !== 'string' || hasDispatchedAny) return;
         if (rawUrl.indexOf('blob:') === 0 || rawUrl.indexOf('data:') === 0) return;
 
+        // 🛠️ TỰ ĐỘNG CHUYỂN DẠNG TƯƠNG ĐỐI (/videos/...) THÀNH TUYỆT ĐỐI (https://...)
         var absoluteUrl = new URL(rawUrl, document.baseURI || window.location.href).href;
 
-        if (STREAM_URL_REGEX && !STREAM_URL_REGEX.test(absoluteUrl)) return; 
+        if (STREAM_URL_REGEX && !STREAM_URL_REGEX.test(absoluteUrl) && !STREAM_URL_REGEX.test(rawUrl)) return; 
         if (processedUrls[absoluteUrl]) return;
         processedUrls[absoluteUrl] = true;
 
@@ -830,6 +836,8 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
     function dispatchToPlayer(mediaUrl, dispatchSource) {
       try {
         hasDispatchedAny = true;
+        if (videoObserver) videoObserver.disconnect();
+
         bridgeLog('🎬 [DISPATCH TO PLAYER] [Nguồn: ' + dispatchSource + '] -> ' + mediaUrl);
 
         if (PLAYER_MODE === "EXO") {
@@ -858,29 +866,92 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       }
     }
 
+    // 👀 CƠ CHẾ CƠ ĐỘNG: LẮNG NGHE THẺ <VIDEO> ĐƯỢC CHÈN VÀO DOM SAU KHI WEB LOAD
+    function startVideoObserver() {
+      if (hasDispatchedAny) return;
+      scanVideoElements();
+
+      if (typeof MutationObserver !== 'undefined' && !videoObserver) {
+        videoObserver = new MutationObserver(function(mutations) {
+          if (hasDispatchedAny) {
+            if (videoObserver) videoObserver.disconnect();
+            return;
+          }
+          scanVideoElements();
+        });
+
+        var targetNode = document.body || document.documentElement;
+        if (targetNode) {
+          videoObserver.observe(targetNode, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+          bridgeLog('👀 [DOM Observer]: Đã bật MutationObserver theo dõi sự xuất hiện của thẻ <video>...');
+        }
+      }
+    }
+
     function beginJS() {
       try {
-        bridgeLog('🚀 [beginJS] Khởi chạy Sniffer! Tiến hành gắn Interceptors...');
+        bridgeLog('🚀 [GIAI ĐOẠN 1] Khởi chạy Sniffer! Tiến hành gắn Interceptors...');
 
-        // 📡 GẮN INTERCEPTORS NGAY LẬP TỨC ĐỂ TÓM BẤT KỲ REQUEST ĐẦU TIÊN NÀO
+        // 📡 1. GẮN INTERCEPTORS XHR & FETCH
         if (typeof XMLHttpRequest !== 'undefined') {
           var originalOpen = XMLHttpRequest.prototype.open;
+          var originalSend = XMLHttpRequest.prototype.send;
+          
           XMLHttpRequest.prototype.open = function (method, url) {
             try { if (url) getLinkJS(url, 'XHR.' + method); } catch (e) {}
             return originalOpen.apply(this, arguments);
+          };
+
+          XMLHttpRequest.prototype.send = function () {
+            this.addEventListener('load', function () {
+              try {
+                if (this.responseText) {
+                  var match = this.responseText.match(/(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+)\\.(?:m3u8|mp4)[^\\s"'>]*/i);
+                  if (match && match[0]) {
+                    bridgeLog('🔍 [Phát hiện từ XHR Response Body]');
+                    getLinkJS(match[0], 'XHR-ResponseBody');
+                  }
+                }
+              } catch (e) {}
+            });
+            return originalSend.apply(this, arguments);
           };
         }
 
         if (typeof window.fetch === 'function') {
           var originalFetch = window.fetch;
           window.fetch = function (input, init) {
-            try {
-              var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
-              if (url) getLinkJS(url, 'Fetch');
-            } catch (e) {}
-            return originalFetch.apply(this, arguments);
+            var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+            if (url) getLinkJS(url, 'Fetch');
+
+            return originalFetch.apply(this, arguments).then(function (response) {
+              try {
+                var cloned = response.clone();
+                cloned.text().then(function (bodyText) {
+                  var match = bodyText.match(/(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+)\\.(?:m3u8|mp4)[^\\s"'>]*/i);
+                  if (match && match[0]) {
+                    bridgeLog('🔍 [Phát hiện từ Fetch Response Body]');
+                    getLinkJS(match[0], 'Fetch-ResponseBody');
+                  }
+                });
+              } catch (e) {}
+              return response;
+            });
           };
         }
+
+        // 📡 2. HOOK HLS.JS NẾU CÓ
+        setInterval(function() {
+          if (window.Hls && window.Hls.prototype && !window.__hlsHooked__) {
+            window.__hlsHooked__ = true;
+            var origLoadSource = window.Hls.prototype.loadSource;
+            window.Hls.prototype.loadSource = function(url) {
+              bridgeLog('🎯 [GIAI ĐOẠN 2 - Bắt qua Hls.js]: ' + url);
+              getLinkJS(url, 'Hls.js-Native');
+              return origLoadSource.apply(this, arguments);
+            };
+          }
+        }, 500);
 
         // 🛡️ ANTI-REDIRECT SHIELD
         (function blockNavigation() {
@@ -892,19 +963,24 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
           } catch (err) {}
         })();
 
-        // ⏱️ TIMER TIMEOUT TOÀN CỤC (20 giây)
+        // ⏱️ TIMER TIMEOUT TOÀN CỤC: Duy trì bộ lắng nghe trong suốt 20s
         setTimeout(function() {
           if (!hasDispatchedAny) {
+            bridgeLog('⚠️ [CẢNH BÁO TIMEOUT] Đã hết thời gian chờ (' + (SNIFFER_TIMEOUT_MS/1000) + 's) nhưng chưa bắt được link nào!');
             onSnifferFailed();
           }
         }, SNIFFER_TIMEOUT_MS);
 
-        // 🎬 SCAN DOM ON LOAD
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-          handleMainExecution();
-        } else {
-          window.addEventListener('load', handleMainExecution);
-          setTimeout(handleMainExecution, 500);
+        // Bật ngay Observer và chạy vòng lặp quét ban đầu
+        startVideoObserver();
+        handleMainExecution();
+
+        // Lắng nghe sự kiện load để quét bổ sung
+        if (document.readyState !== 'complete') {
+          window.addEventListener('load', function() {
+            bridgeLog('🚀 [GIAI ĐOẠN 3] Sự kiện window.load đã kích hoạt, quét lại DOM & Video Tags...');
+            handleMainExecution();
+          });
         }
 
       } catch (e) {
@@ -917,19 +993,19 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
         if (hasDispatchedAny) return;
 
         if (snifferQueue.length > 0) {
+          bridgeLog('🔄 [Sniffer Fallback]: Thử giải cứu bằng hàng đợi dự phòng...');
           triggerSnifferFallback();
           return;
         }
 
-        bridgeLog('⚠️ [onSnifferFailed]: Hết thời gian chờ, không tìm thấy link!');
+        bridgeLog('❌ [KẾT QUẢ THẤT BẠI HOÀN TOÀN]: Không thể tìm thấy bất kỳ link media nào hợp lệ!');
 
-        if (typeof HTMLRAW !== 'undefined' && HTMLRAW) {
-          var htmlContent = document.documentElement ? document.documentElement.outerHTML : document.body.innerHTML;
-          bridgeLog('[In Raw HTML]: ' + htmlContent + '...');
-          
-          if (ENDEMBED && window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
-            window.SnifferBridge.toast("Không tìm thấy link media. Thử lại sau nhé!");
-          }
+        if (typeof window.hideLoadingScreen === 'function') {
+          window.hideLoadingScreen();
+        }
+
+        if (window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast("❌ Thất bại: Không tìm thấy link video nào!");
         }
 
         if (window.SnifferBridge && typeof window.SnifferBridge.onFailed === 'function') {
@@ -1022,27 +1098,83 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       if (hasDispatchedAny) return;
       try {
         var videos = document.getElementsByTagName('video');
-        for (var i = 0; i < videos.length; i++) {
-          if (hasDispatchedAny) break;
-          var v = videos[i];
-          if (v.currentSrc) getLinkJS(v.currentSrc, 'HTMLVideoElement.currentSrc');
-          if (v.src) getLinkJS(v.src, 'HTMLVideoElement.src');
+        if (videos.length > 0) {
+          bridgeLog('🔍 [Quét DOM] Tìm thấy ' + videos.length + ' thẻ <video>');
+          for (var i = 0; i < videos.length; i++) {
+            if (hasDispatchedAny) break;
+            var v = videos[i];
+            if (v.currentSrc) getLinkJS(v.currentSrc, 'HTMLVideoElement.currentSrc');
+            if (v.src) getLinkJS(v.src, 'HTMLVideoElement.src');
+          }
         }
-      } catch (e) {}
-    }
-
-    function handleMainExecution() {
-      try { 
-        if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function' && !hasDispatchedAny) {
-          var success = setVideo(window.location.href, 'DirectDOM');
-          if (success) return;
-        }
-
-        scanVideoElements(); 
       } catch (e) {
-        bridgeLog('❌ [handleMainExecution - Lỗi]: ' + e.message);
+        bridgeLog('❌ [scanVideoElements - Lỗi]: ' + e.message);
       }
     }
+
+    // 🔍 VÒNG LẶP QUÉT TỰ ĐỘNG CÓ BỘ CHỜ (POLLING / RETRY LOOP)
+    function handleMainExecution() {
+      if (hasDispatchedAny) return;
+
+      try {
+        executionRetries++;
+        bridgeLog('👉 [CHUỖI QUÉT THUẬN THỤC - LẦN ' + executionRetries + '/' + maxExecutionRetries + ']');
+        
+        // 1. Kiểm tra đối tượng window.videoData (dành cho các trang như JWPlayer nhúng config vào JS)
+        try {
+          if (window.videoData && window.videoData.sources) {
+            for (var k = 0; k < window.videoData.sources.length; k++) {
+              if (window.videoData.sources[k].file) {
+                bridgeLog('🎉 [BƯỚC 1 - window.videoData]: Tìm thấy link video -> ' + window.videoData.sources[k].file);
+                getLinkJS(window.videoData.sources[k].file, 'window.videoData');
+                if (hasDispatchedAny) return;
+              }
+            }
+          }
+        } catch(e) {}
+
+        // Thử Custom Decoder nếu bật
+        if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function') {
+          var success = setVideo(window.location.href, 'DirectDOM');
+          if (success) {
+            bridgeLog('✅ [BƯỚC 1 THÀNH CÔNG]: Lấy được link qua Custom Decoder!');
+            return;
+          }
+        }
+
+        // 2. Quét thẻ <video> trong DOM
+        scanVideoElements();
+        if (hasDispatchedAny) {
+          bridgeLog('✅ [BƯỚC 2 THÀNH CÔNG]: Đã bắt được link từ thẻ <video>!');
+          return;
+        }
+
+        // 3. Quét mã nguồn HTML thô (Bắt cả link tuyệt đối http:// và link tương đối /videos/...)
+        var fullHtml = document.documentElement ? document.documentElement.outerHTML : '';
+        var rawMatches = fullHtml.match(/(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+\\.(?:m3u8|mp4))[^\\s"'>]*/gi);
+        
+        if (rawMatches && rawMatches.length > 0) {
+          for (var j = 0; j < rawMatches.length; j++) {
+            var cleanUrl = rawMatches[j].replace(/["']/g, '');
+            getLinkJS(cleanUrl, 'RawHTML-Scan');
+            if (hasDispatchedAny) {
+              bridgeLog('✅ [BƯỚC 3 THÀNH CÔNG]: Tìm thấy link trong HTML thô -> ' + cleanUrl);
+              return;
+            }
+          }
+        }
+
+        // 🔄 NẾU CHƯA TÌM THẤY: Hẹn giờ quét lại lần tiếp theo (Không gọi onSnifferFailed ngay)
+        if (!hasDispatchedAny && executionRetries < maxExecutionRetries) {
+          bridgeLog('⏳ Chưa có link media nào xuất hiện, sẽ quét lại lần thứ ' + (executionRetries + 1) + ' sau 1s...');
+          setTimeout(handleMainExecution, 1000);
+        }
+
+      } catch (e) {
+        bridgeLog('❌ [handleMainExecution - Lỗi thực thi]: ' + e.message);
+      }
+    }
+
     `;
     }
 
