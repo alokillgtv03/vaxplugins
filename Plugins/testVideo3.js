@@ -11,7 +11,7 @@ function getManifest() {
         "name": "Test EMBED TO Exoplayer",
         "description": "Nguồn xem phim Online ổn định",
         "version": "1.5.2",             
-        "baseUrl": BaseURL,
+        "baseUrl": "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec",
         "iconUrl": "https://crimescenesolutions.co.za/wp-content/uploads/2026/04/phimhayok-io-fav.jpg", 
         "isEnabled": true,
         "type": "VIDEO",
@@ -70,13 +70,29 @@ function getUrlYears() { return ""; }
 // =============================================================================
 // PARSERS
 // =============================================================================
+function appendParamWithRegex(url, myParam) {
+    // Pattern kiểm tra xem URL đã chứa dấu '?' chưa
+    // (Bỏ qua trường hợp dấu '?' nằm trong phần anchor # nếu có)
+    const hasQuery = /\?/.test(url);
+
+    // Nếu đã có '?' thì nối thêm '&', chưa có thì nối '?'
+    return hasQuery ? `${url}&${myParam}` : `${url}?${myParam}`;
+}
 
 function parseListResponse(html) {
+
     try {
+      
+       // print("[parseMovieDetail data]",html);
+        var id = BaseURL;
+        var parsed = JSON.parse(html);
+        BaseJSON = Array.isArray(parsed) ? parsed[0] : parsed;
+        var videoUrl = BaseJSON.link;
+        var $url = BaseJSON.url || "";
         // Lưu trữ object đầu tiên trực tiếp vào BaseJSON toàn cục để các hàm sau dùng tiện lợi
         var items = [];
         items.push({
-            "id": BaseURL,          
+            "id": videoUrl,          
             "title": "Test", 
             "posterUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png",  
             "backdropUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png"
@@ -87,6 +103,7 @@ function parseListResponse(html) {
             "pagination": { "currentPage": 1, "totalPages": 1 }
         });
     } catch (e) {
+        console.log("Lỗi [parseListResponse]: " + e)
         return JSON.stringify({ "items": [], "pagination": { "currentPage": 1, "totalPages": 1 } });
     }
 }
@@ -95,415 +112,767 @@ function parseSearchResponse(html) {
     return parseListResponse(html);
 }
 
-function parseMovieDetail(html) {
-    try {
-        var id = BaseURL;
-        var parsed = JSON.parse(html);
-        BaseJSON = Array.isArray(parsed) ? parsed[0] : parsed;
-        var videoUrl = BaseJSON.link;
-        var $url = BaseJSON.url + "#stream=" + encodeURIComponent(videoUrl)|| "";
-      	console.log("parseMovieDetail[URL]: " + $url)
-        // Khai báo trước streamUrl chống lỗi Strict Mode khi eval thực thi
-        var streamUrl = ""; 
-        var title = "Chưa rõ tên phim";
-        var year = "2026";
-        var des = html;
-        var img = "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png";
-        var episodes = [{ id: $url, name: "Xem Ngay", slug: "full" }]; 
-        return JSON.stringify({
-            "id": id,
-            "title": title,
-            "posterUrl": img,
-            "backdropUrl": img,
-            "description": des,
-            "year": year,
-            "rating": 10,
-            "quality": "HD",
-            "servers": [{ "name": "Server Vietsub", "episodes": episodes }]
-        });
 
-    } catch (e) {
-      	console.log("parseMovieDetail: " + e)
-        return JSON.stringify({ "id": "error", "title": "Lỗi tải dữ liệu", "servers": [] });
+function checkRaw(scriptStr, returnFixed) {
+  try {
+    if (!scriptStr || typeof scriptStr !== 'string') {
+      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
+      return scriptStr || "";
     }
-}
 
+    var lines = scriptStr.split('\n');
+    var fixedLines = [];
+    var hasError = false;
 
-function parseDetailResponse(html,url) {
-    try {
-      console.log("parseDetailResponse[URL]: " + url)
-        // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
-			var match = url.match(/\#stream=([\s\S]*?)$/i);
-      var videoUrl = url;
-      if(match && match[1]){
-        videoUrl = match[1];
+    for (var i = 0; i < lines.length; i++) {
+      var currentLine = lines[i];
+      var lineNum = i + 1;
+      var lineErrorFound = false;
+
+      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
+      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
+      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
       }
-      console.log("parseDetailResponse[STREAM]: " + videoUrl) 
-			return JSON.stringify({
-        "url": videoUrl,
-        "isEmbed": false, // PHẢI LÀ true để app chạy WebView ngầm (EmbedSniffer)
-        "headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": url,
-          	"Block-Ads": "false",
-            "Custom-Js": runjS()
-        }
-    });
-      
-    } catch (e) {
-      	console.log(e);
-        return JSON.stringify({ "url": "", "headers": {} });
+
+      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
+      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
+      if (/([^\\])\\$/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      if (lineErrorFound) {
+        hasError = true;
+      }
+
+      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
+      var fixedLine = currentLine;
+      if (returnFixed) {
+        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
+        fixedLine = fixedLine
+          .replace(/\r/g, "")
+          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
+      }
+
+      fixedLines.push(fixedLine);
     }
+
+    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
+    try {
+      new Function(scriptStr);
+    } catch (syntaxErr) {
+      hasError = true;
+      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
+    }
+
+    if (!hasError) {
+      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
+    }
+
+    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
+    return returnFixed ? fixedLines.join('\n') : scriptStr;
+
+  } catch (e) {
+    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
+    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
+  }
 }
+
+/**
+ * Hàm Decode sạch các HTML entities trong URL
+ */
+function decodeHtmlEntities(str) {
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function parseMovieDetail(html, url) {
+  console.log("parseMovieDetail [videoUrl]: " + url);
+  try {  
+    var cleanUrl = decodeHtmlEntities(url);
+    var title = "Chưa rõ tên phim";
+    var year = "2026";
+    var des = html;
+    var img = "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png";
+    
+    // Giữ nguyên chuỗi cleanUrl ban đầu cho tập phim
+    var episodes = [{ id: cleanUrl, name: "Xem Ngay", slug: "full" }]; 
+    
+    return JSON.stringify({
+      "id": cleanUrl,
+      "title": title,
+      "posterUrl": img,
+      "backdropUrl": img,
+      "description": des,
+      "year": year,
+      "rating": 10,
+      "quality": "HD",
+      "servers": [{ "name": "Server Vietsub", "episodes": episodes }]
+    });
+
+  } catch (e) {
+    console.log("parseMovieDetail Error: " + e);
+    return JSON.stringify({ "id": "error", "title": "Lỗi tải dữ liệu", "servers": [] });
+  }
+}
+
+/**
+ * 🚀 HÀM WATERFALL TỪNG BƯỚC (STEP-BY-STEP)
+ * Chỉ bóc tách ĐÚNG 1 TẦNG fetchUrl tiếp theo để App Fetch tiếp.
+ */
+
+function decodeHtmlEntities(str) {
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+/**
+ * 🚀 HÀM WATERFALL ĐA NĂNG (GÉNÉRIC FOR ALL SERVERS)
+ * Tự động gom đúng tất cả các token/param đi kèm về đúng fetchUrl tương ứng.
+ */
+function getNextFetchStep(url) {
+  var cleanUrl = decodeHtmlEntities(url);
+  try { cleanUrl = decodeURIComponent(cleanUrl); } catch (e) {}
+  cleanUrl = decodeHtmlEntities(cleanUrl);
+
+  var qIndex = cleanUrl.indexOf('?');
+  if (qIndex === -1) {
+    return { nextUrl: cleanUrl, isEmbed: false };
+  }
+
+  var baseUrl = cleanUrl.substring(0, qIndex);
+  var queryString = cleanUrl.substring(qIndex + 1);
+
+  // Trích xuất tất cả fetchUrl kèm theo toàn bộ Token/Param của nó
+  var fetchUrls = [];
+  var parts = queryString.split(/(?:^|&)fetchUrl=/i);
+
+  // phần [0] là param của Base URL, từ [1] trở đi là các fetchUrl
+  for (var i = 1; i < parts.length; i++) {
+    var rawItem = parts[i];
+    if (!rawItem) continue;
+
+    // Làm sạch ký tự mã hóa dư thừa
+    var decodedItem = rawItem;
+    try {
+      if (decodedItem.indexOf('%3A') !== -1 || decodedItem.indexOf('%2F') !== -1) {
+        decodedItem = decodeURIComponent(decodedItem);
+      }
+    } catch (e) {}
+
+    decodedItem = decodeHtmlEntities(decodedItem);
+    decodedItem = decodedItem.replace(/^[&?]+|[&?]+$/g, '');
+
+    if (decodedItem && fetchUrls.indexOf(decodedItem) === -1) {
+      fetchUrls.push(decodedItem);
+    }
+  }
+
+  // 1. Nếu không còn fetchUrl nào -> ĐÃ LÀ TẦNG CUỐI!
+  if (fetchUrls.length === 0) {
+    return {
+      nextUrl: cleanUrl,
+      isEmbed: false
+    };
+  }
+
+  // 2. Lấy fetchUrl ĐẦU TIÊN làm Target cho tầng tiếp theo
+  var targetUrl = fetchUrls.shift();
+
+  // 3. Nếu KHÔNG CÒN fetchUrl nào phía sau -> TẮT EMBED (Trả về False để bật CustomJS)
+  if (fetchUrls.length === 0) {
+    return {
+      nextUrl: targetUrl,
+      isEmbed: false // 🎯 HOÀN THÀNH WATERFALL
+    };
+  }
+
+  // 4. Nếu VẪN CÒN các fetchUrl phía sau -> Nối lại nguyên vẹn cho các tầng tiếp theo
+  var remainingParams = fetchUrls
+    .map(function(item) {
+      return "fetchUrl=" + encodeURIComponent(item);
+    })
+    .join("&");
+
+  var joinChar = targetUrl.indexOf('?') !== -1 ? '&' : '?';
+  targetUrl = targetUrl + joinChar + remainingParams;
+
+  return {
+    nextUrl: targetUrl,
+    isEmbed: true // 🎯 Tiếp tục Waterfall sang tầng kế
+  };
+}
+
+/**
+ * 🛡️ REFERER ĐỘNG ĐA NĂNG
+ * Tự động cắt lấy Base URL của tầng hiện tại làm Referer hợp lệ cho tầng sau.
+ */
+function getCleanReferer(url) {
+  try {
+    var clean = decodeHtmlEntities(url);
+    var qIndex = clean.indexOf('?');
+    if (qIndex !== -1) {
+      return clean.substring(0, qIndex);
+    }
+    return clean;
+  } catch(e) {
+    return url;
+  }
+}
+
+function parseDetailResponse(html, url) {
+  console.log("parseDetailResponse [Tầng 1]: " + url);
+  console.log("parseDetailResponse [Raw]: " + html);
+  try {
+    var rawJS = checkRaw(runjS(), true);
+    var result = getNextFetchStep(url);
+
+    console.log("parseDetailResponse [Next URL]: " + result.nextUrl);
+    console.log("parseDetailResponse [isEmbed]: " + result.isEmbed);
+
+    return JSON.stringify({
+      "url": result.nextUrl,
+      "isEmbed": result.isEmbed,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": getCleanReferer(url),
+        "Block-Ads": "true",
+        "Custom-Js": rawJS
+      }
+    });
+  } catch (e) {
+    console.log("[Lỗi parseDetailResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
+}
+
+function parseEmbedResponse(html, url) {
+  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
+  console.log("parseEmbedResponse [Raw]: " + html);
+  try {
+    var rawJS = checkRaw(runjS(), true);
+    var result = getNextFetchStep(url);
+
+    console.log("parseEmbedResponse [Next URL]: " + result.nextUrl);
+    console.log("parseEmbedResponse [isEmbed]: " + result.isEmbed);
+
+    return JSON.stringify({
+      "url": result.nextUrl,
+      "isEmbed": result.isEmbed, // Tự động trả về false khi đã bóc tới tầng cuối!
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": getCleanReferer(url),
+        "Block-Ads": "true",
+        "Custom-Js": rawJS
+      }
+    });
+  } catch (e) {
+    console.log("[Lỗi parseEmbedResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
+}
+
 
 
 function runjS() {
-  return `
-(function initEnhancedVideoSniffer() {
-  try {
+
+  // =========================================================================
+  // 1. CONFIG JS: Cấu hình linh hoạt
+  // =========================================================================
+  function configJS() {
+    return `
+    // ⚙️ GLOBAL CONFIG
+    var LOGGER = true; 
     var processedUrls = {};
     var hasDispatchedAny = false;
+    var activeWorkerIndex = 0;
 
-    // ==========================================
-    // ⚙️ CẤU HÌNH TOÀN CỤC (GLOBAL CONFIG)
-    // ==========================================
-    // 1. Chế độ trình phát:
-    // "EXO"    -> Chuyển URL cho Android Native ExoPlayer
-    // "CUSTOM" -> Dùng ArtPlayer nhúng HTML5 (Hỗ trợ M3U8, MP4, Fetch API Custom)
-    var PLAYER_MODE = "EXO"; 
-
-    // 2. Bật/Tắt Proxy Worker
+    var PLAYER_MODE = "CUSTOM"; // "EXO": Phát qua Native App | "CUSTOM": Nhúng ArtPlayer
     var PROXY_ENABLED = true; 
 
-    // 3. Danh sách Cloudflare Workers (Cân bằng tải & Dự phòng Failover)
+    // 👉 BẬT CUSTOM DECODER (SETVIDEO QUYỀN ƯU TIÊN HÀNG ĐẦU)
+    var USE_CUSTOM_DECODER = false; 
+    var SET_VIDEO_WAIT_MS = 3000; // Thời gian tối đa chờ setVideo xử lý trước khi kích hoạt Fallback Sniffer
+
     var WORKER_POOL = [
       "https://soft-surf-c11d.alokillgtv.workers.dev",
       "https://soft-water-25b0.alokillgtv02.workers.dev"
     ];
-    var activeWorkerIndex = Math.floor(Math.random() * WORKER_POOL.length);
-    
-    // 4. Các cấu hình tùy chỉnh khác
-    var CUSTOM_REFERER = "https://play2.cdn-xvideos-xnxx.xyz";
-    var STREAM_URL_REGEX = /https?:\\/\\/[^\\s"'<>]*(?:sanstream\\.xyz|m3u8|mp4|cdn=r2)[^\\s"'<>]*/i;
-    var REPLACE_EXTENSION_ENABLED = false; 
-    var REPLACE_FROM = ".html";           
-    var REPLACE_TO = ".m3u8";             
+
+    var CUSTOM_REFERER = window.location.href;
+
+    // 🚀 REGEX TỔNG QUÁT BẮT LINK MEDIA & API (Đã fix escape \\/hls\\/)
+    var STREAM_URL_REGEX = /https?:\\/\\/[^\\s"'<>]*(?:m3u8|mp4|streaming|stream|playlist|embed|sanstream\\.xyz|cdn=|\\/hls\\/|\\?id=)[^\\s"'>]*/i;
+
+    // 🎯 HÀNG ĐỢI (QUEUE) LƯU TẤT CẢ LINK SNIFFER BẮT ĐƯỢC ĐỂ CHỜ FALLBACK
+    var snifferQueue = [];
+    var setVideoSuccess = false;
+    var setVideoTimer = null;
 
     var ENABLE_FILTER = false; 
-    var ALLOWED_DOMAINS = ["sanstream.xyz", "*.sanstream.xyz"];
     var BLOCKED_DOMAINS = ["ads.example.com", "*.adnetwork.com"];
-    // ==========================================
+
+    var SNIFFER_TIMEOUT_MS = 10000;
+    var HTMLRAW = false;
+    var ENDEMBED = true; 
+    
+    activeWorkerIndex = Math.floor(Math.random() * WORKER_POOL.length);
 
     function bridgeLog(msg) {
+      if (!LOGGER) return;
       try {
+        var strMsg = String(msg);
+        var formattedContent = strMsg;
+
+        var match = strMsg.match(/^(\\S+\\s*\\[[^\\]]+\\]:?)(.*)$/);
+        if (match) {
+          var header = match[1].trim();
+          var body = match[2].trim();
+          formattedContent = header + "\\r\\n\\t" + body;
+        }
+
+        var logMessage = '[CustomJS][LOG] [SNIFFER LOG] ' + formattedContent;
+
         if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
-          window.SnifferBridge.log(String(msg));
+          window.SnifferBridge.log(logMessage);
         } else if (typeof console !== 'undefined' && console.log) {
-          console.log('[SNIFFER LOG]', msg);
+          console.log(logMessage);
         }
       } catch (e) {}
     }
+    `;
+  }
 
-    bridgeLog('🎬 [Sniffer v6.0] Khởi chạy với PLAYER_MODE = ' + PLAYER_MODE);
+  // =========================================================================
+  // 🚀 SETVIDEO JS: Chạy ưu tiên & Đánh dấu trạng thái
+  // =========================================================================
+  function setVideoJS() {
+  return `
+  function setVideo(rawUrl, sourceName) {
+    try {
+      bridgeLog('⏳ [setVideo - ĐANG XỬ LÝ ƯU TIÊN] Nguồn: [' + sourceName + ']');
+
+      var html = document.documentElement ? document.documentElement.outerHTML : '';
+
+      var idvideo = html.match(/videoId[^"']+["']([^"']+)["']/i);
+      var urlvideo = html.match(/videoId[\\s\\S]*?(\\/\\?token1=[^"']+)["']/i);
+      var linkVD = "";
+
+      // 🛡️ Bắt buộc kiểm tra null trước khi truy cập idvideo[1]
+      if (idvideo && idvideo[1] && urlvideo && urlvideo[1]) {
+        linkVD = "https://cdn.neuronix.sbs/segment/" + idvideo[1] + urlvideo[1];
+        bridgeLog("🎉 Đã tìm ra link video: " + linkVD);
+      } else {
+        bridgeLog("⚠️ Không tìm thấy regex videoId trong HTML!");
+      }
+
+      var decodedUrl = linkVD; 
+
+      if (decodedUrl && typeof decodedUrl === 'string' && decodedUrl.length > 10) {
+        setVideoSuccess = true;
+        hasDispatchedAny = true;
+        if (setVideoTimer) clearTimeout(setVideoTimer);
+
+        bridgeLog('🎉 [setVideo - THÀNH CÔNG]: Đã lấy được link -> ' + decodedUrl);
+        dispatchToPlayer(decodedUrl, "setVideo");
+        return true;
+      } else {
+        bridgeLog('⚠️ [setVideo - KHÔNG THỎA MÃN]: Chờ Sniffer Fallback...');
+        return false;
+      }
+
+    } catch (e) {
+      bridgeLog('❌ [setVideo - LỖI XỬ LÝ]: ' + e.message);
+      return false;
+    }
+  }
+  `;
+}
+
+
+  // =========================================================================
+  // 📡 GET LINK JS: Vừa chạy setVideo vừa Cache link cho Fallback Sniffer
+  // =========================================================================
+  function getLinkJS() {
+    return `
+    function getLinkJS(rawUrl, sourceName) {
+      try {
+        if (!rawUrl || typeof rawUrl !== 'string') return;
+        if (hasDispatchedAny) return;
+        if (rawUrl.indexOf('blob:') === 0 || rawUrl.indexOf('data:') === 0) return;
+
+        var absoluteUrl = new URL(rawUrl, document.baseURI || window.location.href).href;
+
+        if (STREAM_URL_REGEX && !STREAM_URL_REGEX.test(absoluteUrl)) return; 
+        if (processedUrls[absoluteUrl]) return;
+        processedUrls[absoluteUrl] = true;
+
+        bridgeLog('🎯 [Sniffer - TÓM ĐƯỢC LINK] Nguồn [' + (sourceName || 'Unknown') + ']: ' + absoluteUrl);
+
+        if (!isDomainAllowed(absoluteUrl)) {
+          bridgeLog('🚫 [Sniffer - Bị Filter Domain]: ' + absoluteUrl);
+          return; 
+        }
+
+        // 1. LƯU LINK VÀO QUEUE ĐỂ PHÒNG KHÍ SETVIDEO THẤT BẠI
+        snifferQueue.push({ url: absoluteUrl, source: sourceName });
+
+        // 2. NẾU BẬT USE_CUSTOM_DECODER -> CHO SETVIDEO CHẠY THỬ TRƯỚC
+        if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function') {
+          
+          var success = setVideo(absoluteUrl, sourceName);
+          
+          // Nếu setVideo chưa có kết quả thành công, kích hoạt Timer đếm ngược chờ Fallback Sniffer
+          if (!success && !setVideoTimer && !setVideoSuccess) {
+            bridgeLog('⏱️ [Sniffer]: Bắt đầu hẹn giờ ' + SET_VIDEO_WAIT_MS + 'ms chờ setVideo... Nếu hết giờ sẽ chuyển sang dùng link Sniffer.');
+            
+            setVideoTimer = setTimeout(function() {
+              triggerSnifferFallback();
+            }, SET_VIDEO_WAIT_MS);
+          }
+          return;
+        }
+
+        // 3. NẾU KHÔNG BẬT USE_CUSTOM_DECODER -> PHÁT THẲNG
+        dispatchToPlayer(absoluteUrl, "DirectSniffer");
+
+      } catch (e) {
+        bridgeLog('❌ [getLinkJS - Lỗi]: ' + e.message);
+      }
+    }
+
+    /**
+     * 🔄 HÀM FALLBACK: Gọi khi setVideo hết thời gian chờ mà không gửi được link nào
+     */
+    function triggerSnifferFallback() {
+      if (hasDispatchedAny || setVideoSuccess) return;
+
+      bridgeLog('🔄 [Sniffer Fallback]: setVideo không trả về link! Tiến hành xả hàng đợi Sniffer Queue (' + snifferQueue.length + ' link)...');
+
+      if (snifferQueue.length > 0) {
+        var fallbackItem = snifferQueue[0]; // Lấy link đầu tiên tóm được
+        bridgeLog('🚀 [Sniffer Fallback]: Lấy link từ Sniffer gửi Player -> ' + fallbackItem.url);
+        
+        hasDispatchedAny = true;
+        dispatchToPlayer(fallbackItem.url, "SnifferFallback (" + fallbackItem.source + ")");
+      } else {
+        bridgeLog('⚠️ [Sniffer Fallback]: Hàng đợi rỗng, chờ Sniffer tìm thêm...');
+      }
+    }
+    `;
+  }
+
+  // =========================================================================
+  // 🎨 PLAYER DISPATCHER: Hàm dùng chung để phát qua Native hoặc Custom Player
+  // =========================================================================
+  function mainJS() {
+    return `
+    function dispatchToPlayer(mediaUrl, dispatchSource) {
+      try {
+        hasDispatchedAny = true;
+        bridgeLog('🎬 [DISPATCH TO PLAYER] [Nguồn: ' + dispatchSource + '] -> ' + mediaUrl);
+
+        if (PLAYER_MODE === "EXO") {
+          var playUrl = PROXY_ENABLED ? buildProxyUrl(mediaUrl, activeWorkerIndex) : mediaUrl;
+          bridgeLog('📱 [DISPATCH EXO NATIVE]: ' + playUrl);
+
+          if (window.SnifferBridge && typeof window.SnifferBridge.onMediaFound === 'function') {
+            window.SnifferBridge.onMediaFound(playUrl, CUSTOM_REFERER);
+          } 
+          else if (window.SnifferBridge && typeof window.SnifferBridge.playVideo === 'function') {
+            window.SnifferBridge.playVideo(playUrl, CUSTOM_REFERER);
+          } 
+          else {
+            window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\//, '') + "#Intent;scheme=https;type=video/*;end";
+          }
+        } 
+        else {
+          bridgeLog('🎨 [DISPATCH CUSTOM ARTPLAYER] Rendering...');
+          dispatchMediaStream(mediaUrl);
+        }
+      } catch (e) {
+        bridgeLog('❌ [dispatchToPlayer - Lỗi]: ' + e.message);
+      }
+    }
+
+    function beginJS() {
+      try {
+        bridgeLog('🚀 [beginJS] Khởi chạy Sniffer! Tiến hành gắn Interceptors...');
+
+        // 🛡️ ANTI-REDIRECT SHIELD
+        (function blockNavigation() {
+          try {
+            var noop = function() { bridgeLog('🛡️ [Anti-Redirect] Đã chặn chuyển trang!'); };
+            Object.defineProperty(window, 'onbeforeunload', { configurable: false, get: function() { return null; }, set: function() {} });
+            if (window.location) { window.location.assign = noop; window.location.replace = noop; }
+            window.open = function() { bridgeLog('🛡️ [Anti-Redirect] Đã chặn window.open()!'); return null; };
+          } catch (err) {}
+        })();
+
+        // ⏱️ TIMER TIMEOUT TOÀN CỤC
+        setTimeout(function() {
+          if (!hasDispatchedAny) {
+            onSnifferFailed();
+          }
+        }, SNIFFER_TIMEOUT_MS);
+
+        // 📡 INTERCEPT XHR
+        if (typeof XMLHttpRequest !== 'undefined') {
+          var originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            try { if (url) getLinkJS(url, 'XHR.' + method); } catch (e) {}
+            return originalOpen.apply(this, arguments);
+          };
+        }
+
+        // 📡 INTERCEPT FETCH
+        if (typeof window.fetch === 'function') {
+          var originalFetch = window.fetch;
+          window.fetch = function (input, init) {
+            try {
+              var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+              if (url) getLinkJS(url, 'Fetch');
+            } catch (e) {}
+            return originalFetch.apply(this, arguments);
+          };
+        }
+
+        // 🎬 SCAN DOM ON LOAD
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          handleMainExecution();
+        } else {
+          window.addEventListener('load', handleMainExecution);
+          setTimeout(handleMainExecution, 800);
+        }
+
+      } catch (e) {
+        bridgeLog('❌ [beginJS - Lỗi]: ' + e.message);
+      }
+    }
+
+    function onSnifferFailed() {
+      try {
+        if (hasDispatchedAny) return;
+
+        // Thử kích hoạt Fallback Sniffer một lần nữa trước khi báo lỗi
+        if (snifferQueue.length > 0) {
+          triggerSnifferFallback();
+          return;
+        }
+
+        bridgeLog('⚠️ [onSnifferFailed]: Hết thời gian chờ, cả setVideo và Sniffer đều không tìm thấy link!');
+
+        if (typeof HTMLRAW !== 'undefined' && HTMLRAW) {
+          var htmlContent = document.documentElement ? document.documentElement.outerHTML : document.body.innerHTML;
+          bridgeLog('[In Raw HTML]: ' + htmlContent + '...');
+          
+          if (ENDEMBED && window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
+            window.SnifferBridge.toast("Không tìm thấy link media. Thử lại sau nhé!");
+          }
+        }
+
+        if (window.SnifferBridge && typeof window.SnifferBridge.onFailed === 'function') {
+          window.SnifferBridge.onFailed("NOT_FOUND");
+        }
+      } catch (e) {
+        bridgeLog('❌ [onSnifferFailed - Lỗi]: ' + e.message);
+      }
+    }
 
     function isDomainAllowed(url) {
       try {
+        if (!ENABLE_FILTER) return true;
         var parsedUrl = new URL(url);
         var hostname = parsedUrl.hostname.toLowerCase();
 
         if (BLOCKED_DOMAINS && BLOCKED_DOMAINS.length > 0) {
           for (var i = 0; i < BLOCKED_DOMAINS.length; i++) {
             var blockPattern = BLOCKED_DOMAINS[i].toLowerCase().trim();
-            if (blockPattern.indexOf('*') !== -1) {
-              var cleanBlockPattern = blockPattern.replace(/\\*/g, '');
-              if (hostname.indexOf(cleanBlockPattern) !== -1) return false;
-            } else {
-              var cleanBlockDomain = blockPattern.replace(/^https?:\\/\\//, '').replace(/\\/.*/, '');
-              if (hostname === cleanBlockDomain || hostname.endsWith('.' + cleanBlockDomain)) return false;
-            }
+            if (hostname.indexOf(blockPattern.replace('*', '')) !== -1) return false;
           }
         }
-
-        if (!ENABLE_FILTER) return true;
-        if (!ALLOWED_DOMAINS || ALLOWED_DOMAINS.length === 0) return true;
-
-        for (var j = 0; j < ALLOWED_DOMAINS.length; j++) {
-          var pattern = ALLOWED_DOMAINS[j].toLowerCase().trim();
-          if (pattern.indexOf('*') !== -1) {
-            var cleanPattern = pattern.replace(/\\*/g, '');
-            if (hostname.indexOf(cleanPattern) !== -1) return true;
-          } else {
-            var cleanDomain = pattern.replace(/^https?:\\/\\//, '').replace(/\\/.*/, '');
-            if (hostname === cleanDomain || hostname.endsWith('.' + cleanDomain)) return true;
-          }
-        }
-        return false;
+        return true;
       } catch (e) {
         return true;
       }
     }
 
-    function checkUrlPlayable(url, callback) {
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, true);
-        xhr.timeout = 3000;
-
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState === 4) {
-            var status = xhr.status;
-            if ((status >= 200 && status < 300) || status === 206 || status === 0) {
-              bridgeLog('🟢 [URL OK - Status ' + status + ']: ' + url);
-              callback(true);
-            } else {
-              bridgeLog('🚫 [URL Chết - Status ' + status + ']: Bỏ qua -> ' + url);
-              callback(false);
-            }
-          }
-        };
-        xhr.onerror = function () { callback(true); };
-        xhr.ontimeout = function () { callback(false); };
-        xhr.send();
-      } catch (e) {
-        callback(true);
-      }
-    }
-
-    // Dựng Proxy URL dựa theo index của Worker
     function buildProxyUrl(targetUrl, workerIdx) {
       try {
-        if (!PROXY_ENABLED || !WORKER_POOL || WORKER_POOL.length === 0) {
-          return targetUrl;
-        }
-        
+        if (!PROXY_ENABLED || !WORKER_POOL || WORKER_POOL.length === 0) return targetUrl;
         var selectedWorker = WORKER_POOL[workerIdx % WORKER_POOL.length];
-        var encodedUrl = encodeURIComponent(targetUrl);
-        var encodedReferer = encodeURIComponent(CUSTOM_REFERER || window.location.href);
-        var encodedUA = encodeURIComponent(navigator.userAgent);
-
-        var finalProxy = selectedWorker + "?url=" + encodedUrl + "&referer=" + encodedReferer + "&ua=" + encodedUA;
-        bridgeLog('🔗 [Worker #' + (workerIdx % WORKER_POOL.length) + ' Proxy Built]: ' + finalProxy);
-        return finalProxy;
+        return selectedWorker + "?url=" + encodeURIComponent(targetUrl) + "&referer=" + encodeURIComponent(CUSTOM_REFERER);
       } catch (e) {
         return targetUrl;
       }
     }
 
-    // ==========================================
-    // 📺 ĐIỀU HƯỚNG PHÁT THÔNG QUA PLAYER_MODE
-    // ==========================================
     function dispatchMediaStream(rawStreamUrl) {
-      var playUrl = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
-
-      if (PLAYER_MODE === "EXO") {
-        // --- CHẾ ĐỘ 1: GỬI URL NATIVE CHO EXOPLAYER ---
-        bridgeLog('📱 [EXO MODE] Đang chuyển URL sang Native ExoPlayer: ' + playUrl);
-        
-        if (window.SnifferBridge && typeof window.SnifferBridge.playVideo === 'function') {
-          window.SnifferBridge.playVideo(playUrl, CUSTOM_REFERER);
-        } else {
-          bridgeLog('⚠️ Không thấy SnifferBridge.playVideo, fallback Intent...');
-          window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\//, '') + "#Intent;scheme=https;type=video/*;end";
-        }
-      } else {
-        // --- CHẾ ĐỘ 2: NHỦNG ARTPLAYER ĐA NĂNG TRÊN WEBVIEW ---
-        bridgeLog('🎨 [CUSTOM MODE] Nhúng ArtPlayer (Hỗ trợ MP4 + M3U8 Fetch)');
+      try {
+        var playUrl = PROXY_ENABLED ? buildProxyUrl(rawStreamUrl, activeWorkerIndex) : rawStreamUrl;
+        bridgeLog('🎨 [dispatchMediaStream]: Tải CDN ArtPlayer cho link -> ' + playUrl);
         loadAndRenderArtPlayer(playUrl, rawStreamUrl);
+      } catch (e) {
+        bridgeLog('❌ [dispatchMediaStream - Lỗi]: ' + e.message);
       }
     }
 
-    // Tải thư viện ArtPlayer & hls.js từ CDN
     function loadAndRenderArtPlayer(initialPlayUrl, rawStreamUrl) {
-      bridgeLog('📥 Đang tải CDN ArtPlayer.js & hls.js...');
-
-      var loadedCount = 0;
-      function checkLoaded() {
-        loadedCount++;
-        if (loadedCount >= 2) {
-          renderArtPlayer(initialPlayUrl, rawStreamUrl);
+      try {
+        if (!document.getElementById('artplayer-css')) {
+          var linkCss = document.createElement('link');
+          linkCss.id = 'artplayer-css';
+          linkCss.rel = 'stylesheet';
+          linkCss.href = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css';
+          document.head.appendChild(linkCss);
         }
-      }
 
-      // 1. Load hls.js
-      if (typeof Hls === 'undefined') {
-        var scriptHls = document.createElement('script');
-        scriptHls.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-        scriptHls.onload = checkLoaded;
-        document.head.appendChild(scriptHls);
-      } else {
-        checkLoaded();
-      }
+        var loadedCount = 0;
+        function checkLoaded() {
+          loadedCount++;
+          if (loadedCount >= 2) renderArtPlayer(initialPlayUrl, rawStreamUrl);
+        }
 
-      // 2. Load ArtPlayer.js
-      if (typeof Artplayer === 'undefined') {
-        var scriptArt = document.createElement('script');
-        scriptArt.src = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js';
-        scriptArt.onload = checkLoaded;
-        document.head.appendChild(scriptArt);
-      } else {
-        checkLoaded();
+        if (typeof Hls === 'undefined') {
+          var scriptHls = document.createElement('script');
+          scriptHls.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+          scriptHls.onload = checkLoaded;
+          document.head.appendChild(scriptHls);
+        } else {
+          checkLoaded();
+        }
+
+        if (typeof Artplayer === 'undefined') {
+          var scriptArt = document.createElement('script');
+          scriptArt.src = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js';
+          scriptArt.onload = checkLoaded;
+          document.head.appendChild(scriptArt);
+        } else {
+          checkLoaded();
+        }
+      } catch (e) {
+        bridgeLog('❌ [loadAndRenderArtPlayer - Lỗi]: ' + e.message);
       }
     }
 
-    // ==========================================
-    // 🎨 DỰNG TRÌNH PHÁT ARTPLAYER ĐA NĂNG
-    // ==========================================
-    function renderArtPlayer(playUrl, rawStreamUrl) {
-      bridgeLog('🚀 Dọn dẹp DOM và khởi tạo ArtPlayer UI...');
+function renderArtPlayer(playUrl, rawStreamUrl) {
+  try {
+    bridgeLog('🚀 [renderArtPlayer]: Tạo Giao diện ArtPlayer Fullscreen...');
 
-      document.getElementsByTagName('html')[0].innerHTML = '';
-      
-      document.body.style.backgroundColor = '#000000';
-      document.body.style.margin = '0';
-      document.body.style.padding = '0';
-      document.body.style.width = '100vw';
-      document.body.style.height = '100vh';
-      document.body.style.overflow = 'hidden';
+    document.body.innerHTML = '';
+    var style = document.createElement('style');
+    style.innerHTML = 'html, body { width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background-color: #000 !important; } #artplayer-container { width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 999999 !important; }';
+    document.head.appendChild(style);
 
-      var container = document.createElement('div');
-      container.id = 'artplayer-container';
-      container.style.width = '100%';
-      container.style.height = '100%';
-      document.body.appendChild(container);
+    var container = document.createElement('div');
+    container.id = 'artplayer-container';
+    document.body.appendChild(container);
 
-      var isM3U8 = rawStreamUrl.indexOf('.m3u8') !== -1 || playUrl.indexOf('.m3u8') !== -1;
+    // 🎯 1. NHẬN DIỆN M3U8 THÔNG MINH (KỂ CẢ KHI DÙNG PROXY HOẶC ĐÃ ENCODE)
+    var lowerPlayUrl = (playUrl || '').toLowerCase();
+    var lowerRawUrl = (rawStreamUrl || '').toLowerCase();
+    
+    var isProxyLink = PROXY_ENABLED && WORKER_POOL.some(function(worker) {
+      return lowerPlayUrl.indexOf(worker.toLowerCase()) !== -1;
+    });
 
-      // Cấu hình ArtPlayer API
-      window.art = new Artplayer({
-        container: '#artplayer-container',
-        url: playUrl,
-        type: isM3U8 ? 'm3u8' : 'mp4',
-        autoplay: true,
-        isLive: false,
-        fullscreen: true,
-        fullscreenWeb: true,
-        pip: true,
-        setting: true,
-        flip: true,
-        playbackRate: true,
-        aspectRatio: true,
-        autoOrientation: true,
-        customType: {
-          m3u8: function (video, url, art) {
-            if (Hls.isSupported()) {
+    var isM3U8 = lowerRawUrl.indexOf('.m3u8') !== -1 || 
+                 lowerPlayUrl.indexOf('.m3u8') !== -1 || 
+                 lowerPlayUrl.indexOf('%2fm3u8') !== -1 ||
+                 isProxyLink; // Nếu đi qua Proxy, ưu tiên ép kiểu m3u8 để Hls.js xử lý
+
+    // 🎯 2. TẠO DANH SÁCH MENU ĐỔI SERVER PROXY CHO BÁNH RĂNG CÀI ĐẶT
+    var proxySelectorSettings = [];
+    if (PROXY_ENABLED && WORKER_POOL && WORKER_POOL.length > 0) {
+      proxySelectorSettings.push({
+        html: 'Server Proxy',
+        tooltip: 'Server ' + (activeWorkerIndex + 1),
+        selector: WORKER_POOL.map(function(workerUrl, idx) {
+          return {
+            default: idx === activeWorkerIndex,
+            html: 'Server ' + (idx + 1) + (idx === activeWorkerIndex ? ' (Đang dùng)' : ''),
+            url: workerUrl,
+            index: idx
+          };
+        }),
+        onSelect: function (item) {
+          bridgeLog('🔄 [ArtPlayer]: Người dùng đổi sang ' + item.html);
+          activeWorkerIndex = item.index;
+          
+          // Dựng lại Link Proxy mới với Server được chọn
+          var newPlayUrl = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
+          
+          // Switch đường dẫn mới trực tiếp trên ArtPlayer
+          window.art.switchUrl(newPlayUrl);
+          return item.html;
+        }
+      });
+    }
+
+    // 🎯 3. KHỞI TẠO ARTPLAYER VỚI ĐẦY ĐỦ NÚT BÁNH RĂNG CÀI ĐẶT
+    window.art = new Artplayer({
+      container: '#artplayer-container',
+      url: playUrl,
+      type: isM3U8 ? 'm3u8' : 'mp4',
+      autoplay: true,
+      fullscreen: true,
+      fullscreenWeb: true,
+      pip: true,
+      setting: true, // ⚙️ BẬT NÚT BÁNH RĂNG CÀI ĐẶT CỦA ARTPLAYER
+      settings: proxySelectorSettings, // Gắn Menu đổi Server vào Bánh răng
+      customType: {
+        m3u8: function (video, url, art) {
+          if (Hls.isSupported()) {
+            if (art.hls) art.hls.destroy();
+            var hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              backBufferLength: 90
+            });
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            art.hls = hls;
+            
+            art.on('destroy', function() {
               if (art.hls) art.hls.destroy();
-
-              var hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                // Tùy biến FetchLoader nếu cần can thiệp Header API
-                fLConfig: {
-                  maxRetry: 2
-                }
-              });
-
-              hls.loadSource(url);
-              hls.attachMedia(video);
-              art.hls = hls;
-
-              // Quản lý Failover Worker tự động nếu m3u8 bị lỗi
-              hls.on(Hls.Events.ERROR, function (event, data) {
-                if (data.fatal) {
-                  bridgeLog('⚠️ Error Worker in ArtPlayer, rotating worker...');
-                  activeWorkerIndex = (activeWorkerIndex + 1) % WORKER_POOL.length;
-                  var nextProxy = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
-                  art.switchUrl(nextProxy);
-                }
-              });
-
-              art.on('destroy', function () {
-                hls.destroy();
-              });
-
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              video.src = url;
-            } else {
-              art.notice.show = 'Trình duyệt không hỗ trợ phát HLS';
-            }
+            });
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
           }
         }
-      });
-
-      window.art.on('ready', function() {
-        bridgeLog('✅ ArtPlayer đã sẵn sàng phát!');
-        window.art.play().catch(function() {
-          window.art.muted = true;
-          window.art.play();
-        });
-      });
-    }
-
-    function processCandidateUrl(rawUrl) {
-      try {
-        if (!rawUrl || typeof rawUrl !== 'string') return;
-        if (hasDispatchedAny) return;
-        if (rawUrl.indexOf('blob:') === 0) return;
-
-        var absoluteUrl = new URL(rawUrl, document.baseURI || window.location.href).href;
-
-        if (STREAM_URL_REGEX && !STREAM_URL_REGEX.test(absoluteUrl)) {
-          return; 
-        }
-
-        bridgeLog('🎯 [RegExp Matched!]: ' + absoluteUrl);
-
-        var finalUrl = absoluteUrl;
-        if (REPLACE_EXTENSION_ENABLED) {
-          var queryIndex = absoluteUrl.indexOf('?');
-          if (queryIndex !== -1) {
-            var baseUrlPart = absoluteUrl.substring(0, queryIndex);
-            var queryPart = absoluteUrl.substring(queryIndex);
-            if (baseUrlPart.indexOf(REPLACE_FROM) !== -1) {
-              baseUrlPart = baseUrlPart.replace(REPLACE_FROM, REPLACE_TO);
-              finalUrl = baseUrlPart + queryPart;
-            }
-          } else {
-            if (absoluteUrl.indexOf(REPLACE_FROM) !== -1) {
-              finalUrl = absoluteUrl.replace(REPLACE_FROM, REPLACE_TO);
-            }
-          }
-        }
-
-        if (!isDomainAllowed(finalUrl)) return;
-
-        if (processedUrls[finalUrl]) return;
-        processedUrls[finalUrl] = true;
-
-        checkUrlPlayable(finalUrl, function(isPlayable) {
-          if (hasDispatchedAny) return;
-          if (!isPlayable) return;
-
-          hasDispatchedAny = true;
-          dispatchMediaStream(finalUrl);
-        });
-
-      } catch (errDispatch) {
-        bridgeLog('❌ [Error]: ' + errDispatch.message);
       }
-    }
+    });
 
-    (function initEarlyInterceptor() {
-      try {
-        if (typeof XMLHttpRequest !== 'undefined') {
-          var originalOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function (method, url) {
-            try { if (url) processCandidateUrl(url); } catch (e) {}
-            return originalOpen.apply(this, arguments);
-          };
-        }
+    window.art.on('ready', function() {
+      bridgeLog('🎉 [ArtPlayer]: Trình phát đã Sẵn sàng! (Loại: ' + (isM3U8 ? 'm3u8' : 'mp4') + ')');
+      window.art.play().catch(function() {
+        window.art.muted = true;
+        window.art.play();
+      });
+    });
 
-        if (typeof window.fetch === 'function') {
-          var originalFetch = window.fetch;
-          window.fetch = function (input, init) {
-            try {
-              var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
-              if (url) processCandidateUrl(url);
-            } catch (e) {}
-            return originalFetch.apply(this, arguments);
-          };
-        }
-      } catch (e) {}
-    })();
+  } catch (e) {
+    bridgeLog('❌ [renderArtPlayer - Lỗi]: ' + e.message);
+  }
+}
+
 
     function scanVideoElements() {
       if (hasDispatchedAny) return;
@@ -512,27 +881,56 @@ function runjS() {
         for (var i = 0; i < videos.length; i++) {
           if (hasDispatchedAny) break;
           var v = videos[i];
-          if (v.currentSrc) processCandidateUrl(v.currentSrc);
-          if (v.src) processCandidateUrl(v.src);
+          if (v.currentSrc) getLinkJS(v.currentSrc, 'HTMLVideoElement.currentSrc');
+          if (v.src) getLinkJS(v.src, 'HTMLVideoElement.src');
         }
       } catch (e) {}
     }
 
-    function handleMainExecution() {
-      try { scanVideoElements(); } catch (errExec) {}
+function handleMainExecution() {
+  try { 
+    // 🚀 ƯU TIÊN 1: Ép setVideo chạy ngay lập tức khi vào trang
+    if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function' && !hasDispatchedAny) {
+      bridgeLog('⚡ [handleMainExecution]: Ép setVideo chạy ưu tiên ngay khi tải trang...');
+      var success = setVideo(window.location.href, 'DirectDOM');
+      if (success) return; // Nếu thành công thì dừng luôn, không cần quét gì nữa
     }
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      handleMainExecution();
-    } else {
-      window.addEventListener('load', handleMainExecution);
-      setTimeout(handleMainExecution, 500);
-    }
+    // 🎯 ƯU TIÊN 2: Quét tag <video>
+    scanVideoElements(); 
+  } catch (e) {
+    bridgeLog('❌ [handleMainExecution - Lỗi]: ' + e.message);
+  }
+}
 
-  } catch (globalErr) {}
+    `;
+  }
+
+  // =========================================================================
+  // KẾT NỐI TOÀN BỘ SCRIPT
+  // =========================================================================
+  return `
+(function initEnhancedVideoSniffer() {
+  if (window.__SNIFFER_INITIALIZED__) return;
+  window.__SNIFFER_INITIALIZED__ = true;
+
+  try {
+    ${configJS()}
+    ${setVideoJS()}
+    ${getLinkJS()}
+    ${mainJS()}
+
+    beginJS();
+
+  } catch (globalErr) {
+    if (typeof bridgeLog === 'function') {
+      bridgeLog('❌ [initEnhancedVideoSniffer - Lỗi Toàn Cục]: ' + globalErr.message);
+    }
+  }
 })();
   `;
 }
+
 
 
 

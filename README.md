@@ -848,3 +848,17 @@ function parseDetailResponse(html, url) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
 }
+
+
+function runJS(){
+  function beginJS(){
+    return ` Code `
+  }
+  function getLinkJS(){
+    return ` Code `
+  }
+  function mainJS(){
+    return ` Code `
+  }
+  retun ` Nối 3 hàm chứa Code bên trên lại và ko gây lỗi hay sai cú pháp `
+}
