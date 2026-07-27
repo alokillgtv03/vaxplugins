@@ -23,11 +23,11 @@ function getHomeSections() {
 }
 
 function getPrimaryCategories() {
+}
+
     var listurl = getLISTmenu();
     var menulist = buildMenu(listurl);
     return JSON.stringify(menulist);
-}
-
 // ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
 function getFilterConfig() {
     var listurl = getLISTmenu();

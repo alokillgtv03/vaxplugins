@@ -390,14 +390,13 @@ function parseEmbedResponse(html, url) {
 }
 
 
-
 function runjS() {
 
-  // =========================================================================
-  // 1. CONFIG JS: Cấu hình linh hoạt
-  // =========================================================================
-  function configJS() {
-    return `
+    // =========================================================================
+    // 1. CONFIG JS: Cấu hình linh hoạt
+    // =========================================================================
+    function configJS() {
+        return `
     // ⚙️ GLOBAL CONFIG
     var LOGGER = true; 
     var processedUrls = {};
@@ -458,13 +457,13 @@ function runjS() {
       } catch (e) {}
     }
     `;
-  }
+    }
 
-  // =========================================================================
-  // 🚀 SETVIDEO JS: Chạy ưu tiên & Đánh dấu trạng thái
-  // =========================================================================
-  function setVideoJS() {
-  return `
+    // =========================================================================
+    // 🚀 SETVIDEO JS: Chạy ưu tiên & Đánh dấu trạng thái
+    // =========================================================================
+    function setVideoJS() {
+        return `
   function setVideo(rawUrl, sourceName) {
     try {
       bridgeLog('⏳ [setVideo - ĐANG XỬ LÝ ƯU TIÊN] Nguồn: [' + sourceName + ']');
@@ -504,14 +503,13 @@ function runjS() {
     }
   }
   `;
-}
+    }
 
-
-  // =========================================================================
-  // 📡 GET LINK JS: Vừa chạy setVideo vừa Cache link cho Fallback Sniffer
-  // =========================================================================
-  function getLinkJS() {
-    return `
+    // =========================================================================
+    // 📡 GET LINK JS: Vừa chạy setVideo vừa Cache link cho Fallback Sniffer
+    // =========================================================================
+    function getLinkJS() {
+        return `
     function getLinkJS(rawUrl, sourceName) {
       try {
         if (!rawUrl || typeof rawUrl !== 'string') return;
@@ -577,13 +575,278 @@ function runjS() {
       }
     }
     `;
-  }
+    }
 
-  // =========================================================================
-  // 🎨 PLAYER DISPATCHER: Hàm dùng chung để phát qua Native hoặc Custom Player
-  // =========================================================================
-  function mainJS() {
-    return `
+    // =========================================================================
+    // 📡 ART PLAYER BUILDING
+    // =========================================================================
+    function artPlayer() {
+        return `
+function renderArtPlayer(playUrl, rawStreamUrl) {
+  try {
+    bridgeLog('🚀 [renderArtPlayer]: Khởi tạo ArtPlayer (Xóa sạch Loading xấu của web gốc)...');
+
+    // 1. ÉP TẤT CẢ NỀN WEB GỐC VỀ MÀU ĐEN SẠCH (Xóa sạch hình Play mờ phía sau)
+    document.documentElement.style.cssText = 'background: #000 !important; background-image: none !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important;';
+    document.body.innerHTML = '';
+    document.body.style.cssText = 'background: #000 !important; background-image: none !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important;';
+
+    var style = document.createElement('style');
+    style.innerHTML = \`
+      /* RESET SẠCH TẤT CẢ TÁC NHÂN NỀN XẤU TỪ WEB GỐC */
+      *:not(#artplayer-container *):not(.art-video) {
+        background-image: none !important;
+      }
+
+      html, body { 
+        width: 100vw !important; 
+        height: 100vh !important; 
+        margin: 0 !important; 
+        padding: 0 !important; 
+        overflow: hidden !important; 
+        background: #0f172a !important; 
+      } 
+
+      #artplayer-container { 
+        width: 100vw !important; 
+        height: 100vh !important; 
+        position: fixed !important; 
+        top: 0 !important; 
+        left: 0 !important; 
+        z-index: 999999 !important; 
+        outline: none !important; 
+        background: #0f172a !important;
+      }
+
+      /* AN HĂN POSTER LỚN CỦA PLAYER */
+      .art-poster, .art-poster-img {
+        display: none !important;
+      }
+
+      /* TÙY CHỈNH LOADING SCREEN MỚI CỰC ĐẸP */
+      .art-loading {
+        background: #0f172a !important; /* Nền tối phẳng mượt */
+      }
+      .art-loading-icon, .art-icon-loading { 
+        display: none !important; 
+      }
+      
+      .custom-art-loading-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .custom-art-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-left-color: #38bdf8;
+        border-radius: 50%;
+        animation: artSpin 0.8s linear infinite;
+      }
+      .custom-art-loading-text {
+        margin-top: 15px;
+        color: #f8fafc;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      @keyframes artSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    \`;
+    document.head.appendChild(style);
+
+    var container = document.createElement('div');
+    container.id = 'artplayer-container';
+    container.setAttribute('tabindex', '0');
+    container.setAttribute('autofocus', 'true');
+    document.body.appendChild(container);
+
+    var lowerPlayUrl = (playUrl || '').toLowerCase();
+    var lowerRawUrl = (rawStreamUrl || '').toLowerCase();
+    
+    var isProxyLink = PROXY_ENABLED && WORKER_POOL.some(function(worker) {
+      return lowerPlayUrl.indexOf(worker.toLowerCase()) !== -1;
+    });
+
+    var isM3U8 = lowerRawUrl.indexOf('.m3u8') !== -1 || 
+                 lowerPlayUrl.indexOf('.m3u8') !== -1 || 
+                 lowerPlayUrl.indexOf('%2fm3u8') !== -1 ||
+                 isProxyLink;
+
+    var customSettings = [];
+    if (PROXY_ENABLED && WORKER_POOL && WORKER_POOL.length > 0) {
+      customSettings.push({
+        html: 'Server Proxy',
+        tooltip: 'Server ' + (activeWorkerIndex + 1),
+        selector: WORKER_POOL.map(function(workerUrl, idx) {
+          return {
+            default: idx === activeWorkerIndex,
+            html: 'Server ' + (idx + 1) + (idx === activeWorkerIndex ? ' (Đang chọn)' : ''),
+            url: workerUrl,
+            index: idx
+          };
+        }),
+        onSelect: function (item) {
+          bridgeLog('🔄 [ArtPlayer]: Chuyển sang ' + item.html);
+          activeWorkerIndex = item.index;
+          var newPlayUrl = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
+          window.art.switchUrl(newPlayUrl);
+          return item.html;
+        }
+      });
+    }
+
+    customSettings.push({
+      html: 'Tỉ lệ màn hình',
+      tooltip: 'Mặc định',
+      selector: [
+        { default: true, html: 'Mặc định', value: 'default' },
+        { html: '16:9', value: '16:9' },
+        { html: '4:3', value: '4:3' },
+        { html: 'Phủ kín (Crop)', value: 'cover' }
+      ],
+      onSelect: function (item) {
+        window.art.aspectRatio = item.value;
+        return item.html;
+      }
+    });
+
+    window.art = new Artplayer({
+      container: '#artplayer-container',
+      url: playUrl,
+      type: isM3U8 ? 'm3u8' : 'mp4',
+      autoplay: true,
+      volume: 0.8,
+      isLive: false,
+      hotkey: true,
+      setting: true,
+      playbackRate: true,
+      aspectRatio: true,
+      fullscreen: true,
+      fullscreenWeb: true,
+      pip: true,
+      autoOrientation: true,
+      airplay: true,
+      screenshot: true,
+      theme: '#38bdf8',
+
+      // NẠP LOADING CỦA ARTPLAYER
+      customHTML: {
+        loading: \`
+          <div class="custom-art-loading-box">
+            <div class="custom-art-spinner"></div>
+            <div class="custom-art-loading-text">Đang tải video...</div>
+          </div>
+        \`
+      },
+
+      customType: {
+        m3u8: function (video, url, art) {
+          if (Hls.isSupported()) {
+            if (art.hls) art.hls.destroy();
+            var hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: false,
+              backBufferLength: 90,
+              maxBufferLength: 30,
+              maxMaxBufferLength: 600
+            });
+
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            art.hls = hls;
+
+            art.on('destroy', function () {
+              if (art.hls) art.hls.destroy();
+            });
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+          }
+        }
+      }
+    });
+
+    window.art.on('ready', function() {
+      bridgeLog('🎉 [ArtPlayer]: Sẵn sàng!');
+      setTimeout(function() {
+        container.focus();
+        if (window.art && window.art.template && window.art.template.$player) {
+          window.art.template.$player.focus();
+        }
+      }, 300);
+
+      window.art.play().catch(function() {
+        window.art.muted = true;
+        window.art.play();
+      });
+    });
+
+    // LẮNG NGHE BÀN PHÍM VÀ REMOTE TV
+    window.addEventListener('keydown', function(e) {
+      if (!window.art) return;
+
+      var code = e.keyCode || e.which;
+      var key = e.key;
+
+      // ⏩ LÙI VIDEO (10s)
+      if (code === 37 || code === 21 || code === 88 || code === 412 || key === 'ArrowLeft' || key === 'MediaRewind') {
+        e.preventDefault();
+        e.stopPropagation();
+        var targetTime = Math.max(0, window.art.currentTime - 10);
+        window.art.seek = targetTime;
+        window.art.notice.show = '⏪ Lùi 10s (' + Math.floor(targetTime) + 's)';
+      }
+      
+      // ⏩ TUA VIDEO (10s)
+      else if (code === 39 || code === 22 || code === 87 || code === 417 || key === 'ArrowRight' || key === 'MediaFastForward') {
+        e.preventDefault();
+        e.stopPropagation();
+        var targetTime = Math.min(window.art.duration || 99999, window.art.currentTime + 10);
+        window.art.seek = targetTime;
+        window.art.notice.show = '⏩ Tua 10s (' + Math.floor(targetTime) + 's)';
+      }
+
+      // 🔊 TĂNG ÂM LƯỢNG
+      else if (code === 38 || code === 19 || key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.art.volume = Math.min(1, window.art.volume + 0.1);
+        window.art.notice.show = '🔊 Âm lượng: ' + Math.round(window.art.volume * 100) + '%';
+      }
+
+      // 🔉 GIẢM ÂM LƯỢNG
+      else if (code === 40 || code === 20 || key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.art.volume = Math.max(0, window.art.volume - 0.1);
+        window.art.notice.show = '🔉 Âm lượng: ' + Math.round(window.art.volume * 100) + '%';
+      }
+
+      // ⏯️ PAUSE / PLAY
+      else if (code === 32 || code === 13 || code === 23 || code === 66 || code === 179 || key === ' ' || key === 'Enter' || key === 'Select') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.art.toggle();
+      }
+    }, true);
+
+  } catch (e) {
+    bridgeLog('❌ [renderArtPlayer - Lỗi]: ' + e.message);
+  }
+} 
+    `;
+    }
+
+    // =========================================================================
+    // 🎨 PLAYER DISPATCHER: Hàm dùng chung để phát qua Native hoặc Custom Player
+    // =========================================================================
+    function mainJS() {
+        return `
     function dispatchToPlayer(mediaUrl, dispatchSource) {
       try {
         hasDispatchedAny = true;
@@ -606,6 +869,8 @@ function runjS() {
         else {
           bridgeLog('🎨 [DISPATCH CUSTOM ARTPLAYER] Rendering...');
           dispatchMediaStream(mediaUrl);
+          SnifferBridge.toast("Đã setup thành công, trình phát có hỗ trợ chuyển server. Bạn hãy sử dụng chúng nếu video không xem được.")
+          
         }
       } catch (e) {
         bridgeLog('❌ [dispatchToPlayer - Lỗi]: ' + e.message);
@@ -772,107 +1037,8 @@ function runjS() {
       }
     }
 
-function renderArtPlayer(playUrl, rawStreamUrl) {
-  try {
-    bridgeLog('🚀 [renderArtPlayer]: Tạo Giao diện ArtPlayer Fullscreen...');
-
-    document.body.innerHTML = '';
-    var style = document.createElement('style');
-    style.innerHTML = 'html, body { width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background-color: #000 !important; } #artplayer-container { width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 999999 !important; }';
-    document.head.appendChild(style);
-
-    var container = document.createElement('div');
-    container.id = 'artplayer-container';
-    document.body.appendChild(container);
-
-    // 🎯 1. NHẬN DIỆN M3U8 THÔNG MINH (KỂ CẢ KHI DÙNG PROXY HOẶC ĐÃ ENCODE)
-    var lowerPlayUrl = (playUrl || '').toLowerCase();
-    var lowerRawUrl = (rawStreamUrl || '').toLowerCase();
-    
-    var isProxyLink = PROXY_ENABLED && WORKER_POOL.some(function(worker) {
-      return lowerPlayUrl.indexOf(worker.toLowerCase()) !== -1;
-    });
-
-    var isM3U8 = lowerRawUrl.indexOf('.m3u8') !== -1 || 
-                 lowerPlayUrl.indexOf('.m3u8') !== -1 || 
-                 lowerPlayUrl.indexOf('%2fm3u8') !== -1 ||
-                 isProxyLink; // Nếu đi qua Proxy, ưu tiên ép kiểu m3u8 để Hls.js xử lý
-
-    // 🎯 2. TẠO DANH SÁCH MENU ĐỔI SERVER PROXY CHO BÁNH RĂNG CÀI ĐẶT
-    var proxySelectorSettings = [];
-    if (PROXY_ENABLED && WORKER_POOL && WORKER_POOL.length > 0) {
-      proxySelectorSettings.push({
-        html: 'Server Proxy',
-        tooltip: 'Server ' + (activeWorkerIndex + 1),
-        selector: WORKER_POOL.map(function(workerUrl, idx) {
-          return {
-            default: idx === activeWorkerIndex,
-            html: 'Server ' + (idx + 1) + (idx === activeWorkerIndex ? ' (Đang dùng)' : ''),
-            url: workerUrl,
-            index: idx
-          };
-        }),
-        onSelect: function (item) {
-          bridgeLog('🔄 [ArtPlayer]: Người dùng đổi sang ' + item.html);
-          activeWorkerIndex = item.index;
-          
-          // Dựng lại Link Proxy mới với Server được chọn
-          var newPlayUrl = buildProxyUrl(rawStreamUrl, activeWorkerIndex);
-          
-          // Switch đường dẫn mới trực tiếp trên ArtPlayer
-          window.art.switchUrl(newPlayUrl);
-          return item.html;
-        }
-      });
-    }
-
-    // 🎯 3. KHỞI TẠO ARTPLAYER VỚI ĐẦY ĐỦ NÚT BÁNH RĂNG CÀI ĐẶT
-    window.art = new Artplayer({
-      container: '#artplayer-container',
-      url: playUrl,
-      type: isM3U8 ? 'm3u8' : 'mp4',
-      autoplay: true,
-      fullscreen: true,
-      fullscreenWeb: true,
-      pip: true,
-      setting: true, // ⚙️ BẬT NÚT BÁNH RĂNG CÀI ĐẶT CỦA ARTPLAYER
-      settings: proxySelectorSettings, // Gắn Menu đổi Server vào Bánh răng
-      customType: {
-        m3u8: function (video, url, art) {
-          if (Hls.isSupported()) {
-            if (art.hls) art.hls.destroy();
-            var hls = new Hls({
-              enableWorker: true,
-              lowLatencyMode: true,
-              backBufferLength: 90
-            });
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            art.hls = hls;
-            
-            art.on('destroy', function() {
-              if (art.hls) art.hls.destroy();
-            });
-          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = url;
-          }
-        }
-      }
-    });
-
-    window.art.on('ready', function() {
-      bridgeLog('🎉 [ArtPlayer]: Trình phát đã Sẵn sàng! (Loại: ' + (isM3U8 ? 'm3u8' : 'mp4') + ')');
-      window.art.play().catch(function() {
-        window.art.muted = true;
-        window.art.play();
-      });
-    });
-
-  } catch (e) {
-    bridgeLog('❌ [renderArtPlayer - Lỗi]: ' + e.message);
-  }
-}
-
+    // Build Artplayer
+    ${artPlayer()}
 
     function scanVideoElements() {
       if (hasDispatchedAny) return;
@@ -887,34 +1053,133 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       } catch (e) {}
     }
 
-function handleMainExecution() {
-  try { 
-    // 🚀 ƯU TIÊN 1: Ép setVideo chạy ngay lập tức khi vào trang
-    if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function' && !hasDispatchedAny) {
-      bridgeLog('⚡ [handleMainExecution]: Ép setVideo chạy ưu tiên ngay khi tải trang...');
-      var success = setVideo(window.location.href, 'DirectDOM');
-      if (success) return; // Nếu thành công thì dừng luôn, không cần quét gì nữa
+    function handleMainExecution() {
+      try { 
+        // 🚀 ƯU TIÊN 1: Ép setVideo chạy ngay lập tức khi vào trang
+        if (typeof USE_CUSTOM_DECODER !== 'undefined' && USE_CUSTOM_DECODER && typeof setVideo === 'function' && !hasDispatchedAny) {
+          bridgeLog('⚡ [handleMainExecution]: Ép setVideo chạy ưu tiên ngay khi tải trang...');
+          var success = setVideo(window.location.href, 'DirectDOM');
+          if (success) return; // Nếu thành công thì dừng luôn, không cần quét gì nữa
+        }
+
+        // 🎯 ƯU TIÊN 2: Quét tag <video>
+        scanVideoElements(); 
+      } catch (e) {
+        bridgeLog('❌ [handleMainExecution - Lỗi]: ' + e.message);
+      }
+    }
+    `;
     }
 
-    // 🎯 ƯU TIÊN 2: Quét tag <video>
-    scanVideoElements(); 
-  } catch (e) {
-    bridgeLog('❌ [handleMainExecution - Lỗi]: ' + e.message);
-  }
-}
+    // =========================================================================
+    // KẾT NỐI TOÀN BỘ SCRIPT
+    // =========================================================================
+    function loadingSC() {
+        return `
+  (function () {
+  // 🎯 1. TẠO MÃ CSS DẠNG NỀN TỐI + SPINNER XOAY
+  var loadingCSS = \`
+    /* Che toàn bộ màn hình với nền tối */
+    
+    #custom-loading-screen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background-color: #0f172a !important; /* Nền tối sang trọng */
+      z-index: 99999999 !important; /* Luôn đè lên trên tất cả */
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      transition: opacity 0.4s ease, visibility 0.4s ease !important;
+    }
 
-    `;
+    /* Vòng xoay Spinner */
+    .custom-spinner {
+      width: 50px !important;
+      height: 50px !important;
+      border: 4px solid rgba(255, 255, 255, 0.1) !important;
+      border-left-color: #38bdf8 !important; /* Màu xanh sáng */
+      border-radius: 50% !important;
+      animation: custom-spin 1s linear infinite !important;
+    }
+
+    /* Dòng chữ bên dưới Spinner */
+    .custom-loading-text {
+      margin-top: 16px !important;
+      color: #f8fafc !important;
+      font-size: 15px !important;
+      font-weight: 500 !important;
+      letter-spacing: 0.5px !important;
+    }
+
+    /* Hiệu ứng xoay 360 độ */
+    @keyframes custom-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  \`;
+
+  // 🎯 2. HÀM INJECT CSS & HTML VÀO TRANG SỚM NHẤT CÓ THỂ
+  function injectLoadingScreen() {
+    if (document.getElementById('custom-loading-screen')) return;
+
+    // Inject CSS
+    var styleNode = document.createElement('style');
+    styleNode.id = 'custom-loading-style';
+    styleNode.textContent = loadingCSS;
+
+    // Inject HTML Loading Screen
+    var loadingNode = document.createElement('div');
+    loadingNode.id = 'custom-loading-screen';
+    loadingNode.innerHTML = \`
+      <div class="custom-spinner"></div>
+      <div class="custom-loading-text">Đang tải dữ liệu...</div>
+    \`;
+
+    // Ép nhét vào documentElement (thẻ <html>) ngay cả khi chưa có thẻ <body> hay <head>
+    var target = document.head || document.documentElement;
+    target.appendChild(styleNode);
+    document.documentElement.appendChild(loadingNode);
   }
 
-  // =========================================================================
-  // KẾT NỐI TOÀN BỘ SCRIPT
-  // =========================================================================
-  return `
+  // 🎯 3. HÀM ẨN VÀ XÓA MÀN HÌNH CHỜ KHI WEB ĐÃ TẢI XONG
+  window.hideLoadingScreen = function () {
+    var screen = document.getElementById('custom-loading-screen');
+    if (screen) {
+      screen.style.opacity = '0';
+      screen.style.visibility = 'hidden';
+      setTimeout(function () {
+        if (screen && screen.parentNode) {
+          screen.parentNode.removeChild(screen);
+        }
+      }, 400); // Đợi hiệu ứng mờ dần (fade out) 0.4s rồi xóa khỏi HTML
+    }
+  };
+
+  // Thực thi inject ngay lập tức
+  injectLoadingScreen();
+
+  // Tự động tắt màn hình chờ khi toàn bộ trang web (DOM + Tài nguyên) đã tải xong
+  if (document.readyState === 'complete') {
+    window.hideLoadingScreen();
+  } else {
+    window.addEventListener('load', window.hideLoadingScreen);
+  }
+})();
+  `;
+    }
+
+    return `
 (function initEnhancedVideoSniffer() {
   if (window.__SNIFFER_INITIALIZED__) return;
   window.__SNIFFER_INITIALIZED__ = true;
 
   try {
+    ${loadingSC()}
     ${configJS()}
     ${setVideoJS()}
     ${getLinkJS()}
