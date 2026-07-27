@@ -4,6 +4,12 @@
 // =============================================================================
 BaseURL = "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec";
 BaseJSON = "";
+LISTURL = `
+https://phimsexsuong3x.net/
+https://phimsexsuong3x.net/lop-hoc-cho-cac-thanh-nien-co-xu-huong-tinh-duc-lech-lac/51764/
+https://play2.cdn-xvideos-xnxx.xyz/embed4.php?id1=30dd5a339566410a51299a1a4fc18edb
+`
+
 
 function getManifest() {
     return JSON.stringify({
@@ -11,7 +17,7 @@ function getManifest() {
         "name": "Test EMBED TO Exoplayer",
         "description": "Nguồn xem phim Online ổn định",
         "version": "1.5.2",             
-        "baseUrl": "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec",
+        "baseUrl": "https://blank.org",
         "iconUrl": "https://crimescenesolutions.co.za/wp-content/uploads/2026/04/phimhayok-io-fav.jpg", 
         "isEnabled": true,
         "type": "VIDEO",
@@ -82,17 +88,25 @@ function appendParamWithRegex(url, myParam) {
 function parseListResponse(html) {
 
     try {
-      
-       // print("[parseMovieDetail data]",html);
-        var id = BaseURL;
-        var parsed = JSON.parse(html);
-        BaseJSON = Array.isArray(parsed) ? parsed[0] : parsed;
-        var videoUrl = BaseJSON.link;
-        var $url = BaseJSON.url || "";
-        // Lưu trữ object đầu tiên trực tiếp vào BaseJSON toàn cục để các hàm sau dùng tiện lợi
-        var items = [];
+const urls = LISTURL.trim()
+  .split('\n')
+  .map(url => url.trim())
+  .filter(Boolean);
+
+// 2. Lấy URL đầu tiên làm URL chính
+const baseUrl = urls[0];
+
+// 3. Lấy các URL từ vị trí thứ 2 trở đi, encode mã hóa và ghép thành param query
+const queryParams = urls
+  .slice(1)
+  .map(url => `fetchUrl=${encodeURIComponent(url)}`)
+  .join('&');
+
+// 4. Kết hợp lại thành URL hoàn chỉnh
+const finalUrl = `${baseUrl}?${queryParams}`;
+var items = [];
         items.push({
-            "id": videoUrl,          
+            "id": finalUrl,          
             "title": "Test", 
             "posterUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png",  
             "backdropUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png"
@@ -416,7 +430,7 @@ function runjS() {
     var activeWorkerIndex = 0;
     var PLAYER_MODE = "CUSTOM"; // "EXO": Phát qua Native App | "CUSTOM": Nhúng ArtPlayer
     var PROXY_ENABLED = false; 
-    var HTMLRAW = 1;
+    var HTMLRAW = 0;
     var STARTRUN = 0;
     var USE_CUSTOM_DECODER = false; // Biến dùng custom decode để giải mã trước
     var SET_VIDEO_WAIT_MS = 2000; // thời gian chờ khi decode
