@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.1.9",
+    "version": "1.2.0",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -579,7 +579,6 @@ function parseDetailResponse(html, url) {
 }
 
 
-
 function rawJS() {
 
   return `
@@ -756,36 +755,57 @@ function rawJS() {
     })();
 
     // -------------------------------------------------------------
-    // LÁ CHẮN ANTI-POPUP & ANTI-REDIRECT
+    // LÁ CHẮN ANTI-POPUP & ANTI-REDIRECT CỰC MẠNH CHO MOBILE
     // -------------------------------------------------------------
     (function applyAntiPopupShield() {
         try {
             var dummyWin = { focus: function () {}, blur: function () {}, close: function () {}, closed: true, postMessage: function () {} };
+            
+            // Chặn tuyệt đối mở cửa sổ/tab mới
             window.open = function (url) {
                 log('[Anti-Popup] Chặn window.open: ' + url);
                 return dummyWin;
             };
 
+            // Vô hiệu hóa gán hướng dẫn trang qua location
             try {
                 window.location.assign = function (url) { log('[Anti-Redirect] Chặn assign: ' + url); };
                 window.location.replace = function (url) { log('[Anti-Redirect] Chặn replace: ' + url); };
             } catch (e) {}
 
-            window.addEventListener('click', function (e) {
+            // Chặn bắt sự kiện click ngầm trên toàn trang ở Capture Phase (chặn trước khi sự kiện nổi bọt ra ngoài)
+            var blockHandler = function (e) {
                 var target = e.target;
                 while (target && target !== document) {
                     if (target.tagName === 'A') {
+                        var href = target.getAttribute('href');
                         var attrTarget = target.getAttribute('target');
-                        if (attrTarget === '_blank' || target.target === '_blank') {
+                        
+                        // Nếu thẻ a mở tab mới hoặc link quảng cáo lạ không phải nội dung trang
+                        if (attrTarget === '_blank' || target.target === '_blank' || (href && href.startsWith('http') && !href.includes(window.location.hostname))) {
                             e.preventDefault();
                             e.stopPropagation();
-                            log('[Anti-Popup] Chặn click <a> _blank');
-                            return;
+                            log('[Anti-Popup] Đã chặn click chuyển hướng/quảng cáo từ thẻ A: ' + href);
+                            return false;
                         }
                     }
                     target = target.parentNode;
                 }
+            };
+
+            window.addEventListener('click', blockHandler, true);
+            window.addEventListener('touchstart', blockHandler, true);
+            
+            // Chặn thêm các sự kiện tạo popup tự động từ script rác bên thứ 3
+            document.addEventListener('click', function(e) {
+                if (e.isTrusted && window.location.href.includes('haiten')) {
+                    // Cho phép click hợp lệ của UI người dùng tự tạo
+                    if (e.target.closest && (e.target.closest('#v-top-bar') || e.target.closest('#v-arrow-prev') || e.target.closest('#v-arrow-next'))) {
+                        return;
+                    }
+                }
             }, true);
+
         } catch (e) {}
     })();
 
@@ -794,7 +814,7 @@ function rawJS() {
     var urlInfo = null;
 
     // -------------------------------------------------------------
-    // CẤY CSS (THÊM HIỆU ỨNG CHUYỂN OPACITY MƯỢT MÀ)
+    // CẤY CSS
     // -------------------------------------------------------------
     function injectStyles() {
         try {
@@ -1003,17 +1023,16 @@ function rawJS() {
     window.addEventListener('orientationchange', function() { setTimeout(updatePlayerDimensions, 300); });
 
     // -------------------------------------------------------------
-    // QUẢN LÝ TỰ ĐỘNG ẨN SAU 10 GIÂY (IDLE CONTROLLER)
+    // IDLE CONTROLLER (TỰ ĐỘNG ẨN SAU 10 GIÂY, OPACITY 0.2)
     // -------------------------------------------------------------
     var idleTimer = null;
-    const IDLE_TIMEOUT = 10000; // 10 giây
+    const IDLE_TIMEOUT = 10000;
 
     function resetIdleTimer() {
         var topBar = document.getElementById('v-top-bar');
         var prevBtn = document.getElementById('v-arrow-prev');
         var nextBtn = document.getElementById('v-arrow-next');
 
-        // Bật lại độ sáng 100% cho tất cả các nút khi có tương tác
         if (topBar) topBar.style.opacity = '1';
         if (prevBtn) prevBtn.style.opacity = '1';
         if (nextBtn) nextBtn.style.opacity = '1';
@@ -1021,13 +1040,11 @@ function rawJS() {
         if (idleTimer) clearTimeout(idleTimer);
 
         idleTimer = setTimeout(function () {
-            // Tự đóng các khung popup nếu đang mở
             var gridDiv = document.getElementById('v-box-list');
             var histDiv = document.getElementById('v-hist-dropdown');
             if (gridDiv) gridDiv.className = 'closed';
             if (histDiv) histDiv.className = 'closed';
 
-            // Làm mờ tất cả các nút xuống opacity 0.2
             if (topBar) topBar.style.opacity = '0.2';
             if (prevBtn) prevBtn.style.opacity = '0.2';
             if (nextBtn) nextBtn.style.opacity = '0.2';
@@ -1095,7 +1112,7 @@ function rawJS() {
     }
 
     // -------------------------------------------------------------
-    // TẠO UI TRỰC TIẾP TRÊN BODY
+    // DỰNG GIAO DIỆN UI
     // -------------------------------------------------------------
     function buildUI(autoOpenHist) {
         log('[Build UI] Tiến hành dựng giao diện điều khiển...');
@@ -1115,7 +1132,6 @@ function rawJS() {
         const headerDiv = document.createElement('div');
         headerDiv.id = 'v-top-bar';
 
-        // 1. NÚT FIT MODE
         const fitBtn = document.createElement('button');
         fitBtn.id = 'v-btn-mode';
         fitBtn.className = 'v-btn-act';
@@ -1126,7 +1142,6 @@ function rawJS() {
             resetIdleTimer();
         };
 
-        // 2. NÚT & DROPDOWN DANH SÁCH TẬP
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'v-btn-epi';
         toggleBtn.className = 'v-btn-act';
@@ -1156,7 +1171,6 @@ function rawJS() {
         epiWrapper.appendChild(toggleBtn);
         epiWrapper.appendChild(gridDiv);
 
-        // 3. NÚT & DROPDOWN LỊCH SỬ (XỔ XUỐNG)
         var prevHist = getHistory(urlInfo.seriesKey);
         var prevEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
         
@@ -1191,7 +1205,6 @@ function rawJS() {
         histWrapper.appendChild(histBtn);
         histWrapper.appendChild(histDiv);
 
-        // ĐIỀU KHIỂN TOGGLE MENU
         toggleBtn.onclick = function (e) {
             e.stopPropagation();
             histDiv.className = 'closed';
@@ -1211,7 +1224,6 @@ function rawJS() {
             if (histDiv) histDiv.className = 'closed';
         });
 
-        // Click trên nút trong Dropdown Lịch sử
         var btnPrev = histDiv.querySelector('#v-btn-hist-prev');
         if (btnPrev) {
             btnPrev.onclick = function(e) {
@@ -1230,13 +1242,11 @@ function rawJS() {
             };
         }
 
-        // RÁP CÁC NÚT VÀO THANH TOP BAR
         headerDiv.appendChild(fitBtn);
         headerDiv.appendChild(epiWrapper);
         headerDiv.appendChild(histWrapper);
         parent.appendChild(headerDiv);
 
-        // NÚT CHUYỂN TẬP ❮ ❯
         if (urlInfo.current > 1) {
             const prevBtn = document.createElement('div');
             prevBtn.className = 'v-arrow-btn';
@@ -1265,26 +1275,21 @@ function rawJS() {
 
         updatePlayerDimensions();
 
-        // -------------------------------------------------------------
-        // TỰ ĐỘNG BỎNG KHUNG LỊCH SỬ KHI VỪA TẢI TRANG
-        // -------------------------------------------------------------
         if (autoOpenHist) {
             var isSameOrNext = (prevEpi !== null && (urlInfo.current === prevEpi || urlInfo.current === prevEpi + 1));
-            
             if (prevEpi !== null && !isSameOrNext) {
                 histDiv.className = 'open';
                 showToast('Phát hiện lịch sử: Tập ' + prevEpi);
             } else {
-                showToast('Đang phát Tập ' + urlInfo.current + "\n\n Đôi khi video bị lỗi load bạn hãy nhấn tua nhanh qua đoạn đó sẽ phát tiếp được nhé.");
+                showToast('Đang phát Tập ' + urlInfo.current);
             }
         }
 
-        // KÍCH HOẠT BỘ ĐẾM ẨN 10 GIÂY
         setupIdleEvents();
     }
 
     // -------------------------------------------------------------
-    // KHỞI CHẠY TRÌNH PHÁT VÀ DỰNG UI
+    // KHỞI CHẠY TRÌNH PHÁT
     // -------------------------------------------------------------
     ensureDOMReady(function() {
         var initAttempts = 0;
@@ -1313,6 +1318,7 @@ function rawJS() {
                             mainIframe.src = realSrc;
                             mainIframe.setAttribute('allowfullscreen', 'true');
                             mainIframe.setAttribute('frameborder', '0');
+                            // Cấu hình sandbox bảo mật cao ngăn chặn iframe tự ý chuyển trang thiết bị di động
                             mainIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
                             document.body.appendChild(mainIframe);
 
