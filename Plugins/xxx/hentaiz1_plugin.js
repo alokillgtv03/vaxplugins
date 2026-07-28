@@ -7,7 +7,7 @@ function getManifest() {
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
     "version": "1.1.6",
-    info: "Nguồn phim hentai vietsub của VN.",
+    info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
     isEnabled: true,
