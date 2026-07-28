@@ -339,31 +339,21 @@ function getCleanReferer(url) {
 
 function parseDetailResponse(html, url) {
   console.log("parseDetailResponse [Tầng 1]: " + url);
-  //console.log("parseDetailResponse [Raw]: " + html);
+  console.log("parseDetailResponse [Raw]: " + html);
   try {
     var rawJS = checkRaw(runjS(), true);
     var result = getNextFetchStep(url);
 
     console.log("parseDetailResponse [Next URL]: " + result.nextUrl);
     console.log("parseDetailResponse [isEmbed]: " + result.isEmbed);
-    if(result.isEmbed == true){
-      console.log("Gọi hàm embed với link: " + result.nextUrl);
-      return JSON.stringify({
-        "url": result.nextUrl,
-        "isEmbed": result.isEmbed,
-        "headers": {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": getCleanReferer(url)
-        }
-      });
-    }
-    
+
     return JSON.stringify({
       "url": result.nextUrl,
       "isEmbed": result.isEmbed,
       "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": getCleanReferer(url),
+        "Block-Ads": "true",
         "Custom-Js": rawJS
       }
     });
@@ -375,7 +365,7 @@ function parseDetailResponse(html, url) {
 
 function parseEmbedResponse(html, url) {
   console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
-  //console.log("parseEmbedResponse [Raw]: " + html);
+  console.log("parseEmbedResponse [Raw]: " + html);
   try {
     var rawJS = checkRaw(runjS(), true);
     var result = getNextFetchStep(url);
@@ -387,8 +377,9 @@ function parseEmbedResponse(html, url) {
       "url": result.nextUrl,
       "isEmbed": result.isEmbed, // Tự động trả về false khi đã bóc tới tầng cuối!
       "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": getCleanReferer(url),
+        "Block-Ads": "true",
         "Custom-Js": rawJS
       }
     });
@@ -406,37 +397,79 @@ function runjS() {
     // =========================================================================
     function configJS() {
         return `
-    SnifferBridge.toast("🎯 Đang xử lý dữ liệu. Chờ chút nhé...");
+    SnifferBridge.toast("🎯 Đang xử lý dữ liệu. Chờ chút nhé...", 3000);
     
     // ⚙️ GLOBAL CONFIG
     var LOGGER = true; 
     var processedUrls = {};
-    var loggedDropReasons = {}; // Khai báo bộ nhớ đệm chống spam log
+    var loggedDropReasons = {}; 
     var hasDispatchedAny = false;
     var activeWorkerIndex = 0;
-    var PLAYER_MODE = "CUSTOM"; // "EXO": Phát qua Native App | "CUSTOM": Nhúng ArtPlayer
+    var PLAYER_MODE = "CUSTOM"; 
     var PROXY_ENABLED = false; 
     var HTMLRAW = 1;
     var STARTRUN = 0;
-    var USE_CUSTOM_DECODER = false; // Biến dùng custom decode để giải mã trước
-    var SET_VIDEO_WAIT_MS = 2000; // thời gian chờ khi decode
+    var USE_CUSTOM_DECODER = false; 
+    var SET_VIDEO_WAIT_MS = 2000; 
     
-    // 🎯 BỘ LỌC TỪ KHÓA TOÀN CỤC
+    // 🎯 BỘ LỌC TỪ KHÓA BAO GỒM
     var ENABLE_KEYWORD_FILTER = false; 
     var KEYWORD_MATCH_MODE = "ALL";   
     var TARGET_KEYWORDS = ["www.1porn.tv", "get_file", "mp4"];
 
-    function checkKeywordMatch(url) {
-      if (!ENABLE_KEYWORD_FILTER || !TARGET_KEYWORDS || TARGET_KEYWORDS.length === 0) return true;
-      var lowerUrl = String(url).toLowerCase();
-      if (KEYWORD_MATCH_MODE === "ALL") {
-        return TARGET_KEYWORDS.every(function(kw) { return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; });
-      } else {
-        return TARGET_KEYWORDS.some(function(kw) { return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; });
-      }
+    // 🎯 BỘ LỌC TỪ KHÓA LOẠI TRỪ TOÀN CỤC
+    var ENABLE_EXCLUDE_FILTER = true; 
+    var EXCLUDE_MATCH_MODE = "SOME"; 
+    var EXCLUDE_KEYWORDS = ["/config?", "/style", "/title", "/script", "/head", "vast.flimora", "ads", "preview", "trailer"];
+
+    // 🎯 TẬP HỢP LƯU LINK RÁC BỊ LOẠI TRỪ
+    var junkLinksQueue = [];
+
+    function saveJunkLink(url, category, reason) {
+      if (!url || typeof url !== 'string' || url.trim() === "") return;
+      junkLinksQueue.push({
+        url: url,
+        category: category,
+        reason: reason,
+        time: new Date().toLocaleTimeString()
+      });
     }
 
-    // 🎯 HÀM GỠ MÃ HÓA UNICODE CHO RAW URL (Tránh lỗi Invalid URL)
+    function checkKeywordMatch(url) {
+      if (!url || typeof url !== 'string' || url.trim() === "") return { pass: false, reason: "URL rỗng" };
+      var lowerUrl = String(url).toLowerCase();
+
+      if (ENABLE_EXCLUDE_FILTER && EXCLUDE_KEYWORDS && EXCLUDE_KEYWORDS.length > 0) {
+        if (EXCLUDE_MATCH_MODE === "ALL") {
+          var isAllMatch = EXCLUDE_KEYWORDS.every(function(kw) { 
+            return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; 
+          });
+          if (isAllMatch) return { pass: false, reason: "Chứa tất cả từ khóa LOẠI TRỪ" };
+        } else {
+          var isSomeMatch = EXCLUDE_KEYWORDS.some(function(kw) { 
+            return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; 
+          });
+          if (isSomeMatch) return { pass: false, reason: "Chứa từ khóa LOẠI TRỪ" };
+        }
+      }
+
+      if (ENABLE_KEYWORD_FILTER && TARGET_KEYWORDS && TARGET_KEYWORDS.length > 0) {
+        if (KEYWORD_MATCH_MODE === "ALL") {
+          var passAll = TARGET_KEYWORDS.every(function(kw) { 
+            return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; 
+          });
+          if (!passAll) return { pass: false, reason: "Không chứa đủ từ khóa TARGET_KEYWORDS" };
+        } else {
+          var passSome = TARGET_KEYWORDS.some(function(kw) { 
+            return lowerUrl.indexOf(String(kw).toLowerCase().trim()) !== -1; 
+          });
+          if (!passSome) return { pass: false, reason: "Không khớp từ khóa TARGET_KEYWORDS" };
+        }
+      }
+
+      return { pass: true };
+    }
+
     function decodeRawUrl(str) {
       if (!str) return '';
       try {
@@ -449,14 +482,14 @@ function runjS() {
         return str;
       }
     }
+
     var WORKER_POOL = [
       "https://soft-surf-c11d.alokillgtv.workers.dev",
       "https://soft-water-25b0.alokillgtv02.workers.dev"
     ];
     var CUSTOM_REFERER = window.location.href;
     
-    // 🎯 BỎ "embed" VÀ BỔ SUNG domain Google Video / Blogger Video
-    var STREAM_URL_REGEX = /(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+)(?:m3u8|mp4|googlevideo\\.com|bp\\.blogspot\\.com|streaming|stream|playlist|sanstream\\.xyz|cdn=|\\/hls\\/)[^\\s"'>]*/i;
+    var STREAM_URL_REGEX = /(?:\\.m3u8|\\.mp4|\\.ts|googlevideo\\.com|bp\\.blogspot\\.com|\\/hls\\/|playlist|token=|expires=|sig=|signature=)/i;
 
     var snifferQueue = [];
     var setVideoSuccess = false;
@@ -470,7 +503,6 @@ function runjS() {
     var videoObserver = null;
     activeWorkerIndex = Math.floor(Math.random() * WORKER_POOL.length);
 
-    // 🚀 HÀM IN LOG CƠ BẢN
     function bridgeLog(msg) {
       if (!LOGGER) return;
       try {
@@ -489,8 +521,8 @@ function runjS() {
       } catch (e) {}
     }
 
-    // 🚀 HÀM IN LOG LÝ DO BỎ QUA LINK (Chống Spam)
     function logDropOnce(url, reason) {
+      if (!url) return;
       var key = reason + '|' + url;
       if (!loggedDropReasons[key]) {
         loggedDropReasons[key] = true;
@@ -508,16 +540,22 @@ function runjS() {
   function setVideo(rawUrl, sourceName) {
     try {
       if (!USE_CUSTOM_DECODER) return false;
-      bridgeLog('⏳ [setVideo - ĐANG XỬ LÝ ƯU TIÊN] Nguồn: [' + sourceName + ']');
-
+      
       var videoElem = document.querySelector("video source") || document.querySelector("video");
       var decodedUrl = videoElem ? videoElem.src : "";
 
-      if (decodedUrl && typeof decodedUrl === 'string' && decodedUrl.length > 10) {
-        if (typeof checkKeywordMatch === 'function' && !checkKeywordMatch(decodedUrl)) return false;
+      if (decodedUrl && typeof decodedUrl === 'string' && decodedUrl.trim().length > 10 && (decodedUrl.indexOf('http') === 0 || decodedUrl.indexOf('//') === 0)) {
+        if (typeof checkKeywordMatch === 'function') {
+          var checkRes = checkKeywordMatch(decodedUrl);
+          if (!checkRes.pass) {
+            logDropOnce(decodedUrl, checkRes.reason);
+            saveJunkLink(decodedUrl, "other", checkRes.reason);
+            return false;
+          }
+        }
         
+        bridgeLog('⏳ [setVideo - ĐANG XỬ LÝ ƯU TIÊN] Nguồn: [' + sourceName + ']');
         setVideoSuccess = true;
-        hasDispatchedAny = true;
         if (setVideoTimer) clearTimeout(setVideoTimer);
 
         bridgeLog('🎉 [setVideo - THÀNH CÔNG]: Đã lấy được link -> ' + decodedUrl);
@@ -536,35 +574,40 @@ function runjS() {
     // =========================================================================
     // 3. GET LINK JS
     // =========================================================================
-    function getLinkJS(rawUrl, sourceName) {
+    function getLinkJS() {
         return `
     function getLinkJS(rawUrl, sourceName) {
       try {
-        if (!rawUrl || typeof rawUrl !== 'string' || hasDispatchedAny) return;
+        if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === "" || hasDispatchedAny) return;
         
-        // 🎯 Tự động Clean Unicode Escape
         var cleanRawUrl = typeof decodeRawUrl === 'function' ? decodeRawUrl(rawUrl) : rawUrl;
 
         if (cleanRawUrl.indexOf('blob:') === 0 || cleanRawUrl.indexOf('data:') === 0) {
           logDropOnce(cleanRawUrl, "Link Blob/Data");
+          saveJunkLink(cleanRawUrl, "other", "Link Blob/Data");
           return;
         }
 
-        // 🎯 CHẶN LOẠI TRỪ TRANG EMBED/IFRAME WRAPPER BLOGGER (Để chờ Fetch/XHR Interceptor bắt link thật)
         if (cleanRawUrl.indexOf('/embed/') !== -1 || cleanRawUrl.indexOf('blogger.com/video.g') !== -1 || cleanRawUrl.indexOf('youtube.googleapis.com/embed') !== -1) {
-          logDropOnce(cleanRawUrl, "Trang Embed/Iframe Wrapper (Đang chờ Player gọi link stream thật)");
+          logDropOnce(cleanRawUrl, "Trang Embed/Iframe Wrapper");
+          saveJunkLink(cleanRawUrl, "embed", "Iframe/Embed Wrapper Page");
           return;
         }
 
         var absoluteUrl = new URL(cleanRawUrl, document.baseURI || window.location.href).href;
 
-        if (typeof checkKeywordMatch === 'function' && !checkKeywordMatch(absoluteUrl)) {
-          logDropOnce(absoluteUrl, "Không khớp từ khóa TARGET_KEYWORDS");
-          return; 
+        if (typeof checkKeywordMatch === 'function') {
+          var checkRes = checkKeywordMatch(absoluteUrl);
+          if (!checkRes.pass) {
+            logDropOnce(absoluteUrl, checkRes.reason);
+            saveJunkLink(absoluteUrl, "other", checkRes.reason);
+            return;
+          }
         }
 
         if (STREAM_URL_REGEX && !STREAM_URL_REGEX.test(absoluteUrl) && !STREAM_URL_REGEX.test(cleanRawUrl)) {
-          logDropOnce(absoluteUrl, "Không chứa định dạng Stream Media");
+          logDropOnce(absoluteUrl, "Không chứa định dạng Stream Media chuẩn");
+          saveJunkLink(absoluteUrl, "other", "Không chứa định dạng Stream Media");
           return;
         }
 
@@ -573,6 +616,7 @@ function runjS() {
 
         if (!isDomainAllowed(absoluteUrl)) {
           logDropOnce(absoluteUrl, "Bị chặn bởi BLOCKED_DOMAINS");
+          saveJunkLink(absoluteUrl, "other", "Domain bị chặn");
           return; 
         }
 
@@ -605,7 +649,6 @@ function runjS() {
       if (snifferQueue.length > 0) {
         var fallbackItem = snifferQueue[0];
         bridgeLog('🚀 [Sniffer Fallback]: Lấy link từ Sniffer gửi Player -> ' + fallbackItem.url);
-        hasDispatchedAny = true;
         dispatchToPlayer(fallbackItem.url, "SnifferFallback (" + fallbackItem.source + ")");
       }
     }
@@ -708,54 +751,63 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       window.art.play().catch(function() { window.art.muted = true; window.art.play(); });
     });
 
-    window.addEventListener('keydown', function(e) {}, true);
-
   } catch (e) { bridgeLog('❌ [renderArtPlayer - Lỗi]: ' + e.message); }
 } 
     `;
     }
   
-     // =========================================================================
-    // 4. Hàm chạy sau khi web tải xong 10s
+    // =========================================================================
+    // 5. HÀM CHẠY SAU KHÍ WEB TẢI XONG
     // =========================================================================
     function doneHTML(){
       return `
-         function executeDump() {
-          if (STARTRUN === 1) return; 
+        function executeDump() {
+          if (STARTRUN === 1 || hasDispatchedAny) return; 
           STARTRUN = 1;
+
           var domHTML = document.getElementsByTagName("html");
           if (domHTML && domHTML[0]) {
-            var rawHTML = domHTML[0].outerHTML;
-            //bridgeLog("[Raw HTML (Sau 10s Load)]" + rawHTML);
-            
-            setVideoSuccess = true;
-            hasDispatchedAny = true;
-            if (setVideoTimer) clearTimeout(setVideoTimer);
             var VDeo = document.querySelector(".art-video");
             var VDeo2 = document.querySelector(".art-video source");
             var linkVD = "";
-            if(VDeo){
-              linkVD = VDeo.src;
+            if(VDeo && VDeo.src){ linkVD = VDeo.src; }
+            else if(VDeo2 && VDeo2.src){ linkVD = VDeo2.src; }
+
+            if (linkVD && typeof linkVD === 'string' && linkVD.trim().length > 10 && (linkVD.indexOf('http') === 0 || linkVD.indexOf('//') === 0)) {
+              if (typeof checkKeywordMatch === 'function') {
+                var checkRes = checkKeywordMatch(linkVD);
+                if (!checkRes.pass) {
+                  logDropOnce(linkVD, checkRes.reason);
+                  saveJunkLink(linkVD, "other", checkRes.reason);
+                  return;
+                }
+              }
+              
+              setVideoSuccess = true;
+              if (setVideoTimer) clearTimeout(setVideoTimer);
+
+              bridgeLog('🎉 [setVideo - THÀNH CÔNG]: Đã lấy được link -> ' + linkVD);
+              dispatchToPlayer(linkVD, "setVideo");
+            } else {
+              bridgeLog('⚠️ [Raw HTML]: Không tìm thấy link video hợp lệ khi quét HTML.');
             }
-            if(VDeo2){
-            linkVD = VDeo2.src;
-            }
-            
-            bridgeLog('🎉 [setVideo - THÀNH CÔNG]: Đã lấy được link -> ' + linkVD);
-            dispatchToPlayer(linkVD, "setVideo");
-            
           }
         }
       `
     }
   
     // =========================================================================
-    // 5. MAIN JS
+    // 6. MAIN JS (TÍCH HỢP TOAST THÔNG BÁO LỖI 10 GIÂY)
     // =========================================================================
     function mainJS() {
         return `
     function dispatchToPlayer(mediaUrl, dispatchSource) {
       try {
+        if (!mediaUrl || typeof mediaUrl !== 'string' || mediaUrl.trim() === "") {
+          bridgeLog('⚠️ [DISPATCH REJECTED]: Từ chối phát link rỗng từ [' + dispatchSource + ']');
+          return;
+        }
+
         hasDispatchedAny = true;
         if (videoObserver) videoObserver.disconnect();
         bridgeLog('🛑 [HALT]: Dừng các cơ chế quét vì đã tìm thấy Link.');
@@ -765,7 +817,7 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
         if (PLAYER_MODE === "EXO") {
           var playUrl = PROXY_ENABLED ? buildProxyUrl(mediaUrl, activeWorkerIndex) : mediaUrl;
           if (window.SnifferBridge && typeof window.SnifferBridge.onMediaFound === 'function') window.SnifferBridge.onMediaFound(playUrl, CUSTOM_REFERER);
-          else window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\//, '') + "#Intent;scheme=https;type=video/*;end";
+          else window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\/ freedom/, '') + "#Intent;scheme=https;type=video/*;end";
         } else {
           dispatchMediaStream(mediaUrl);
         }
@@ -788,31 +840,18 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       }
     }
 
-    // 🎯 HÀM BẬT CƠ CHẾ CHỐNG CHUYỂN TRANG VÀ POPUP QUẢNG CÁO
     function preventRedirects() {
       try {
         bridgeLog('🛡️ [SECURITY]: Đang bật cơ chế chống chuyển trang & chặn Popup...');
 
-        // 1. Chặn hoàn toàn window.open (Không cho mở tab/cửa sổ mới)
         window.open = function(url, target, features) {
           bridgeLog('🛡️ [CHẶN POPUP]: Đã chặn mở tab mới -> ' + (url || 'about:blank'));
           return null;
         };
 
-        // 2. Chặn chuyển hướng trang bằng location.assign và location.replace
-        try {
-          window.location.assign = function(url) {
-            bridgeLog('🛡️ [CHẶN REDIRECT]: Đã chặn location.assign -> ' + url);
-          };
-        } catch(e1) {}
+        try { window.location.assign = function(url) { bridgeLog('🛡️ [CHẶN REDIRECT]: Đã chặn location.assign -> ' + url); }; } catch(e1) {}
+        try { window.location.replace = function(url) { bridgeLog('🛡️ [CHẶN REDIRECT]: Đã chặn location.replace -> ' + url); }; } catch(e2) {}
 
-        try {
-          window.location.replace = function(url) {
-            bridgeLog('🛡️ [CHẶN REDIRECT]: Đã chặn location.replace -> ' + url);
-          };
-        } catch(e2) {}
-
-        // 3. Triệt hạ clickjacking (Click vào đâu cũng nhảy tab mới hoặc nhảy sang domain rác)
         window.addEventListener('click', function(e) {
           var target = e.target ? e.target.closest('a') : null;
           if (target && target.href) {
@@ -824,15 +863,11 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
           }
         }, true);
 
-      } catch(e) {
-        bridgeLog('❌ [preventRedirects - Lỗi]: ' + e.message);
-      }
+      } catch(e) { bridgeLog('❌ [preventRedirects - Lỗi]: ' + e.message); }
     }
 
-    // 🎯 HÀM LÊN LỊCH TỰ ĐỘNG LẤY RAW HTML SAU KHI WEB TẢI XONG + 10s
     function scheduleRawHtmlDump() {
       if (typeof HTMLRAW === 'undefined' || HTMLRAW !== 1) return;
-
       ${doneHTML()}
       
       function startTimer() {
@@ -851,13 +886,10 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       try {
         bridgeLog('🚀 [INIT] Khởi chạy Sniffer! Đang nạp Interceptors...');
 
-        // 🎯 KÍCH HOẠT CHỐNG POPUP & REDIRECT
         preventRedirects();
-
-        // 🎯 LÊN LỊCH LẤY RAW HTML SAU 10s LOAD
         scheduleRawHtmlDump();
 
-        // 🎯 BỔ SUNG SOI LINK GOOGLE VIDEO VÀO XHR INTERCEPTOR
+        // 🎯 XHR INTERCEPTOR
         if (typeof XMLHttpRequest !== 'undefined') {
           var originalOpen = XMLHttpRequest.prototype.open;
           var originalSend = XMLHttpRequest.prototype.send;
@@ -876,7 +908,7 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
           bridgeLog('✅ [INIT]: Nạp thành công XHR Interceptor');
         }
 
-        // 🎯 BỔ SUNG SOI LINK GOOGLE VIDEO VÀO FETCH INTERCEPTOR
+        // 🎯 FETCH INTERCEPTOR
         if (typeof window.fetch === 'function') {
           var originalFetch = window.fetch;
           window.fetch = function (input, init) {
@@ -909,12 +941,40 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       } catch (e) { bridgeLog('❌ [beginJS - Lỗi]: ' + e.message); }
     }
 
+    // 🎯 HÀM BÁO THẤT BẠI: BẬT TOAST 10 GIÂY & IN LOG LINK RÁC
     function onSnifferFailed() {
       if (hasDispatchedAny) return;
       if (snifferQueue.length > 0) { triggerSnifferFallback(); return; }
-      bridgeLog('❌ [HALT - THẤT BẠI]: Không thể tìm thấy bất kỳ link media nào hợp lệ!');
       
-      // Dự phòng: Nếu sau timeout vẫn chưa nạp được link và chưa dump HTML thì dump ngay tại đây
+      bridgeLog('❌ [HALT - THẤT BẠI]: Không thể tìm thấy bất kỳ link media nào hợp lệ!');
+
+      // 🔔 BẬT THÔNG BÁO TOAST HIỂN THỊ TRONG 10 GIÂY (10000ms)
+      try {
+        if (window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast("❌ Không tìm thấy video hợp lệ!", 10000);
+        }
+      } catch(e) {}
+
+      bridgeLog('==================== [DANH SÁCH LINK RÁC / EMBED BỊ BỎ QUA] ====================');
+      
+      if (!junkLinksQueue || junkLinksQueue.length === 0) {
+        bridgeLog('Không ghi nhận link rác nào trong quá trình quét.');
+      } else {
+        var embeds = junkLinksQueue.filter(function(item) { return item.category === 'embed'; });
+        var others = junkLinksQueue.filter(function(item) { return item.category === 'other'; });
+
+        bridgeLog('📌 1. DANH SÁCH LINK EMBED / IFRAME (' + embeds.length + ' link):');
+        embeds.forEach(function(item, idx) {
+          bridgeLog('   [' + (idx + 1) + '] [' + item.time + '] ' + item.url + ' | Lý do: ' + item.reason);
+        });
+
+        bridgeLog('📌 2. DANH SÁCH LINK BỊ LỌC / KHÔNG HỢP LỆ (' + others.length + ' link):');
+        others.forEach(function(item, idx) {
+          bridgeLog('   [' + (idx + 1) + '] [' + item.time + '] ' + item.url + ' | Lý do: ' + item.reason);
+        });
+      }
+
+      bridgeLog('===============================================================================');
       
       if (typeof window.hideLoadingScreen === 'function') window.hideLoadingScreen();
     }
@@ -983,7 +1043,10 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
         try {
           if (window.videoData && window.videoData.sources) {
             for (var k = 0; k < window.videoData.sources.length; k++) {
-              if (window.videoData.sources[k].file) { getLinkJS(window.videoData.sources[k].file, 'window.videoData'); if (hasDispatchedAny) return; }
+              if (window.videoData.sources[k].file) { 
+                getLinkJS(window.videoData.sources[k].file, 'window.videoData'); 
+                if (hasDispatchedAny) return; 
+              }
             }
           }
         } catch(e) {}
@@ -991,16 +1054,6 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
         scanVideoElements();
         if (hasDispatchedAny) return;
 
-        var fullHtml = document.documentElement ? document.documentElement.outerHTML : '';
-        var rawMatches = fullHtml.match(/(?:https?:\\/\\/[^\\s"'<>]+|\\/[^\\s"'<>]+)[^\\s"'>]*/gi);
-        if (rawMatches && rawMatches.length > 0) {
-          for (var j = 0; j < rawMatches.length; j++) {
-            var cleanUrl = typeof decodeRawUrl === 'function' ? decodeRawUrl(rawMatches[j].replace(/["']/g, '')) : rawMatches[j].replace(/["']/g, '');
-            getLinkJS(cleanUrl, 'RawHTML-Scan');
-            if (hasDispatchedAny) return;
-          }
-        }
-        
         if (!hasDispatchedAny) {
            if (executionRetries < maxExecutionRetries) setTimeout(handleMainExecution, 1000);
            else bridgeLog('🛑 [HALT - MAX RETRY] Đã quét đủ ' + maxExecutionRetries + ' lần, dừng luồng quét chính.');
@@ -1012,7 +1065,7 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
     }
 
     // =========================================================================
-    // 6. LOADING SCREEN JS
+    // 7. LOADING SCREEN JS
     // =========================================================================
     function loadingSC() { return `(function () { window.hideLoadingScreen = function(){}; })();`; }
 
@@ -1035,6 +1088,7 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
 })();
   `;
 }
+
 
 
 
