@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    version: "1.1.2",
+    "version": "1.1.3",
     info: "Nguồn phim hentai vietsub của VN.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -563,6 +563,7 @@ function parseDetailResponse(html, url) {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Referer: url,
+        "Block-Ads": "true",
         "Custom-Js": customJS
       },
       subtitles: [],
