@@ -1,864 +1,882 @@
+# 🛠️ VAAPP Plugin Developer Kit
 
+## App Hoạt Động Như Nào?
 
-Bạn giúp mình bọc try catch tất cả hàm và log ra lỗi nhé. cú phảp log("Tên Hàm[err]:\n " + lỗi), còn hàm nào có dữ liệu là url thì log ra với cú pháp log("Tên Hàm[url]: \n" + url)
+VAAPP là một **trình vỏ (Shell)** — nó chỉ lo UI và Player. Toàn bộ nội dung phim/truyện được cung cấp qua **Plugin JS** do bạn viết.
 
+### Luồng Dữ Liệu Chi Tiết
 
-DEV = "false"
-function log(msg) {
-  	if(DEV){
-			if (typeof console !== 'undefined' && console.log) {
-          console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
-      }
+```
+NGƯỜI DÙNG bấm vào mục "Hành Động" trên Trang chủ
+        │
+        ▼
+┌─ APP gọi: getUrlList("hanh-dong", '{"page":1}') ─────────────────┐
+│  Plugin trả: "https://phim.com/the-loai/hanh-dong?page=1"        │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP tự fetch HTTP GET url đó ────────────────────────────────────┐
+│  Nhận toàn bộ HTML/JSON thô từ server                             │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP gọi: parseListResponse(html) ────────────────────────────────┐
+│  Plugin parse HTML → trả JSON: { items: [{id, title, poster}...]} │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP render danh sách phim lên UI ────────────────────────────────┐
+│  Người dùng bấm vào 1 phim → Lặp lại chu trình với Detail/Play   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Luồng Xem Phim (Chi Tiết → Player)
+
+```
+Bước 1: parseMovieDetail(html)
+   → Trả servers + episodes (mỗi episode có id = URL hoặc slug)
+
+Bước 2: Người dùng chọn tập
+   → App gọi getUrlDetail(episode.id) để lấy URL fetch
+   → App fetch URL → gọi parseDetailResponse(html)
+
+Bước 3: parseDetailResponse(html)
+   → Trả { url, headers, mimeType, subtitles }
+
+Bước 4:
+   ├─ Nếu isEmbed = false → ExoPlayer phát url trực tiếp
+   ├─ Nếu isEmbed = true  → App fetch tiếp → gọi parseEmbedResponse()
+   │                        (lặp tối đa 3 lần cho đến khi isEmbed = false)
+   └─ Nếu playerType = "embed" → WebView load url
+```
+
+---
+
+## 🚀 Bắt Đầu Nhanh (3 Bước)
+
+### Bước 1: Tạo Plugin
+Copy file `plugin_template.js` → đổi tên `ten_web_plugin.js`, bắt đầu viết code.
+
+### Bước 2: Test Trên Máy Tính
+Mở file **`tester.html`** bằng Chrome:
+1. **Nạp JS**: Bấm "Nạp file JS" → chọn file plugin của bạn
+2. **Dán HTML**: Mở trang phim → Ctrl+U (View Source) → copy dán vào ô input
+3. **Chạy thử**: Bấm các nút `parseListResponse()`, `parseMovieDetail()`...
+4. **Xem kết quả**: Xanh = JSON chuẩn ✅ | Đỏ = lỗi cần sửa ❌
+
+### Bước 3: Đăng Ký
+Upload file `.js` lên GitHub Raw → thêm vào `plugins.json` → App tự cập nhật.
+
+### ⚠️ Lưu Ý Quan Trọng Khi Phát Hành Plugin (Mới)
+
+#### 1. Bắt Buộc Sử Dụng Link RAW
+Khi đăng ký plugin trên file JSON hoặc thêm nguồn tùy chỉnh, đường dẫn file JS **bắt buộc phải là đường dẫn RAW** trả về code JavaScript thô.
+*   **Sai:** `https://github.com/user/repo/blob/main/plugin.js` (Trả về giao diện web HTML của GitHub).
+*   **Từ phiên bản App 1.7.5+**: Hỗ trợ thêm link gist/custom domain nhưng nên dùng link RAW.
+
+#### 2. Dung Thứ Dấu Phẩy Thừa & Cấu Trúc Bỏ Ngỏ (Trailing Comma & Loose Schema)
+*   Từ phiên bản ứng dụng **1.7.5+**, bộ phân tích cú pháp JSON của App đã hỗ trợ `allowTrailingComma = true`.
+*   **`FilterOption`**: Trường `value` giờ đây có giá trị mặc định. Nếu plugin khai báo `{ "slug": "/cat-1", "name": "Tên" }` thay vì `value`, App vẫn tự chuyển đổi slug thành `value` mà không crash `MissingFieldException`.
+
+#### 3. Tối Ưu `getUrlDetail` & Tránh OOM (Out Of Memory)
+*   Nếu `getUrlDetail(slug)` nhận được link stream trực tiếp (`.mp4`, `.m3u8`, `.mpd`,...):
+    *   **Khuyến nghị**: Hãy `return JSON.stringify({ "url": directUrl, "isEmbed": false, "mimeType": "..." })` ngay lập tức!
+    *   **Cơ chế bảo vệ từ App**: Nếu `getUrlDetail` trả về URL video trực tiếp (plain string), App sẽ tự động phát hiện và bỏ qua bước fetch HTML (tránh sập bộ nhớ OOM) đồng thời tự động nhận diện `mimeType`.
+
+---
+
+## 📋 Danh Sách Tất Cả Các Hàm
+
+### Nhóm 1: Config (Khai báo)
+
+| Hàm | Trả về | Bắt buộc |
+|-----|--------|----------|
+| `getManifest()` | Thông tin plugin | ✅ |
+| `getHomeSections()` | Các mục trang chủ | ✅ |
+| `getPrimaryCategories()` | Menu thể loại | Tùy chọn |
+| `getFilterConfig()` | Bộ lọc | Tùy chọn |
+
+### Nhóm 2: URL (Sinh đường dẫn)
+
+| Hàm | Tham số | Trả về | Tùy chọn / Ghi chú |
+|-----|---------|--------|-------------------|
+| `getUrlList(slug, filtersJson)` | slug mục + filters | URL string | ✅ Bắt buộc |
+| `getUrlSearch(keyword, filtersJson)` | từ khóa | URL string | ✅ Bắt buộc |
+| `getUrlDetail(slug)` | slug phim | URL string | ✅ Bắt buộc |
+| `getStreamLink(movieSlug)` | slug phim | JSON string spec | Tùy chọn (Bỏ qua fetch HTML) |
+| `getUrlCategories()` | — | URL string | Tùy chọn (Trang thể loại) |
+| `getUrlCountries()` | — | URL string | Tùy chọn (Trang quốc gia) |
+| `getUrlYears()` | — | URL string | Tùy chọn (Trang năm) |
+
+### Nhóm 3: Parser (Xử lý dữ liệu) ⭐
+
+| Hàm | Nhận vào | Trả về |
+|-----|----------|--------|
+| `parseListResponse(html)` | HTML/JSON thô | `{ items: [...], pagination: {...} }` |
+| `parseSearchResponse(html)` | HTML/JSON thô | Giống parseListResponse |
+| `parseMovieDetail(html)` | HTML chi tiết | `{ id, title, servers: [...], ... }` |
+| `parseDetailResponse(html)` | HTML trang xem | `{ url, headers, mimeType, ... }` |
+| `parseEmbedResponse(html, url)` | HTML embed page | `{ url, isEmbed, mimeType, ... }` |
+| `parseCategoriesResponse(html)` | HTML thể loại | Mảng `Category` hoặc `FilterOption` |
+| `parseCountriesResponse(html)` | HTML quốc gia | Mảng `FilterOption` |
+| `parseYearsResponse(html)` | HTML năm | Mảng `FilterOption` |
+
+---
+
+## 📐 Data Format Chi Tiết
+
+### `getManifest()` — Thông tin Plugin
+
+```json
+{
+    "id": "unique_id",
+    "name": "Tên Hiển Thị",
+    "version": "1.0.0",
+    "baseUrl": "https://phim.example.com",
+    "iconUrl": "https://icon.png",
+    "isEnabled": true,
+    "isAdult": false,
+    "type": "MOVIE",
+    "layoutType": "VERTICAL",
+    "playerType": "exoplayer",
+    "adblock": true,
+    "debug": false
+}
+```
+
+**`debug` — Console Toast dành cho phát triển plugin:**
+- Không khai báo `debug`, hoặc đặt `"debug": false`: Console Toast **không hiển thị**.
+- Đặt `"debug": true`: bật Console Toast cho plugin đó.
+- App cũng tương thích với dạng string `"debug": "true"` và `"debug": "false"`, nhưng nên dùng Boolean chuẩn `true`/`false`.
+- Vị trí cài plugin, tên file, ID có prefix hay không **không ảnh hưởng**. Console chỉ dựa vào `debug` trong `getManifest()`.
+- Khi `debug=true`, app tự ghi `CALL`, `RESULT` và `ERROR` cho mọi hàm plugin chạy qua QuickJS. Arguments/kết quả dài được rút gọn để tránh làm đầy màn hình.
+- Vì đã có auto-log, không cần tự thêm `log()` hoặc `console.log()` chỉ để biết hàm nào được gọi và trả gì.
+- Chỉ dùng `console.log()` khi cần xem biến/trạng thái nội bộ cụ thể bên trong parser.
+
+Ví dụ:
+
+```javascript
+function getManifest() {
+    return JSON.stringify({
+        id: "my_plugin",
+        name: "My Plugin",
+        version: "1.0.0",
+        baseUrl: "https://example.com",
+        playerType: "exoplayer",
+        debug: true
+    });
+}
+```
+
+Console tự động có dạng:
+
+```text
+[CALL] getUrlList(/latest-updates/, {"page":1})
+[RESULT] getUrlList -> https://example.com/latest-updates/
+[CALL] parseMovieDetail(<html...>, https://example.com/video/123)
+[RESULT] parseMovieDetail -> {"id":"...","title":"...","servers":[...]}...
+```
+
+> Biến riêng như `DEV = "true"` không bật Console Toast. Cờ phải nằm trong object do `getManifest()` trả về và có tên chính xác là `debug`.
+
+**`adblock` option (Bật/Tắt chặn quảng cáo nền):**
+- **Không khai báo** (hoặc `true`): Mặc định **BẬT** bộ chặn quảng cáo nền cho plugin này.
+- **`false`**: **TẮT** bộ chặn quảng cáo mặc định cho plugin này.
+
+**`type` options:**
+| Giá trị | Loại nội dung & Trình phát |
+|---------|----------------------------|
+| `"MOVIE"` | Phim điện ảnh / Phim bộ truyền thống (Trình phát màn hình ngang) |
+| `"VIDEO"` | Video clip / Youtube |
+| `"shortfilm"` | Phim ngắn / Drama ngắn / Reels / Shortflix (Trình phát xoay đứng Portrait Zoom, hỗ trợ vuốt LÊN/XUỐNG chuyển tập kiểu TikTok trên Mobile) |
+| `"MANGA"` | Truyện tranh (Trình đọc manga) |
+| `"NOVEL"` | Truyện chữ |
+| `"IPTV"` | Truyền hình trực tiếp (Bỏ qua màn hình Chi tiết, phát thẳng kênh) |
+
+**`playerType` options:**
+| Giá trị | Khi nào dùng |
+|---------|-------------|
+| `"exoplayer"` | Khi bạn trích được link `.m3u8` / `.mp4` trực tiếp (khuyến nghị) |
+| `"embed"` | Khi chỉ có link iframe, bắt buộc hiển thị phát bằng WebView |
+| `"embedtoexoplay"` | Tải iframe qua WebView ngầm và chạy bộ dò mạng (Sniffer) để lấy link stream phát bằng ExoPlayer |
+| `"auto"` | App tự phán: URL chứa `.m3u8`/`.mp4` → ExoPlayer, còn lại → WebView |
+
+### Link Stream Trực Tiếp, MIME Và Header Player
+
+App nhận diện link media trực tiếp theo các dấu hiệu phổ biến: `.m3u8`, `.m3u9`, `.mpd`, `.mp4`, `.mkv`, `.vl`, `/get_file/` và `/get_video/`. Nhận diện này được dùng nhất quán khi mở phim, đổi tập và đổi server/chất lượng.
+
+Khi plugin đã lấy được link thật, nên trả rõ URL, MIME và các HTTP header cần thiết:
+
+```javascript
+function parseDetailResponse(html, pageUrl) {
+    return JSON.stringify({
+        url: "https://cdn.example.com/get_file/video.mp4",
+        isEmbed: false,
+        mimeType: "video/mp4",
+        headers: {
+            Referer: pageUrl || BASEURL + "/",
+            "User-Agent": "Mozilla/5.0 ..."
+        },
+        subtitles: []
+    });
+}
+```
+
+MIME thường dùng:
+
+| Stream | `mimeType` |
+|--------|------------|
+| MP4 progressive | `video/mp4` |
+| HLS / M3U8 | `application/x-mpegURL` |
+| MPEG-DASH / MPD | `application/dash+xml` |
+| MKV | `video/x-matroska` |
+
+Lưu ý về header:
+- `Referer`, `User-Agent`, cookie và header do plugin/sniffer trả về được chuyển riêng theo từng stream tới player.
+- Khi đổi tập/server/chất lượng, app tạo data source riêng cho lệnh mới để header không bị lẫn với stream trước.
+- Các header điều khiển nội bộ như `Custom-Js`, `Allowed-Domains`, `Block-Ads`, `Block-Redirects`, `Stream-Regex`, `Block-Scripts`, `Block-Css`, `Custom-Header` và `Bypass-Rule` chỉ dành cho WebView/sniffer; app lọc chúng trước khi gửi request media tới ExoPlayer.
+- CDN chặn hotlink thường cần `Referer` đúng trang nguồn. Nếu player buffering mãi, kiểm tra URL còn hạn, `Referer`, `User-Agent`, cookie và response HTTP trước.
+
+### Embed, WebView Và Custom-Js
+
+- `playerType: "embed"`: hiển thị trang/iframe bằng WebView.
+- `playerType: "embedtoexoplay"`: WebView/sniffer chạy trước để bắt link media, sau đó gửi URL + header đã bắt được sang ExoPlayer.
+- `Custom-Js` được thực thi trong luồng WebView/sniffer và không được gửi như HTTP header media.
+- Mỗi lần sniffer bắt được stream, URL và header của lần bắt đó được đóng gói riêng trước khi gửi player.
+- Nếu đã có URL trực tiếp, dùng `isEmbed: false` và MIME phù hợp thay vì ép qua WebView.
+
+---
+
+### `parseListResponse()` — Danh sách phim
+
+```json
+{
+    "items": [
+        {
+            "id": "slug-phim",
+            "title": "Tên Phim",
+            "posterUrl": "https://img.../poster.jpg",
+            "backdropUrl": "https://img.../backdrop.jpg",
+            "description": "Mô tả ngắn",
+            "year": 2024,
+            "quality": "FHD",
+            "episode_current": "Tập 10/12",
+            "lang": "Vietsub"
+        }
+    ],
+    "pagination": {
+        "currentPage": 1,
+        "totalPages": 5,
+        "totalItems": 100,
+        "itemsPerPage": 20
     }
 }
+```
 
+---
 
+### `parseMovieDetail()` — Chi tiết phim
 
-// https://yanhh3d.ac/moi-cap-nhat?page=2
-function getHomeSections() {
-    var listurl = `
-[{"link":"/latest-updates/","name":"Hàng Mới"}]
-`;
-    var menulist = buildMenu(listurl,true);
-    return JSON.stringify(menulist);
+```json
+{
+    "id": "slug-phim",
+    "title": "Tên Phim",
+    "posterUrl": "https://...",
+    "backdropUrl": "https://...",
+    "description": "Nội dung phim...",
+    "servers": [
+        {
+            "name": "Server HD",
+            "episodes": [
+                {
+                    "id": "https://phim.com/xem/tap-1",
+                    "name": "Tập 1",
+                    "slug": "tap-1"
+                }
+            ]
+        }
+    ],
+    "quality": "FHD",
+    "year": 2024,
+    "rating": 8.5,
+    "casts": "Diễn viên A, B",
+    "director": "Đạo diễn C",
+    "category": "Hành Động, Phiêu Lưu",
+    "status": "Full",
+    "duration": "120 Phút"
 }
+```
 
-function getPrimaryCategories() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
-    return JSON.stringify(menulist);
+**🔑 Về `episode.id`:**
+- Nếu là link `.m3u8`/`.mp4` trực tiếp → App phát luôn, KHÔNG gọi `parseDetailResponse`
+- Nếu là slug/URL khác → App gọi `getUrlDetail(episode.id)` → fetch → `parseDetailResponse(html)`
+
+---
+
+### `parseDetailResponse()` — Lấy Link Video
+
+#### Trường hợp đơn giản (link trực tiếp):
+```json
+{
+    "url": "https://cdn.example.com/video.m3u8",
+    "headers": {
+        "Referer": "https://phim.example.com"
+    },
+    "subtitles": [
+        { "lang": "vi", "url": "https://.../sub_vi.srt" }
+    ]
 }
+```
 
-// ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
-function getFilterConfig() {
-    var listurl = getLISTmenu();
-    var menulist = buildMenu(listurl);
+#### Trường hợp embed (cần WebView):
+```json
+{
+    "url": "https://player.example.com/embed/abc123",
+    "headers": { "Referer": "https://phim.example.com" }
+}
+```
+
+#### Trường hợp nâng cao — Recursive Embed:
+```json
+{
+    "url": "https://site.com/ajax.php",
+    "isEmbed": true,
+    "postBody": "id=12345&sv=1",
+    "headers": {
+        "Referer": "https://site.com",
+        "X-Requested-With": "XMLHttpRequest"
+    }
+}
+```
+
+#### 💡 QUY TẮC XỬ LÝ ĐUÔI FILE KHÔNG CHUẨN (`.vl`, `.xyz`, `.stream`...) & MIME TYPE:
+Khi trang web sử dụng link stream có đuôi mở rộng lạ (ví dụ: luồng HLS m3u8 nhưng trang web đặt đuôi file là `.vl`, `.m3u`, `.xyz`, `.stream`...), Plugin **KHÔNG CẦN YÊU CẦU SỬA APP**, chỉ cần khai báo chuẩn 1 trong 2 cách sau:
+
+1. **Khai báo `mimeType` trực tiếp khi trả về link**:
+   ```json
+   {
+       "url": "https://play.vlstream.net/hls/video_sample.vl",
+       "isEmbed": false,
+       "mimeType": "application/x-mpegURL",
+       "headers": { "Referer": "https://play.vlstream.net/" }
+   }
+   ```
+   *Các kiểu `mimeType` phổ biến:*
+   - HLS m3u8 (kể cả bị đổi đuôi thành `.vl`, `.xyz`): `"application/x-mpegURL"`
+   - Video MP4: `"video/mp4"`
+   - DASH stream: `"application/dash+xml"`
+
+2. **Khai báo `Stream-Regex` khi dùng WebView ngầm (`isEmbed: true`)**:
+   ```json
+   {
+       "url": "https://embed.site.com/player/123",
+       "isEmbed": true,
+       "headers": {
+           "Stream-Regex": "https?:\\/\\/[^\"']+\\.(?:vl|m3u8|xyz)[^\"']*"
+       }
+   }
+   ```
+   👉 *App Core sẽ ưu tiên 100% `mimeType` và `Stream-Regex` do plugin định nghĩa để phát video mà không cần quan tâm đuôi file.*
+App sẽ POST tới URL đó → nhận response → gọi `parseEmbedResponse(html, url)` → lặp lại nếu `isEmbed` vẫn = `true`.
+
+---
+
+### 🎬 Chế Độ `embedtoexoplay` & EmbedSniffer (Nâng Cao)
+
+Khi plugin khai báo `"playerType": "embedtoexoplay"` trong `getManifest()`, ứng dụng sẽ dùng **EmbedSniffer** (WebView chạy ngầm với màn hình Loading đen che bên trên) để tải trang web embed, tự động dò tìm link stream (.m3u8, .mp4, ...) và chuyển cho ExoPlayer phát native. Người dùng sẽ không nhìn thấy giao diện thô hay quảng cáo của trang web embed.
+
+| Header Key | Mục đích | Ví dụ |
+|------------|----------|-------|
+| `Block-Ads` | Khóa điều khiển chặn quảng cáo Custom riêng cho link này. Nếu Manifest để `adblock: false`, bạn truyền `"Block-Ads": "true"` kết hợp với `Block-Domains`/`Block-Keywords` để CHỈ chặn các domain tùy biến do plugin chỉ định (TÁCH BẠCH, KHÔNG chặn 58+ domain mặc định của App). | `"true"` hoặc `"false"` |
+| `Block-Redirects` | Bật/Tắt chặn chuyển hướng main frame khi click (`"true"` = bật chặn, `"false"` = cho phép). Mặc định `"true"` khi `Block-Ads: true`. | `"true"` hoặc `"false"` |
+| `Block-Domains` | Danh sách tên miền quảng cáo bổ sung do Plugin tự định nghĩa (phân cách bằng dấu phẩy) | `"bad-domain.com, ad-server.net"` |
+| `Block-Keywords` | Danh sách từ khóa URL quảng cáo bổ sung do Plugin tự định nghĩa (phân cách bằng dấu phẩy) | `"/popunder, /popup.js"` |
+| `Block-Css` | Chuỗi CSS Selectors bổ sung do Plugin tự định nghĩa để ẩn các phần tử/thẻ div quảng cáo cụ thể | `".my-ad-banner, #popunder-layer, div[class*='custom-ad']"` |
+| `Block-Scripts` | Danh sách từ khóa/mẫu đường dẫn script cần chặn trong WebView (phân cách bằng dấu phẩy) | `"adsterra,popads,clickadu"` |
+| `Custom-Js` | Chuỗi JavaScript được inject vào WebView **ngay khi bắt đầu tải trang** (`onPageStarted` — trước khi script của web gốc chạy). Có thể chủ động trích xuất link và gọi `SnifferBridge.play(url, headers)` | `"(function() { SnifferBridge.play(url); })();"` |
+| `Stream-Regex` | Chuỗi RegEx tùy chỉnh để EmbedSniffer lọc bắt link mạng thay cho mẫu mặc định (.m3u8, .mp4...) | `"https?:\\/\\/[^\"'\\s]+\\/index\\.m3u8"` |
+| `User-Agent` | Đặt User-Agent cho WebView | `"Mozilla/5.0 ..."` |
+| `Referer` | Đặt Referer cho WebView | `"https://site.com/"` |
+
+#### 🛠️ Hàm Hỗ Trợ trong `Custom-Js` (`SnifferBridge`):
+Trong mã `Custom-Js`, plugin có thể gọi các hàm Bridge sau:
+- `SnifferBridge.play(streamUrl, headersJson)` / `playVideo(...)` / `sendToPlayer(...)`: Truyền trực tiếp link stream tìm được cho ExoPlayer.
+- `SnifferBridge.toast(message)`: Hiển thị Toast thông báo nhanh (mặc định 2 giây).
+- `SnifferBridge.toast(message, timerMs)`: Hiển thị Toast với thời gian tùy chỉnh (`timerMs` tính bằng miligiây, ví dụ `5000` = 5 giây).
+- `SnifferBridge.log(message)`: Ghi log ra tab Console nổi của App.
+
+> ℹ️ **LƯU Ý VỀ ANTI-AD CSS TỰ ĐỘNG:**
+> Khi `Block-Ads: true`, App đã tự động áp dụng bộ quy tắc CSS tổng quát để diệt toàn bộ thẻ `div`, `iframe`, `a`, `popunder` quảng cáo:
+> ```css
+> iframe[src*="ad"], iframe[src*="pop"], iframe[src*="banner"],
+> div[class*="ad-"], div[class*="ad_"], div[id*="ad-"], div[id*="ad_"],
+> div[class*="banner"], div[id*="banner"], div[class*="popup"], div[id*="popup"],
+> div[class*="popunder"], div[id*="popunder"],
+> div[style*="z-index: 2147483647"]:not(.jw-controls):not(.plyr__controls),
+> div[style*="z-index: 999999"]:not(.jw-controls):not(.plyr__controls),
+> a[href*="bet"], a[href*="casino"], a[href*="click"],
+> .popunder, .popup, .ad-box, .ad-container, .adsbygoogle
+> ```
+> Dev Plugin chỉ cần khai báo thêm thuộc tính `Block-Css` nếu trang web đó sử dụng class/id quảng cáo đặc thù.
+
+---
+
+### 🌉 Danh Sách Các Hàm Native JS Bridge (`SnifferBridge`)
+
+Khi viết `Custom-Js` hoặc mã xử lý trong WebView, plugin có thể sử dụng các hàm Native của **`SnifferBridge`** để chủ động truyền link stream và Header cho ExoPlayer phát:
+
+| Hàm Native | Tham số | Mô tả |
+|------------|---------|-------|
+| `SnifferBridge.play(url)` | `url`: String | Truyền link stream trực tiếp cho ExoPlayer phát |
+| `SnifferBridge.play(url, headersJson)` | `url`: String, `headersJson`: JSON String | Truyền link stream kèm Header tùy chỉnh (ví dụ: `Referer`, `User-Agent`) |
+| `SnifferBridge.playVideo(url, headersJson)` | Bí danh | Giống `play()` |
+| `SnifferBridge.playExoPlayer(url, headersJson)` | Bí danh | Giống `play()` |
+| `SnifferBridge.sendToPlayer(url, headersJson)` | Bí danh | Giống `play()` |
+| `SnifferBridge.toast(message)` | `message`: String | 💡 **Hiển thị thông báo Toast nổi trên màn hình App** (Rất hữu ích khi debug WebView ngầm/embed) |
+| `SnifferBridge.log(message)` | `message`: String | 📝 **Ghi log debug ra Android Logcat** (Tag: `SnifferBridgeJS`) |
+| `SnifferBridge.onVideoDetected(url)` | `url`: String | Hàm callback cũ (tương thích ngược) |
+
+### 🛠️ Hướng Dẫn Debug Log, Hàm `print()` & Khung Console Nổi (Dành Cho Dev Plugin Local)
+
+Dành riêng cho các **Plugin cài đặt trực tiếp từ file `.js` qua nút dấu (`+`)** trong màn hình Quản lý Plugin:
+
+#### 1. Trong hàm xử lý dữ liệu của file JS (Engine QuickJS):
+*(Các hàm `parseDetailResponse`, `parseListResponse`, `parseSearchResponse`...)*
+Bạn có thể in bất kỳ giá trị, biến, JSON object hoặc lỗi nào trực tiếp bằng cách gọi `print(...)` hoặc `console.log(...)`:
+```javascript
+// In dữ liệu hoặc JSON Object
+print("Dữ liệu bóc tách được:", result);
+print("Link stream:", streamUrl);
+
+// Hoặc dùng console.log chuẩn
+console.log("Chiều dài HTML:", html.length);
+```
+
+#### 🛠️ Hỗ trợ `localStorage` sẵn trong QuickJS Engine:
+- Bạn có thể sử dụng các hàm `localStorage.getItem(key)`, `localStorage.setItem(key, value)`, `localStorage.removeItem(key)` trực tiếp trong file JS mà không lo bị lỗi `ReferenceError: localStorage is not defined`.
+
+#### 2. Trong mã `Custom-Js` chèn vào WebView (`embedtoexoplay`):
+*(Đoạn JS chạy ngầm bên trong WebView)*
+Gửi log trực tiếp từ WebView về Khung Console Nổi bằng `SnifferBridge.log(...)` hoặc `SnifferBridge.toast(...)`:
+```javascript
+(function() {
+    try {
+        var video = document.querySelector('video');
+        if (video && video.src) {
+            // In log ra Khung Console Nổi
+            if (window.SnifferBridge) window.SnifferBridge.log("Đã bắt được link video: " + video.src);
+            // Truyền link cho ExoPlayer phát
+            if (window.SnifferBridge) window.SnifferBridge.play(video.src);
+        } else {
+            if (window.SnifferBridge) window.SnifferBridge.log("Đang chờ thẻ video xuất hiện...");
+        }
+    } catch (err) {
+        // In lỗi nếu bị crash script trong WebView
+        if (window.SnifferBridge) window.SnifferBridge.log("Lỗi CustomJS: " + err.message);
+    }
+})();
+```
+
+#### 3. Khung Nổi Toast Console (Có thể Sao Chép 1 Động Tác 📋):
+- Khi bạn chạy bất kỳ hàm nào của plugin local cài từ nút `+`, App sẽ **tự động bật một Khung Nổi Console (Toast Console Overlay)** đè lên góc dưới màn hình.
+- Khung này hiển thị thời gian, loại log (`[PRINT]`, `[LOG]`, `[ERROR]`, `[TOAST]`) và nội dung chi tiết.
+- Trên thanh công cụ của Khung Nổi có **Nút Sao Chép (📋)**: Chỉ cần bấm 1 phát là **toàn bộ dữ liệu log/lỗi được chép vào Clipboard** để bạn dán sang chỗ khác kiểm tra cực kỳ nhanh chóng mà không cần mở Chrome DevTools hay máy tính!
+- **Lỗi Cú Pháp & Exception Tự Động**: Nếu mã JS hoặc `Custom-Js` bị lỗi cú pháp (`SyntaxError`) hay exception, App sẽ tự động hiển thị dòng màu đỏ `[ERROR]` kèm chi tiết lỗi lên Khung Nổi ngay lập tức!
+
+---
+
+#### Ví dụ ĐẦY ĐỦ VỚI TOÀN BỘ DANH SÁCH TÊN MIỀN, KEYWORD & CSS SELECTORS:
+```javascript
+function parseDetailResponse(html, url) {
+    var customJsCode = `(function() {
+        if (window._vaapp_custom) return;
+        window._vaapp_custom = true;
+        
+        var v = document.querySelector('video');
+        if (v && v.src && v.src.indexOf('http') === 0) {
+            var headers = JSON.stringify({
+                "Referer": "https://embed18.streamc.xyz/",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            });
+            SnifferBridge.play(v.src, headers);
+        }
+    })();`;
+
     return JSON.stringify({
-        category: menulist
+        "url": "https://embed18.streamc.xyz/embed.php?hash=c9e5230c3e65847df88fc05ea66cbbb6",
+        "isEmbed": true,
+        "headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://embed18.streamc.xyz",
+            
+            // 🛡️ 1. BẬT BỘ CHẶN QUẢNG CÁO TỔNG THỂ
+            "Block-Ads": "true",
+
+            // 🛑 2. BẬT CHẶN CHUYỂN HƯỚNG MAIN FRAME KHI CLICK
+            "Block-Redirects": "true",
+
+            // 🌐 3. CHẶN MẠNG CẤP THẤP: TOÀN BỘ TÊN MIỀN QUẢNG CÁO / CASINO / BETTING (Nối dài bằng dấu phẩy)
+            "Block-Domains": "googlesyndication.com, doubleclick.net, googleadservices.com, adnxs.com, imasdk.googleapis.com, popads.net, popcash.net, propellerads.com, exoclick.com, acscdn.com, attirecideryeah.com, trafficjunky.com, juicyads.com, bidvertiser.com, clickadu.com, pubmatic.com, rubiconproject.com, openx.net, casalemedia.com, smartadserver.com, criteo.com, taboola.com, outbrain.com, adroll.com, scorecardresearch.com, zedo.com, adstir.com, popmyads.com, adsterra.com, hilltopads.com, monetag.com, a-ads.com, clksite.com, ad-delivery.net, ad-maven.com, yandex.ru/ads, vidoomy.com, targetfirst.com, betting, casino, gamead, adtrace, adform, adservice, adsystem, adtech, adthrive, adtrqt, adzerk, amazon-adsystem, applovin, unity3d.com/ads, chartboost, inmobi, fyber, tapjoy, vungle, adcolony, mopub",
+
+            // 🔍 4. CHẶN KEYWORD URL SCRIPT QUẢNG CÁO / VAST XML / POPUP
+            "Block-Keywords": "/adserv/, /adstream/, /popunder, /popup.js, /ads.js, ad_provider, pop_under, pop_up, vast.xml, vpaid.js, ads/vpaid, bidder, tracking.js, analytics.js, banner.js, adserver, ad_script, ad_loader",
+
+            // 🧹 5. ANTI-AD CSS: ẨN TOÀN BỘ THẺ DIV, IFRAME, POPUP, BANNER VÀ VỚI LỚP PHỦ Z-INDEX CỦA WEB NÀY
+            "Block-Css": "iframe[src*='ad'], iframe[src*='pop'], iframe[src*='banner'], div[class*='ad-'], div[class*='ad_'], div[id*='ad-'], div[id*='ad_'], div[class*='banner'], div[id*='banner'], div[class*='popup'], div[id*='popup'], div[class*='popunder'], div[id*='popunder'], div[style*='z-index: 2147483647']:not(.jw-controls):not(.plyr__controls), div[style*='z-index: 999999']:not(.jw-controls):not(.plyr__controls), a[href*='bet'], a[href*='casino'], a[href*='click'], .popunder, .popup, .ad-box, .ad-container, .adsbygoogle",
+
+            // 🚫 6. CHẶN SCRIPT RIÊNG DO DEV CHỈ ĐỊNH
+            "Block-Scripts": "popads,exoclick,adsterra,clickadu",
+
+            "Custom-Js": customJsCode
+        }
+    });
+}
+```
+
+> ⚠️ **LƯU Ý QUAN TRỌNG VỀ `Custom-Js`:**
+> 1. `Custom-Js` được tự động chèn **sớm ở `onPageStarted`** (trước khi các đoạn script HTML của trang web gốc được thực thi). Nếu script của bạn muốn đợi DOM tải xong, hãy dùng `document.addEventListener("DOMContentLoaded", ...)` hoặc `if (document.readyState === "loading")`.
+> 2. `Custom-Js` trong `headers` phải là một **chuỗi dạng String** chứa mã JS. KHÔNG viết IIFE trực tiếp bên ngoài hàm `parseDetailResponse` vì engine QuickJS trên Android app sẽ bị crash do không có đối tượng `window`.
+> 3. `SnifferBridge.play(url, headersJson)` là hàm Bridge native của App. Ngay khi được gọi, WebView ngầm sẽ lập tức đóng lại và ExoPlayer sẽ nhận link stream để phát.
+
+#### Ví dụ 2: Lọc link theo `Stream-Regex` tùy chỉnh & Bật AdBlock
+```javascript
+function parseDetailResponse(html, url) {
+    return JSON.stringify({
+        "url": "https://gamomephim.com/embed/123",
+        "isEmbed": true,
+        "headers": {
+            "Block-Ads": "true",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://gamomephim.com/",
+            "Stream-Regex": "https?:\\/\\/[^\"'\\s]+\\/hls\\/[^\"'\\s]+\\.m3u8"
+        }
+    });
+}
+```
+
+---
+
+### `parseEmbedResponse(html, url)` — Xử lý embed nhiều bước
+
+Hàm này **chỉ cần viết** khi trang của bạn dùng luồng phức tạp (AJAX → iframe → stream). App gọi hàm này trong vòng lặp.
+
+```javascript
+function parseEmbedResponse(html, sourceUrl) {
+    // Bước trung gian: HTML chứa iframe → trích URL iframe
+    var iframeMatch = html.match(/src="(https?:\/\/[^"]+)"/);
+    if (iframeMatch) {
+        return JSON.stringify({
+            url: iframeMatch[1],
+            isEmbed: true,    // ← true = App sẽ fetch tiếp URL này
+            headers: { "Referer": "https://site.com/" }
+        });
+    }
+    
+    // Bước cuối: trích direct stream
+    var fileMatch = html.match(/"file"\s*:\s*"(https?[^"]+)"/);
+    if (fileMatch) {
+        return JSON.stringify({
+            url: fileMatch[1],
+            isEmbed: false,   // ← false = URL cuối cùng, phát luôn
+            mimeType: "application/x-mpegURL",
+            headers: { "Referer": "https://embed-server.com/" }
+        });
+    }
+    
+    // Không tìm thấy → dừng loop
+    return JSON.stringify({ url: "", isEmbed: false });
+}
+```
+
+**Quy tắc:**
+- `isEmbed: true` → App fetch URL đó rồi gọi lại `parseEmbedResponse()` (tối đa 3 lần)
+- `isEmbed: false` → URL cuối cùng, App phát bằng ExoPlayer
+- `url: ""` → Dừng lặp, App báo lỗi
+
+---
+
+### Trường `mimeType` — Khi file extension không chuẩn
+
+ExoPlayer nhận dạng stream qua extension (`.m3u8` → HLS, `.mp4` → Progressive). Nhưng nếu server dùng extension lạ (`.vl`, `.xyz`, `.dat`...), plugin cần chỉ định `mimeType`:
+
+```json
+{
+    "url": "https://cdn.example.com/03105.vl",
+    "mimeType": "application/x-mpegURL"
+}
+```
+
+| `mimeType` | Loại stream |
+|------------|------------|
+| `"application/x-mpegURL"` | HLS (m3u8 content) |
+| `"video/mp4"` | MP4 |
+| `""` hoặc không khai | App tự nhận dạng |
+
+> **Lợi ích**: Nếu sau này server đổi extension từ `.vl` → `.xyz`, bạn chỉ sửa plugin JS, KHÔNG cần build lại App. Tất cả do plugin quyết định.
+
+---
+
+### 📝 Hướng Dẫn Cấu Hình Phụ Đề (Subtitles)
+
+Plugin có thể cung cấp danh sách phụ đề cho ExoPlayer thông qua trường `subtitles` trong `parseDetailResponse()`.
+
+#### Cấu trúc trả về trong `parseDetailResponse()`:
+```javascript
+return JSON.stringify({
+    "url": "https://cdn.example.com/video.m3u8",
+    "headers": { "Referer": "https://example.com" },
+    "subtitles": [
+        {
+            "lang": "Tiếng Việt (Vietsub)", // Tên hiển thị trên menu phụ đề của App
+            "url": "https://cdn.example.com/sub/vietnamese.vtt" // Link WebVTT (.vtt), SubRip (.srt), hoặc ASS (.ass)
+        },
+        {
+            "lang": "English",
+            "url": "https://cdn.example.com/sub/english.vtt"
+        }
+    ]
+});
+```
+
+#### Quy tắc xử lý phụ đề trong App:
+1. **Định dạng hỗ trợ**: App hỗ trợ các file phụ đề chuẩn WebVTT (`.vtt`), SRT (`.srt`), ASS/SSA (`.ass`). App tự động bóc tách loại bỏ query string `?token=...` để nhận diện đúng định dạng.
+2. **Tên hiển thị (`lang`)**: App sẽ lấy trực tiếp chuỗi trong `lang` để làm nhãn trên giao diện menu phụ đề. Nên đặt tên ngắn gọn, rõ ràng (ví dụ: `"Tiếng Việt (Bản chuẩn)"`, `"English"`).
+3. **Cơ chế tương tác với SubtitleCat**:
+   - Nếu plugin đã khai báo phụ đề Tiếng Việt (chuỗi `lang` chứa chữ `"Việt"` hoặc `"Vietnamese"`), App sẽ **tự động bỏ qua SubtitleCat** và ưu tiên phát phụ đề từ plugin của bạn.
+   - Để tắt hoàn toàn tính năng tự động tìm phụ đề ngoài SubtitleCat cho plugin, bạn chỉ cần đặt `"subtitleCat": false` trong `getManifest()`.
+
+---
+
+### 📺 Hướng Dẫn Viết Plugin Truyền Hình / IPTV (`"type": "IPTV"`)
+
+Khi bạn viết plugin cho các nguồn kênh truyền hình trực tiếp (Live TV / IPTV), khai báo `"type": "IPTV"` giúp tối ưu hóa luồng xem cho người dùng.
+
+#### Đặc điểm của Plugin IPTV trong App:
+- Khi người dùng bấm chọn kênh từ danh sách, App sẽ **bỏ qua giao diện chi tiết (Detail Screen)** và giải mã link stream để **phát trực tiếp ngay lập tức** bằng ExoPlayer.
+- Hỗ trợ đầy đủ các nguồn trực tiếp: HLS (`.m3u8`), DASH (`.mpd`), MP4, và mã hóa bản quyền **ClearKey DRM**.
+
+#### 1. Khai báo Manifest:
+```javascript
+function getManifest() {
+    return JSON.stringify({
+        "id": "onsports_tv",
+        "name": "Kênh Truyền Hình Thể Thao",
+        "version": "1.0.0",
+        "baseUrl": "https://onsports.vn",
+        "type": "IPTV",             // ⭐ Đánh dấu plugin loại IPTV
+        "playerType": "exoplayer"   // Khuyến nghị dùng exoplayer
+    });
+}
+```
+
+#### 2. Trả về luồng phát Kênh trực tiếp trong `parseDetailResponse()`:
+
+- **Dạng HLS (.m3u8) / MP4 thông thường**:
+```javascript
+function parseDetailResponse(html, url) {
+    return JSON.stringify({
+        "url": "https://live.example.com/vtvcab1/index.m3u8",
+        "mimeType": "application/x-mpegURL",
+        "headers": {
+            "User-Agent": "Mozilla/5.0 ...",
+            "Referer": "https://example.com/"
+        }
+    });
+}
+```
+
+- **Dạng DASH (.mpd) kèm ClearKey DRM**:
+```javascript
+function parseDetailResponse(html, url) {
+    return JSON.stringify({
+        "url": "https://live.example.com/channel/manifest.mpd",
+        "mimeType": "application/dash+xml",
+        "drmType": "clearkey",
+        "drmKid": "c410ddc6a75244639fd0561fba5ef19b",
+        "drmKey": "30d13ea42031b9ff8271e5dc37d90e10",
+        "headers": {
+            "User-Agent": "Mozilla/5.0 ...",
+            "Referer": "https://example.com/"
+        }
+    });
+}
+```
+
+---
+
+### 📱 Hướng Dẫn Viết Plugin Phim Ngắn / Short Drama (`"type": "shortfilm"`)
+
+Khi viết plugin cho các nguồn phim ngắn (Short Drama / Reels / Shortflix), khai báo `"type": "shortfilm"` để kích hoạt trải nghiệm trình phát xoay dọc và cử chỉ vuốt chuyển tập.
+
+#### Đặc điểm của Plugin `"shortfilm"` trong App:
+- Trình phát ExoPlayer tự động **xoay đứng màn hình (Portrait Mode)** và phóng to vừa khít chiều dọc điện thoại (`resizeMode = ZOOM`).
+- Hỗ trợ **cử chỉ vuốt dạng TikTok / Short Reels** trên Mobile:
+  - **Vuốt LÊN (Swipe UP)**: Chuyển sang **Tập tiếp theo**.
+  - **Vuốt XUỐNG (Swipe DOWN)**: Lùi về **Tập trước đó**.
+- Tự động bảo toàn trạng thái xoay đứng và vuốt tay chuyển tập liên tục xuyên suốt từ Tập 1 tới toàn bộ các tập tiếp theo.
+
+#### 1. Khai báo Manifest:
+```javascript
+function getManifest() {
+    return JSON.stringify({
+        "id": "shortflix",
+        "name": "Phim Ngắn Shortflix",
+        "description": "Kênh phim ngắn vietsub lồng tiếng",
+        "version": "1.0.0",
+        "baseUrl": "https://shortflix.net",
+        "type": "shortfilm",        // ⭐ Đánh dấu plugin loại Phim Ngắn
+        "playerType": "exoplayer"  // Khuyến nghị dùng exoplayer
+    });
+}
+```
+
+---
+
+### 💾 Kỹ Thuật Truyền Dữ Liệu / Cache Biến Giữa Các Bước (State Management)
+
+Do engine QuickJS trong App chạy độc lập từng phiên (stateless), các biến toàn cục (global variables) sẽ bị xóa RAM sau khi chuyển màn hình hoặc reload engine.
+
+#### **Giải pháp chuẩn:** Đính kèm dữ liệu/token/key vào thuộc tính `id` hoặc `slug`
+
+Muốn mang dữ liệu gì từ `parseListResponse()` sang `parseMovieDetail()` hay `parseDetailResponse()`, bạn nhúng thông tin đó vào `id` / `slug` của item.
+
+##### Ví dụ 1: Nối chuỗi bằng dấu `|` (Đơn giản, khuyến nghị)
+```javascript
+// 1. Ở parseListResponse: Nối key vào id phim
+function parseListResponse(html) {
+    var secretKey = "ABC123XYZ";
+    return JSON.stringify({
+        "items": [
+            {
+                "id": "phim-hanh-dong-1|" + secretKey, // Nối key vào id
+                "title": "Phim Hay 1"
+            }
+        ]
     });
 }
 
-// =============================================================================
-// URL GENERATION
-// =============================================================================
+// 2. Ở parseMovieDetail: Tách key ra dùng & truyền tiếp vào episode.id
+function parseMovieDetail(html) {
+    var rawId = "phim-hanh-dong-1|ABC123XYZ"; // slug/id nhận được
+    var parts = rawId.split("|");
+    var realSlug = parts[0];
+    var myKey = parts[1]; // => "ABC123XYZ"
 
-
-function getUrlList(slug, filtersJson) {
-    try {
-        if (slug && slug.indexOf("http") > -1) {
-            if (slug.indexOf("search") > -1) {
-                if (filtersJson) {
-                    var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-                    try {
-                        var filters = JSON.parse(fixedJson);
-                        var page = parseInt(filters.page) || 1;
-                        if (page > 1) {
-                            return slug + page + "/";
-                        } else {
-                            return slug;
-                        }
-                    } catch (jsonErr) {
-                        return slug;
-                    }
-                }
-            }
-            return slug;
-        }
-        
-        var page = 1;
-        var path = slug || "";
-        
-        if (filtersJson) {
-            var fixedJson2 = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-            try {
-                var filters = JSON.parse(fixedJson2);
-                page = parseInt(filters.page) || 1;
-                if (filters.category) {
-                    if (Array.isArray(filters.category) && filters.category.length > 0) {
-                        path = filters.category[0].slug;
-                    } else if (typeof filters.category === 'string') {
-                        path = filters.category;
-                    }
-                }
-            } catch (jsonErr) {}
-        }
-        
-        var resultUrl = BASEURL;
-        if (path) {
-            resultUrl += path;
-        }
-        if (page > 1) {
-            resultUrl += page + "/";
-        }
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
-    } catch (e) {
-        console.log(e);
-        if (slug && slug.indexOf("http") > -1) {
-            return slug;
-        }
-        var fallback = BASEURL + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
-    }
+    return JSON.stringify({
+        "id": realSlug,
+        "title": "Phim Hay 1",
+        "servers": [{
+            "name": "Server 1",
+            "episodes": [{
+                "name": "Tập 1",
+                "id": "tap-1|" + myKey // Truyền tiếp key vào id tập phim
+            }]
+        }]
+    });
 }
 
-function getUrlSearch(keyword, filtersJson) {
-    return BASEURL + "/vi/search/" + encodeURIComponent(keyword) + "/relevance/";
+// 3. Ở parseDetailResponse: Lấy lại key dùng để bóc link stream
+function parseDetailResponse(html, episodeUrl) {
+    var myKey = episodeUrl.split("|")[1]; // => "ABC123XYZ"
+    return JSON.stringify({
+        "url": "https://server.com/stream?key=" + myKey,
+        "isEmbed": false
+    });
 }
+```
 
-// https://www.1porn.tv/vi/categories/4k/5/
-// https://www.1porn.tv/vi/search/blacked/relevance/3/
+##### Ví dụ 2: Mã hóa Base64 cho Dữ liệu LỚN / Phức Tạp (Tránh vỡ cú pháp URL)
 
-//var BASEURL = "https://motchille.cx";
-//var filtersJson = '{page:11,category:[{"slug":"/movies?sort=year_desc&limit=24&category=18-plus","name":"Thiếu niên"}]}'; 
-//var filtersJson = '{page:22}';
-//getUrlSearch("naruto", filtersJson)
-//console.log(getUrlList("https://www.1porn.tv/vi/search/blacked/relevance/", filtersJson));
+Khi cần truyền Object chứa nhiều dữ liệu (Cookie, Token JWT, bối cảnh Session...), bạn dùng `btoa()` để nén thành chuỗi Base64 1 dòng chữ an toàn:
 
-function getUrlDetail(slug) {
-    if (!slug) return "";
-    if (slug.indexOf('http') === 0) return slug;
-    return BASEURL + "/" + slug;
-}
-
-function getUrlCategories() {
-    return BASEURL;
-}
-
-function getUrlCountries() {
-    return "";
-}
-
-function getUrlYears() {
-    return "";
-}
-
-// =============================================================================
-// PARSERS
-// =============================================================================
-function parseListResponse(html, $url) {
-	try {
-		var items = [];
-		_$(html).find(".item").find("a").each(function() {
-			var year = "";
-			var lang = "";
-			var current = "";
-			var href = this.attr("href");
-			if (href.indexOf("http") == -1) {
-				href = BASEURL + href;
-			}
-			var quality = this.find('span[class*="is-"]').text();
-			var title = this.find("img").attr("alt");
-			var src = this.find("img").attr("data-original");
-			if (src.indexOf("http") == -1) {
-				src = BASEURL + src;
-			}
-			
-			if (href && href.indexOf("http") > -1) {
-				var cleanThumb = src.replace(/&amp;/g, '&');
-				
-				items.push({
-					"id": href,
-					"title": title.trim(),
-					"posterUrl": cleanThumb,
-					"backdropUrl": cleanThumb,
-					"quality": quality,
-					"lang": lang,
-					"episode_current": current
-				});
-			}
-		});
-		
-		return JSON.stringify({
-			"items": items,
-			"pagination": {
-				"currentPage": 1,
-				"totalPages": 999
-			}
-		});
-		
-	} catch (e) {
-		log(e);
-		return JSON.stringify({
-			"items": [{
-				"id": $url,
-				"title": "Lỗi: " + e,
-				"posterUrl": "",
-				"backdropUrl": ""
-			}],
-			"pagination": {
-				"currentPage": 1,
-				"totalPages": 1
-			}
-		});
-	}
-}
-// https://motchille.cx/danh-sach/4
-// https://motchille.cx/the-loai/kinh-di/4
-// https://motchille.cx/search/4?q=girl
-//var BASEURL = "https://www.xasiat.com";
-//var htmlsource = $("#labHtmlEditorWrap #labHtmlTreeContainer .lab-dom-pure-text").html();
-//JSON.parse(parseListResponse(outerHTML, BASEURL));
-//var html = outerHTML;
-
-
-function parseSearchResponse(html) {
-    return parseListResponse(html);
-}
-
-function parseScript(rawScript) {
-	const result = {
-		success: false,
-		data: {},
-		embedHtml: ''
-	};
-	
-	// Kiểm tra đầu vào cơ bản
-	if (!rawScript || typeof rawScript !== 'string') {
-		return result;
-	}
-	
-	try {
-		// 1. Trích xuất hàm getEmbed nếu bạn cần dùng code iframe của họ
-		const embedMatch = rawScript.match(/return\s+('(?:[^'\\]|\\.)*')/);
-		if (embedMatch) {
-			// Loại bỏ dấu nháy ở đầu/cuối chuỗi iframe được tìm thấy
-			result.embedHtml = embedMatch[1].slice(1, -1);
-		}
-		
-		// 2. Tìm phần nội dung bên trong dấu ngoặc nhọn của biến object (var xxxx = { ... })
-		const objectContentMatch = rawScript.match(/var\s+\w+\s*=\s*\{([\s\S]*?)\};/);
-		
-		if (objectContentMatch) {
-			const objectBody = objectContentMatch[1];
-			
-			// 3. Regex quét các cặp key: 'value' hoặc key: value (phòng khi họ bỏ dấu nháy cho số)
-			// Group 1: Key, Group 2: Value dạng chuỗi có nháy, Group 3: Value không nháy (số/boolean)
-			const pairRegex = /(\w+)\s*:\s*(?:'((?:[^'\\]|\\.)*)'|([^,\s}]+))/g;
-			let match;
-			
-			while ((match = pairRegex.exec(objectBody)) !== null) {
-				const key = match[1];
-				let value = match[2] !== undefined ? match[2] : match[3];
-				
-				// Nếu là chuỗi, xử lý các ký tự bị escape (ví dụ \' đổi lại thành ')
-				if (match[2] !== undefined) {
-					value = value.replace(/\\'/g, "'").replace(/\\"/g, '"');
-				} else {
-					// Nếu là số hoặc boolean thuần (không nằm trong nháy) thì ép kiểu tương ứng
-					if (value === 'true') value = true;
-					else if (value === 'false') value = false;
-					else if (!isNaN(value)) value = Number(value);
-				}
-				
-				result.data[key] = value;
-			}
-			
-			// Đánh dấu thành công nếu lấy được dữ liệu
-			if (Object.keys(result.data).length > 0) {
-				result.success = true;
-			}
-		}
-	} catch (error) {
-		// Ghi nhận lỗi nội bộ ra console để debug nhưng KHÔNG làm sập script của bạn
-		console.error("SafeParser Error:", error);
-	}
-	
-	return result;
-}
-
-function parseMovieDetail(html, url) {
-    cachedMovieDetailId = "";
-	try {
-		log(url);
-		var id = "";
-		var lname = "Đang cập nhật...";
-		var limg = "";
-		var ldes = "Không có mô tả.";
-		var category = "";
-		var episode_current = "";
-		var quality = "";
-		var year = 2026;
-		var rating = 0;
-		var servers = [];
-		var extra = "";
-		var lactor = "";
-		var ldirec = "";
-		var lduran = "";
-		var status = "";
-		var script = _$(html).find("script:content('video_categories')").html();
-		var $dataVD = parseScript(script);
-        if($dataVD.success == false){
-            	return JSON.stringify({
-                    id: cachedMovieDetailId || url || "error",
-                    title: "Đây là video riêng tư",
-                    description: "Video riêng tư nên bi cấm xem đó bạn ơi. Kiếm video khác nhé.",
-                    posterUrl: "",
-										backdropUrl: "",
-                    servers: []
-                });
-        }
-		var idMatch = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html) ||
-			/<meta\s+property="og:url"\s+content="([^"]+)"/i.exec(html);
-		id = idMatch ? idMatch[1] : (url || "");
-		
-		// Lưu ID vào bộ nhớ tạm toàn cục để Lượt 2 lấy ra đối chiếu
-		cachedMovieDetailId = id;
-		lname = $dataVD.data.video_title;
-		limg = $dataVD.data.preview_url;
-		ldes = $dataVD.data.video_tags;
-		category = $dataVD.data.video_categories;
-		lactor = $dataVD.data.video_models;
-		var episodes = [];
-		var servers = [];
-		if ($dataVD.data.video_alt_url3) {
-			var link = $dataVD.data.video_alt_url3;
-			episodes.push({
-				id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-				name: "Độ Phân Giải " + $dataVD.data.video_alt_url3_text,
-				slug: "hd3"
-			})
-		}
-		if ($dataVD.data.video_alt_url2) {
-			var link = $dataVD.data.video_alt_url2;
-			episodes.push({
-				id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-				name: "Độ Phân Giải " + $dataVD.data.video_alt_url2_text,
-				slug: "hd2"
-			})
-		}
-		if ($dataVD.data.video_alt_url) {
-			var link = $dataVD.data.video_alt_url;
-			episodes.push({
-				id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-				name: "Độ Phân Giải Cao",
-				slug: "hd3"
-			})
-		}
-		if ($dataVD.data.video_url) {
-			var link = $dataVD.data.video_url;
-			episodes.push({
-				id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-				name: "Độ Phân Giải Tháp",
-				slug: "hd4"
-			})
-		}
-		servers.push({ name: "Server", episodes: episodes })
-		log(JSON.stringify(servers))
-		return JSON.stringify({
-			id: id,
-			title: lname,
-			posterUrl: limg,
-			backdropUrl: limg,
-			description: ldes,
-			quality: quality,
-			year: year,
-			rating: rating,
-			status: status,
-			category: category,
-			episode_current: episode_current,
-			servers: servers,
-			duration: lduran || "",
-			casts: lactor || "",
-			director: ldirec || "",
-			extra: extra
-		});
-		
-	} catch (e) {
-		log(e);
-		return JSON.stringify({
-			id: cachedMovieDetailId || url || "error",
-			title: "error",
-			servers: []
-		});
-	}
-}
-
-
-
-
-//BASEURL = "https://phimnganhdc.com";
-//var html = outerHTML;
-//var $url = "https://phimnganhdc.com/hot-babe-remy-cheats-with-bbc/";
-//JSON.parse(parseMovieDetail(outerHTML,$url));
-
-
-function parseDetailResponse(html, url) {
-	try {
-		return JSON.stringify({
-			"url": "",
-			"isEmbed": false,
-			"mimeType": "application/x-mpegURL",
-			"headers": {
-				"Referer": BASEURL,
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-			},
-			"subtitles": []
-		});
-		
-	} catch (e) {
-		return JSON.stringify({ "url": "", "headers": {} });
-	}
-}
-
-DEV = "false"
-function log(msg) {
-    try {
-        if(DEV){
-            if (typeof console !== 'undefined' && console.log) {
-                console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
-            }
-        }
-    } catch (e) {
-        // Dự phòng khi log bị lỗi
-    }
-}
-
-// https://yanhh3d.ac/moi-cap-nhat?page=2
-function getHomeSections() {
-    try {
-        var listurl = `\n/categories/4k/@@Video Mới@@true\n`;
-        var menulist = buildMenu(listurl);
-        log(menulist);
-        return JSON.stringify(menulist);
-    } catch (e) {
-        log("getHomeSections[err]:\n " + e);
-    }
-}
-
-function getPrimaryCategories() {
-    try {
-        var listurl = getLISTmenu();
-        var menulist = buildMenu(listurl);
-        return JSON.stringify(menulist);
-    } catch (e) {
-        log("getPrimaryCategories[err]:\n " + e);
-    }
-}
-
-// ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
-function getFilterConfig() {
-    try {
-        var listurl = getLISTmenu();
-        var menulist = buildMenu(listurl);
-        return JSON.stringify({
-            category: menulist
-        });
-    } catch (e) {
-        log("getFilterConfig[err]:\n " + e);
-    }
-}
-
-// =============================================================================
-// URL GENERATION
-// =============================================================================
-
-function getUrlList(slug, filtersJson) {
-    try {
-        // 1. Kiểm tra nếu slug là link tuyệt đối (chứa http)
-        if (slug && slug.indexOf("http") > -1) {
-            return slug;
-        }
-        
-        var page = 1;
-        var path = slug || "";
-        
-        // 2. Xử lý an toàn filtersJson cho các trường hợp link tương đối (không chứa http)
-        if (filtersJson) {
-            let fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-            
-            try {
-                let filters = JSON.parse(fixedJson);
-                page = parseInt(filters.page) || 1;
-                
-                if (filters.category) {
-                    if (Array.isArray(filters.category) && filters.category.length > 0) {
-                        path = filters.category[0].slug;
-                    } else if (typeof filters.category === 'string') {
-                        path = filters.category;
-                    }
-                }
-            } catch (jsonErr) {
-                // Coi như bỏ qua nếu lỗi JSON
-            }
-        }
-        
-        // 3. Nối chuỗi URL kết quả cho link tương đối
-        let resultUrl = BASEURL;
-        if (path) {
-            resultUrl += path;
-        }
-        if (page > 1) {
-            resultUrl += page + "/";
-        }
-        
-        return resultUrl.replace(/([^:]\/)\/+/g, "$1");
-        
-    } catch (e) {
-        log("getUrlList[err]:\n " + e);
-        if (slug && slug.indexOf("http") > -1) {
-            return slug;
-        }
-        let fallback = BASEURL + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
-    }
-}
-
-function getUrlSearch(keyword, filtersJson) {
-    try {
-        return BASEURL + "/search/" + encodeURIComponent(keyword) + "/?videos_per_page=200";
-    } catch (e) {
-        log("getUrlSearch[err]:\n " + e);
-    }
-}
-
-function getUrlDetail(slug) {
-    try {
-        if (!slug) return "";
-        if (slug.indexOf('http') === 0) return slug;
-        return BASEURL + "/" + slug;
-    } catch (e) {
-        log("getUrlDetail[err]:\n " + e);
-    }
-}
-
-function getUrlCategories() {
-    try {
-        return BASEURL;
-    } catch (e) {
-        log("getUrlCategories[err]:\n " + e);
-    }
-}
-
-function getUrlCountries() {
-    try {
-        return "";
-    } catch (e) {
-        log("getUrlCountries[err]:\n " + e);
-    }
-}
-
-function getUrlYears() {
-    try {
-        return "";
-    } catch (e) {
-        log("getUrlYears[err]:\n " + e);
-    }
-}
-
-// =============================================================================
-// PARSERS
-// =============================================================================
-function parseListResponse(html, $url) {
-    try {
-        if ($url) {
-            log("parseListResponse[url]: \n" + $url);
-        }
-        var items = [];
-        _$(html).find(".col").find("a").each(function() {
-            var year = "";
-            var lang = "";
-            var current = "";
-            var href = this.attr("href");
-            if (href.indexOf("http") == -1 && href.indexOf("videos") > -1) {
-                href = BASEURL + href;
-            }
-            if (!href.match(/pimpbunny[\s\S]*?\/videos\//g)) {
-                href = "";
-            }
-            var quality = "";
-            var title = this.find("img").attr("alt");
-            var src = this.find("img").attr("data-original");
-            if (src.indexOf("http") == -1) {
-                src = BASEURL + src;
-            }
-            
-            if (href && href.indexOf("http") > -1) {
-                var cleanThumb = src.replace(/&amp;/g, '&');
-                
-                items.push({
-                    "id": href,
-                    "title": title.trim(),
-                    "posterUrl": cleanThumb,
-                    "backdropUrl": cleanThumb,
-                    "quality": quality,
-                    "lang": lang,
-                    "episode_current": current
-                });
-            }
-        });
-        
-        return JSON.stringify({
-            "items": items,
-            "pagination": {
-                "currentPage": 1,
-                "totalPages": 999
-            }
-        });
-        
-    } catch (e) {
-        log("parseListResponse[err]:\n " + e);
-        return JSON.stringify({
-            "items": [{
-                "id": $url,
-                "title": "Lỗi: " + e,
-                "posterUrl": "",
-                "backdropUrl": ""
-            }],
-            "pagination": {
-                "currentPage": 1,
-                "totalPages": 1
-            }
-        });
-    }
-}
-
-function parseSearchResponse(html) {
-    try {
-        return parseListResponse(html);
-    } catch (e) {
-        log("parseSearchResponse[err]:\n " + e);
-    }
-}
-
-function decodeKVSUrl(url) {
-    try {
-        log("decodeKVSUrl[url]: \n" + url);
-        // Bản đồ hoán vị chuẩn xác 100% sau khi đối chiếu cả 3 chất lượng video
-        const PERFECT_MAP = [
-            29, 3, 1, 16, 22, 6, 23, 8,
-            2, 15, 31, 25, 10, 0, 12, 11,
-            17, 24, 21, 28, 19, 30, 26, 13,
-            5, 14, 18, 20, 27, 9, 7, 4
-        ];
-        
-        // Tách chuỗi hash 42 ký tự từ URL
-        const hashRegex = /\/([a-f0-9]{42})\//i;
-        const match = url.match(hashRegex);
-        
-        if (!match) {
-            return "Không tìm thấy chuỗi mã hóa hợp lệ.";
-        }
-        
-        const fullHash = match[1];
-        const encodedPart = fullHash.substring(0, 32); // 32 ký tự cần xếp lại
-        const fixedPart = fullHash.substring(32); // 10 ký tự cuối giữ nguyên
-        
-        // Tiến hành hoán vị ký tự theo đúng sơ đồ hệ thống
-        let decodedPart = "";
-        for (let i = 0; i < 32; i++) {
-            decodedPart += encodedPart[PERFECT_MAP[i]];
-        }
-        
-        // Ghép lại thành chuỗi hash mới đã giải mã
-        const newHash = decodedPart + fixedPart;
-        let decodedUrl = url.replace(fullHash, newHash);
-        
-        // Làm mới tham số ?rnd chống cache theo thời gian thực
-        const rnd = Date.now();
-        if (decodedUrl.includes('#')) {
-            decodedUrl = decodedUrl.replace('#', `?rnd=${rnd}#`);
-        } else if (/\?rnd=\d+/.test(decodedUrl)) {
-            decodedUrl = decodedUrl.replace(/\?rnd=\d+/, `?rnd=${rnd}`);
-        } else {
-            decodedUrl += `?rnd=${rnd}`;
-        }
-        
-        return decodedUrl;
-    } catch (e) {
-        log("decodeKVSUrl[err]:\n " + e);
-    }
-}
-
-function parseScript(rawScript) {
-    const result = {
-        success: false,
-        data: {},
-        embedHtml: ''
+```javascript
+// 1. Ở parseListResponse: Mã hóa Object thành Base64 đính vào ID
+function parseListResponse(html) {
+    var bigData = {
+        token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        session: "sess_9988776655",
+        quality: "1080p"
     };
-    
-    // Kiểm tra đầu vào cơ bản
-    if (!rawScript || typeof rawScript !== 'string') {
-        return result;
-    }
-    
-    try {
-        // 1. Trích xuất hàm getEmbed nếu bạn cần dùng code iframe của họ
-        const embedMatch = rawScript.match(/return\s+('(?:[^'\\]|\\.)*')/);
-        if (embedMatch) {
-            // Loại bỏ dấu nháy ở đầu/cuối chuỗi iframe được tìm thấy
-            result.embedHtml = embedMatch[1].slice(1, -1);
-        }
-        
-        // 2. Tìm phần nội dung bên trong dấu ngoặc nhọn của biến object (var xxxx = { ... })
-        const objectContentMatch = rawScript.match(/var\s+\w+\s*=\s*\{([\s\S]*?)\};/);
-        
-        if (objectContentMatch) {
-            const objectBody = objectContentMatch[1];
-            
-            // 3. Regex quét các cặp key: 'value' hoặc key: value (phòng khi họ bỏ dấu nháy cho số)
-            // Group 1: Key, Group 2: Value dạng chuỗi có nháy, Group 3: Value không nháy (số/boolean)
-            const pairRegex = /(\w+)\s*:\s*(?:'((?:[^'\\]|\\.)*)'|([^,\s}]+))/g;
-            let match;
-            
-            while ((match = pairRegex.exec(objectBody)) !== null) {
-                const key = match[1];
-                let value = match[2] !== undefined ? match[2] : match[3];
-                
-                // Nếu là chuỗi, xử lý các ký tự bị escape (ví dụ \' đổi lại thành ')
-                if (match[2] !== undefined) {
-                    value = value.replace(/\\'/g, "'").replace(/\\"/g, '"');
-                } else {
-                    // Nếu là số hoặc boolean thuần (không nằm trong nháy) thì ép kiểu tương ứng
-                    if (value === 'true') value = true;
-                    else if (value === 'false') value = false;
-                    else if (!isNaN(value)) value = Number(value);
-                }
-                
-                result.data[key] = value;
+
+    // Nén Object thành chuỗi Base64 an toàn 1 dòng
+    var encodedData = btoa(JSON.stringify(bigData));
+
+    return JSON.stringify({
+        "items": [
+            {
+                "id": "phim-demo|" + encodedData,
+                "title": "Phim Demo"
             }
-            
-            // Đánh dấu thành công nếu lấy được dữ liệu
-            if (Object.keys(result.data).length > 0) {
-                result.success = true;
-            }
-        }
-    } catch (error) {
-        log("parseScript[err]:\n " + error);
+        ]
+    });
+}
+
+// 2. Ở parseDetailResponse: Giải mã Base64 ngược lại thành Object
+function parseDetailResponse(html, episodeUrl) {
+    var data = {};
+    if (episodeUrl && episodeUrl.indexOf("|") > -1) {
+        var base64Str = episodeUrl.split("|")[1];
+        try {
+            data = JSON.parse(atob(base64Str)); // Giải mã Base64 ngược lại
+        } catch(e) {}
     }
-    
-    return result;
+
+    console.log(data.token);   // "eyJhbGciOi..."
+    console.log(data.session); // "sess_9988776655"
+
+    return JSON.stringify({
+        "url": "https://server.com/stream?token=" + data.token,
+        "isEmbed": false
+    });
 }
+```
 
-function parseMovieDetail(html, url) {
-    try {
-        if (url) {
-            log("parseMovieDetail[url]: \n" + url);
-        }
-        var id = "";
-        var lname = "Đang cập nhật...";
-        var limg = "";
-        var ldes = "Không có mô tả.";
-        var category = "";
-        var episode_current = "";
-        var quality = "";
-        var year = 2026;
-        var rating = 0;
-        var servers = [];
-        var extra = "";
-        var lactor = "";
-        var ldirec = "";
-        var lduran = "";
-        var status = "";
-        var script = _$(html).find("script:content('video_categories')").html();
-        var $dataVD = parseScript(script);
-        var idMatch = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html) ||
-            /<meta\s+property="og:url"\s+content="([^"]+)"/i.exec(html);
-        id = idMatch ? idMatch[1] : (url || "");
-        
-        // Lưu ID vào bộ nhớ tạm toàn cục để Lượt 2 lấy ra đối chiếu
-        cachedMovieDetailId = id;
-        lname = $dataVD.data.video_title;
-        limg = $dataVD.data.preview_url;
-        ldes = $dataVD.data.video_tags;
-        category = $dataVD.data.video_categories;
-        lactor = $dataVD.data.video_models;
-        var episodes = [];
-        var servers = [];
-        if ($dataVD.data.video_alt_url3) {
-            var link = decodeKVSUrl($dataVD.data.video_alt_url3);
-            episodes.push({
-                id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-                name: "Độ Phân Giải " + $dataVD.data.video_alt_url3_text,
-                slug: "hd3"
-            })
-        }
-        if ($dataVD.data.video_alt_url2) {
-            var link = decodeKVSUrl($dataVD.data.video_alt_url2);
-            episodes.push({
-                id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-                name: "Độ Phân Giải " + $dataVD.data.video_alt_url2_text,
-                slug: "hd2"
-            })
-        }
-        if ($dataVD.data.video_alt_url) {
-            var link = decodeKVSUrl($dataVD.data.video_alt_url);
-            episodes.push({
-                id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-                name: "Độ Phân Giải " + $dataVD.data.video_alt_url_text,
-                slug: "hd3"
-            })
-        }
-        if ($dataVD.data.video_url) {
-            var link = decodeKVSUrl($dataVD.data.video_url);
-            episodes.push({
-                id: link.replace(/[\s\S]*?http/i, "http") + "#.m3u8",
-                name: "Độ Phân Giải " + $dataVD.data.video_url_text,
-                slug: "hd4"
-            })
-        }
-        servers.push({ name: "Server", episodes: episodes })
+---
 
-        return JSON.stringify({
-            id: id,
-            title: lname,
-            posterUrl: limg,
-            backdropUrl: limg,
-            description: ldes,
-            quality: quality,
-            year: year,
-            rating: rating,
-            status: status,
-            category: category,
-            episode_current: episode_current,
-            servers: servers,
-            duration: lduran || "",
-            casts: lactor || "",
-            director: ldirec || "",
-            extra: extra
-        });
-        
-    } catch (e) {
-        log("parseMovieDetail[err]:\n " + e);
-        return JSON.stringify({
-            id: typeof cachedMovieDetailId !== 'undefined' ? cachedMovieDetailId : (url || "error"),
-            title: "error",
-            servers: []
-        });
-    }
+## 🧪 Mẹo Debug
+
+### Trong tester.html:
+- Hàm `parseListResponse` / `parseMovieDetail` cần dán **HTML source** của trang web tương ứng
+- Hàm `getManifest` / `getHomeSections` chạy **không cần tham số**
+- Hàm `getUrlList` / `getUrlDetail` cần nhập **slug** vào ô input
+
+### Mẹo viết Regex:
+```javascript
+// Lấy tất cả <a> có class "movie-item"
+var regex = /<a[^>]*class="movie-item"[^>]*href="([^"]+)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[\s\S]*?<h3[^>]*>([^<]+)/g;
+var match;
+var items = [];
+while ((match = regex.exec(html)) !== null) {
+    items.push({
+        id: match[1].replace('/phim/', ''),
+        posterUrl: match[2],
+        title: match[3].trim()
+    });
 }
+```
 
-function parseDetailResponse(html, url) {
-    try {
-        if (url) {
-            log("parseDetailResponse[url]: \n" + url);
-        }
-        return JSON.stringify({
-            "url": "",
-            "isEmbed": false,
-            "mimeType": "application/x-mpegURL",
-            "headers": {
-                "Referer": BASEURL,
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            },
-            "subtitles": []
-        });
-        
-    } catch (e) {
-        log("parseDetailResponse[err]:\n " + e);
-        return JSON.stringify({ "url": "", "headers": {} });
-    }
-}
+### QuickJS sandbox — Những thứ KHÔNG dùng được:
+❌ `document.querySelector()`,  `window.location`, `DOM API`
+❌ `fetch()`, `XMLHttpRequest`, `async/await`
+❌ `require()`, `import`
 
+### Những thứ DÙNG ĐƯỢC:
+✅ `JSON.parse()`, `JSON.stringify()`
+✅ `String.match()`, `String.replace()`, `String.split()`, `String.indexOf()`
+✅ `RegExp`, `/pattern/g.exec()`
+✅ `Array.map()`, `Array.filter()`, `Array.forEach()`
+✅ `try {} catch(e) {}`
+✅ `encodeURIComponent()`, `decodeURIComponent()`
 
-function runJS(){
-  function beginJS(){
-    return ` Code `
-  }
-  function getLinkJS(){
-    return ` Code `
-  }
-  function mainJS(){
-    return ` Code `
-  }
-  retun ` Nối 3 hàm chứa Code bên trên lại và ko gây lỗi hay sai cú pháp `
-}
+---
+
+## 📁 Ví Dụ Thực Tế
+
+| Plugin | Độ khó | Kỹ thuật |
+|--------|--------|----------|
+| `ophim_plugin.js` | ⭐ Dễ | API trả JSON → `JSON.parse()` |
+| `kkphim_plugin.js` | ⭐⭐ Trung bình | API + HTML parse |
+| `vlxx_plugin.js` | ⭐⭐⭐ Nâng cao | AJAX POST + recursive embed + mimeType |
+
+🌐 Chúc bạn thành công! Đóng góp plugin cho cộng đồng nha!
+

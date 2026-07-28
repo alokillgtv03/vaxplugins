@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.2.2",
+    "version": "1.2.3",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -578,7 +578,6 @@ function parseDetailResponse(html, url) {
   }
 }
 
-
 function rawJS() {
 
   return `
@@ -604,11 +603,11 @@ function rawJS() {
         return document.body || document.documentElement;
     }
 
-    function showToast(msg) {
+    function showToast(msg, timer = 5000) {
         log('[Toast] ' + msg);
         try {
             if (window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
-                window.SnifferBridge.toast(String(msg));
+                window.SnifferBridge.toast(String(msg),timer);
             }
         } catch (e) {}
 
@@ -683,7 +682,7 @@ function rawJS() {
                     var c = ca[i].trim();
                     if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length));
                 }
-            } catch(e) {}
+            } catch(e) { log('[Storage Error] Lỗi đọc Cookie: ' + e.message); }
             return null;
         }
 
@@ -697,7 +696,10 @@ function rawJS() {
                 }
                 document.cookie = encodeURIComponent(name) + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax";
                 return true;
-            } catch(e) { return false; }
+            } catch(e) { 
+                log('[Storage Error] Lỗi ghi Cookie: ' + e.message);
+                return false; 
+            }
         }
 
         function getWinNameData() {
@@ -721,23 +723,29 @@ function rawJS() {
         return {
             getItem: function(key, defaultVal) {
                 var val = null;
-                if (hasLocal) { try { val = localStorage.getItem(key); } catch(e) {} }
-                if (val === null && hasSession) { try { val = sessionStorage.getItem(key); } catch(e) {} }
-                if (val === null) { val = getCookie(key); }
+                var src = '';
+                if (hasLocal) { try { val = localStorage.getItem(key); if (val !== null) src = 'localStorage'; } catch(e) {} }
+                if (val === null && hasSession) { try { val = sessionStorage.getItem(key); if (val !== null) src = 'sessionStorage'; } catch(e) {} }
+                if (val === null) { val = getCookie(key); if (val !== null) src = 'cookie'; }
                 if (val === null) {
                     var wData = getWinNameData();
-                    if (wData[key] !== undefined) val = wData[key];
+                    if (wData[key] !== undefined) { val = wData[key]; src = 'window.name'; }
                 }
-                if (val === null && memCache[key] !== undefined) val = memCache[key];
+                if (val === null && memCache[key] !== undefined) { val = memCache[key]; src = 'memCache'; }
+                
+                log('[Storage Get] Key=' + key + ' | Nguồn=' + (src || 'Không có') + ' | Val=' + val);
                 return val !== null ? val : defaultVal;
             },
 
             setItem: function(key, val) {
                 memCache[key] = val;
-                if (hasLocal) { try { localStorage.setItem(key, val); } catch(e) {} }
-                if (hasSession) { try { sessionStorage.setItem(key, val); } catch(e) {} }
-                setCookie(key, val, 30);
-                setWinNameData(key, val);
+                var savedSources = [];
+                if (hasLocal) { try { localStorage.setItem(key, val); savedSources.push('localStorage'); } catch(e) { log('[Storage Err] LocalStorage full/blocked'); } }
+                if (hasSession) { try { sessionStorage.setItem(key, val); savedSources.push('sessionStorage'); } catch(e) {} }
+                if (setCookie(key, val, 30)) savedSources.push('cookie');
+                if (setWinNameData(key, val)) savedSources.push('window.name');
+                
+                log('[Storage Set] Key=' + key + ' | Val=' + val + ' | Đã lưu vào: [' + savedSources.join(', ') + ']');
             }
         };
     })();
@@ -776,14 +784,6 @@ function rawJS() {
 
             window.addEventListener('click', blockHandler, true);
             window.addEventListener('touchstart', blockHandler, true);
-            
-            document.addEventListener('click', function(e) {
-                if (e.isTrusted && window.location.href.includes('haiten')) {
-                    if (e.target.closest && (e.target.closest('#v-top-bar') || e.target.closest('#v-arrow-prev') || e.target.closest('#v-arrow-next'))) {
-                        return;
-                    }
-                }
-            }, true);
 
         } catch (e) {}
     })();
@@ -870,21 +870,37 @@ function rawJS() {
     function parseUrlInfo() {
         try {
             const url = new URL(window.location.href);
-            const current = parseInt(url.searchParams.get('current')) || 1;
-            const maxEpi = parseInt(url.searchParams.get('maxEpi')) || 1;
-
-            const pathParts = url.pathname.split('/');
+            const pathParts = url.pathname.split('/').filter(Boolean);
             const lastSlug = pathParts[pathParts.length - 1] || '';
-            const baseSlug = lastSlug.replace(/-\\d+$/, '');
+
+            var currentParam = url.searchParams.get('current');
+            var current = currentParam ? parseInt(currentParam) : null;
+
+            if (!current || isNaN(current)) {
+                var match = lastSlug.match(/(?:tap|episode|ep)[-_]?(\\d+)/i) || lastSlug.match(/-(\\d+)$/);
+                if (match) {
+                    current = parseInt(match[1]);
+                }
+            }
+
+            if (!current) current = 1;
+
+            const maxEpi = parseInt(url.searchParams.get('maxEpi')) || Math.max(current, 1);
+            const baseSlug = lastSlug.replace(/(?:[-_]tap|[-_]ep)?[-_]\\d+$/i, '');
             const seriesKey = baseSlug || 'default_series';
 
             const getEpiUrl = function (epiNum) {
-                const newPath = url.pathname.replace(lastSlug, baseSlug + '-' + epiNum);
+                var newPath = url.pathname;
+                if (lastSlug.match(/-\\d+$/)) {
+                    newPath = url.pathname.replace(lastSlug, baseSlug + '-' + epiNum);
+                }
                 return url.origin + newPath + '?current=' + epiNum + '&maxEpi=' + maxEpi;
             };
 
+            log('[Parse URL] SeriesKey=' + seriesKey + ' | Tập hiện tại=' + current + ' | MaxEpi=' + maxEpi);
             return { current: current, maxEpi: maxEpi, baseSlug: baseSlug, seriesKey: seriesKey, getEpiUrl: getEpiUrl, fullUrl: url.href };
         } catch (e) {
+            log('[Parse URL Error]: ' + e.message);
             return { current: 1, maxEpi: 1, baseSlug: '', seriesKey: 'default', getEpiUrl: function () { return window.location.href; } };
         }
     }
@@ -895,13 +911,15 @@ function rawJS() {
         try {
             return typeof raw === 'string' ? JSON.parse(raw) : raw;
         } catch (e) {
+            log('[Get History Err] JSON Parse lỗi: ' + e.message);
             return null;
         }
     }
 
     function saveHistory(seriesKey, epiNum) {
+        log('[Save History] Đang lưu lịch sử phim [' + seriesKey + '] -> Tập ' + epiNum);
         var data = JSON.stringify({
-            lastEpi: epiNum,
+            lastEpi: parseInt(epiNum),
             time: Date.now()
         });
         SmartStorage.setItem('watch_hist_' + seriesKey, data);
@@ -1048,11 +1066,9 @@ function rawJS() {
                             var mainPlayer = document.getElementById('v-media-frame');
                             if (mainPlayer) mainPlayer.src = realSrc;
                             bgFrame.remove();
+                            
                             window.history.pushState({}, '', targetUrl);
                             urlInfo = parseUrlInfo();
-                            
-                            // CHỈ LƯU LỊCH SỬ KHI NGƯỜI DÙNG BẤM CHUYỂN TẬP
-                            saveHistory(urlInfo.seriesKey, urlInfo.current);
                             
                             buildUI(false);
                             hideLoadingScreen();
@@ -1076,7 +1092,7 @@ function rawJS() {
     // DỰNG GIAO DIỆN UI
     // -------------------------------------------------------------
     function buildUI(isInitialLoad) {
-        log('[Build UI] Tiến hành dựng giao diện điều khiển...');
+        log('[Build UI] Tiến hành dựng giao diện... (isInitialLoad=' + isInitialLoad + ')');
         injectStyles();
         applyMobileViewport();
 
@@ -1089,6 +1105,13 @@ function rawJS() {
         if (oldPrev) oldPrev.remove();
         var oldNext = document.getElementById('v-arrow-next');
         if (oldNext) oldNext.remove();
+
+        // 1. ĐỌC LỊCH SỬ CŨ TRƯỚC KHI LƯU TẬP MỚI
+        var prevHist = getHistory(urlInfo.seriesKey);
+        var oldEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
+
+        // 2. LUÔN LUÔN LƯU TẬP HIỆN TẠI VÀO LỊCH SỬ
+        saveHistory(urlInfo.seriesKey, urlInfo.current);
 
         const headerDiv = document.createElement('div');
         headerDiv.id = 'v-top-bar';
@@ -1132,15 +1155,6 @@ function rawJS() {
         epiWrapper.appendChild(toggleBtn);
         epiWrapper.appendChild(gridDiv);
 
-        // --- ĐỌC LỊCH SỬ CŨ ---
-        var prevHist = getHistory(urlInfo.seriesKey);
-        var prevEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
-        
-        // Nếu vào xem bộ này lần đầu tiên (chưa có lịch sử), thì mới ghi nhận tập hiện tại làm mốc khởi đầu
-        if (prevEpi === null && isInitialLoad) {
-            saveHistory(urlInfo.seriesKey, urlInfo.current);
-        }
-
         const histBtn = document.createElement('button');
         histBtn.id = 'v-btn-hist';
         histBtn.className = 'v-btn-act';
@@ -1150,15 +1164,17 @@ function rawJS() {
         histDiv.id = 'v-hist-dropdown';
         histDiv.className = 'closed';
 
-        var nextEpi = (prevEpi !== null && prevEpi < urlInfo.maxEpi) ? prevEpi + 1 : (prevEpi || 1);
+        // Tính toán tập để gợi ý trong menu Lịch Sử
+        var targetHistEpi = (oldEpi !== null && oldEpi !== urlInfo.current) ? oldEpi : urlInfo.current;
+        var nextEpi = (targetHistEpi < urlInfo.maxEpi) ? targetHistEpi + 1 : targetHistEpi;
 
-        if (prevEpi !== null && !isNaN(prevEpi)) {
+        if (oldEpi !== null) {
             histDiv.innerHTML = 
                 '<div style="font-size: 12px; line-height: 1.4; color: #eee; font-weight: 500;">' +
-                'Lần trước xem đến <b>Tập ' + prevEpi + '</b>.' +
+                'Lần trước xem đến <b>Tập ' + oldEpi + '</b>.' +
                 '</div>' +
                 '<div style="display: flex; gap: 6px; flex-direction: column; margin-top: 2px;">' +
-                    '<button id="v-btn-hist-prev" style="background: #e50914; color: #fff; border: none; padding: 7px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">Phát Tập ' + prevEpi + '</button>' +
+                    '<button id="v-btn-hist-prev" style="background: #e50914; color: #fff; border: none; padding: 7px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">Phát Tập ' + targetHistEpi + '</button>' +
                     '<button id="v-btn-hist-next" style="background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 7px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">Phát Tập ' + nextEpi + '</button>' +
                 '</div>';
         } else {
@@ -1184,8 +1200,6 @@ function rawJS() {
             resetIdleTimer();
         };
 
-        // --- SỬA LỖI TỰ ĐÓNG SAU 0.5S ---
-        // Chỉ đóng dropdown khi click ra ngoài vùng top-bar (không click nhầm vào menu)
         document.addEventListener('click', function (e) {
             if (e.target.closest && e.target.closest('#v-top-bar')) {
                 return;
@@ -1199,7 +1213,7 @@ function rawJS() {
             btnPrev.onclick = function(e) {
                 e.stopPropagation();
                 histDiv.className = 'closed';
-                if (prevEpi !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(prevEpi));
+                if (targetHistEpi !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(targetHistEpi));
             };
         }
 
@@ -1246,11 +1260,12 @@ function rawJS() {
         updatePlayerDimensions();
 
         if (isInitialLoad) {
-            if (prevEpi !== null && prevEpi !== urlInfo.current) {
+            if (oldEpi !== null && oldEpi !== urlInfo.current) {
                 histDiv.className = 'open';
-                showToast('Lần trước xem: Tập ' + prevEpi);
+                showToast('Lần trước xem: Tập ' + oldEpi + '\\n\\nNếu video load hoài hãy nhấn tua nhanh 10s để phát tiếp nha bạn.', 10000);
+                
             } else {
-                showToast('Đang phát Tập ' + urlInfo.current);
+                showToast('Đang phát Tập ' + urlInfo.current + '\\n\\nNếu video load hoài hãy nhấn tua nhanh 10s để phát tiếp nha bạn.', 10000);
             }
         }
 
