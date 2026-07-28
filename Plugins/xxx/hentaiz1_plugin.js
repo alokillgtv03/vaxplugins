@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.2.0",
+    "version": "1.2.1",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -761,19 +761,16 @@ function rawJS() {
         try {
             var dummyWin = { focus: function () {}, blur: function () {}, close: function () {}, closed: true, postMessage: function () {} };
             
-            // Chặn tuyệt đối mở cửa sổ/tab mới
             window.open = function (url) {
                 log('[Anti-Popup] Chặn window.open: ' + url);
                 return dummyWin;
             };
 
-            // Vô hiệu hóa gán hướng dẫn trang qua location
             try {
                 window.location.assign = function (url) { log('[Anti-Redirect] Chặn assign: ' + url); };
                 window.location.replace = function (url) { log('[Anti-Redirect] Chặn replace: ' + url); };
             } catch (e) {}
 
-            // Chặn bắt sự kiện click ngầm trên toàn trang ở Capture Phase (chặn trước khi sự kiện nổi bọt ra ngoài)
             var blockHandler = function (e) {
                 var target = e.target;
                 while (target && target !== document) {
@@ -781,7 +778,6 @@ function rawJS() {
                         var href = target.getAttribute('href');
                         var attrTarget = target.getAttribute('target');
                         
-                        // Nếu thẻ a mở tab mới hoặc link quảng cáo lạ không phải nội dung trang
                         if (attrTarget === '_blank' || target.target === '_blank' || (href && href.startsWith('http') && !href.includes(window.location.hostname))) {
                             e.preventDefault();
                             e.stopPropagation();
@@ -796,10 +792,8 @@ function rawJS() {
             window.addEventListener('click', blockHandler, true);
             window.addEventListener('touchstart', blockHandler, true);
             
-            // Chặn thêm các sự kiện tạo popup tự động từ script rác bên thứ 3
             document.addEventListener('click', function(e) {
                 if (e.isTrusted && window.location.href.includes('haiten')) {
-                    // Cho phép click hợp lệ của UI người dùng tự tạo
                     if (e.target.closest && (e.target.closest('#v-top-bar') || e.target.closest('#v-arrow-prev') || e.target.closest('#v-arrow-next'))) {
                         return;
                     }
@@ -843,9 +837,6 @@ function rawJS() {
         } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // KHÓA VIEWPORT MOBILE & RESET BODY
-    // -------------------------------------------------------------
     function applyMobileViewport() {
         try {
             var meta = document.querySelector('meta[name="viewport"]');
@@ -858,9 +849,6 @@ function rawJS() {
         } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // LOADING SCREEN TRÊN DOM
-    // -------------------------------------------------------------
     function showLoadingScreen() {
         var parent = document.body || document.documentElement;
         if (!parent || document.getElementById('v-stage-layer')) return;
@@ -897,9 +885,6 @@ function rawJS() {
         showLoadingScreen();
     });
 
-    // -------------------------------------------------------------
-    // PARSE URL & HOẠT ĐỘNG LỊCH SỬ
-    // -------------------------------------------------------------
     function parseUrlInfo() {
         try {
             const url = new URL(window.location.href);
@@ -940,9 +925,6 @@ function rawJS() {
         SmartStorage.setItem('watch_hist_' + seriesKey, data);
     }
 
-    // -------------------------------------------------------------
-    // FIT MODE
-    // -------------------------------------------------------------
     var FIT_MODES = [
         { key: 'fill', label: '↔️ Co giãn' },
         { key: 'contain', label: '📐 Vừa khung' },
@@ -1022,9 +1004,6 @@ function rawJS() {
     window.addEventListener('resize', function() { updatePlayerDimensions(); });
     window.addEventListener('orientationchange', function() { setTimeout(updatePlayerDimensions, 300); });
 
-    // -------------------------------------------------------------
-    // IDLE CONTROLLER (TỰ ĐỘNG ẨN SAU 10 GIÂY, OPACITY 0.2)
-    // -------------------------------------------------------------
     var idleTimer = null;
     const IDLE_TIMEOUT = 10000;
 
@@ -1059,9 +1038,6 @@ function rawJS() {
         resetIdleTimer();
     }
 
-    // -------------------------------------------------------------
-    // CHUYỂN TẬP
-    // -------------------------------------------------------------
     function switchEpisode(targetUrl) {
         showLoadingScreen();
         var bgFrame = document.createElement('iframe');
@@ -1092,8 +1068,9 @@ function rawJS() {
                             bgFrame.remove();
                             window.history.pushState({}, '', targetUrl);
                             urlInfo = parseUrlInfo();
+                            // Lưu lịch sử MỚI SAU KHI đã chuyển tập thành công
                             saveHistory(urlInfo.seriesKey, urlInfo.current);
-                            buildUI(true);
+                            buildUI(false); // Không bung popup lịch sử khi tự chuyển tập qua lại
                             hideLoadingScreen();
                             showToast('Đã chuyển sang Tập ' + urlInfo.current);
                             return;
@@ -1114,7 +1091,7 @@ function rawJS() {
     // -------------------------------------------------------------
     // DỰNG GIAO DIỆN UI
     // -------------------------------------------------------------
-    function buildUI(autoOpenHist) {
+    function buildUI(isInitialLoad) {
         log('[Build UI] Tiến hành dựng giao diện điều khiển...');
         injectStyles();
         applyMobileViewport();
@@ -1171,9 +1148,11 @@ function rawJS() {
         epiWrapper.appendChild(toggleBtn);
         epiWrapper.appendChild(gridDiv);
 
+        // --- ĐỌC LỊCH SỬ CŨ TRƯỚC KHI GHI ĐÈ ---
         var prevHist = getHistory(urlInfo.seriesKey);
         var prevEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
         
+        // --- BÂY GIỜ MỚI CẬP NHẬT LỊCH SỬ CHO TẬP HIỆN TẠI ---
         saveHistory(urlInfo.seriesKey, urlInfo.current);
 
         const histBtn = document.createElement('button');
@@ -1275,11 +1254,12 @@ function rawJS() {
 
         updatePlayerDimensions();
 
-        if (autoOpenHist) {
-            var isSameOrNext = (prevEpi !== null && (urlInfo.current === prevEpi || urlInfo.current === prevEpi + 1));
-            if (prevEpi !== null && !isSameOrNext) {
+        // Xử lý tự hiện Toast / Dropdown lịch sử khi vừa truy cập lần đầu
+        if (isInitialLoad) {
+            // Nếu có lịch sử cũ và tập cũ khác với tập hiện tại đang truy cập -> Bật dropdown lịch sử nhắc nhở
+            if (prevEpi !== null && prevEpi !== urlInfo.current) {
                 histDiv.className = 'open';
-                showToast('Phát hiện lịch sử: Tập ' + prevEpi);
+                showToast('Lần trước xem: Tập ' + prevEpi);
             } else {
                 showToast('Đang phát Tập ' + urlInfo.current);
             }
@@ -1318,13 +1298,12 @@ function rawJS() {
                             mainIframe.src = realSrc;
                             mainIframe.setAttribute('allowfullscreen', 'true');
                             mainIframe.setAttribute('frameborder', '0');
-                            // Cấu hình sandbox bảo mật cao ngăn chặn iframe tự ý chuyển trang thiết bị di động
                             mainIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
                             document.body.appendChild(mainIframe);
 
                             urlInfo = parseUrlInfo();
                             
-                            buildUI(true);
+                            buildUI(true); // Truyền true để kích hoạt kiểm tra và hiện lịch sử cũ chuẩn xác
                             hideLoadingScreen();
 
                             return;
