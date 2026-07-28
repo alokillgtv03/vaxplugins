@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    version: "1.1.1",
+    version: "1.1.2",
     info: "Nguồn phim hentai vietsub của VN.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -580,29 +580,18 @@ function parseDetailResponse(html, url) {
 
 
 
-
 function rawJS() {
 
   return `
-
-  
 (function () {
     var LOGGER = true;
-    var isInitialLoad = true; // Cờ đánh dấu lần đầu tải trang
+    var isInitialLoad = true;
 
-    // -------------------------------------------------------------
-    // 0. HÀM LOGGING HỆ THỐNG
-    // -------------------------------------------------------------
     function log(msg) {
         if (!LOGGER) return;
         try {
             var strMsg = String(msg);
-            var formattedContent = strMsg;
-            var match = strMsg.match(/^(\\S+\\s*\\[[^\\]]+\\]:?)(.*)$/);
-            if (match) {
-                formattedContent = match[1].trim() + "\\r\\n\\t" + match[2].trim();
-            }
-            var logMessage = '[CustomJS] ' + formattedContent;
+            var logMessage = '[CustomJS] ' + strMsg;
             if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
                 window.SnifferBridge.log(logMessage);
             } else if (typeof console !== 'undefined' && console.log) {
@@ -611,72 +600,46 @@ function rawJS() {
         } catch (e) {}
     }
 
-    log('[Init] Script khoi chay che do Background Fetch Iframe...');
+    log('[Init] Script khoi chay...');
 
-    const TARGET_PATTERN = 'https://x.haiten.org/watch';
-    const CHECK_SPEED = 150;
+    const TARGET_PATTERN = 'haiten.org'; // Bỏ bớt tiền tố 'https://x.' để bắt link rộng hơn
+    const CHECK_SPEED = 200;
     var urlInfo = null;
     var prevHistory = null;
 
-    // -------------------------------------------------------------
-    // 1. QUẢN LÝ LOADING SCREEN (POLLING AN TOÀN)
-    // -------------------------------------------------------------
+    // 1. QUẢN LÝ LOADING SCREEN (CÓ NÚT BẤM TẮT & TIMEOUT)
     function showLoadingScreen() {
         if (document.getElementById('custom-loading-screen')) return;
 
-        var loadingInterval = setInterval(function () {
-            try {
-                var targetElem = document.head || document.documentElement || document.body;
-                if (targetElem) {
-                    clearInterval(loadingInterval);
+        var loadingDiv = document.createElement('div');
+        loadingDiv.id = 'custom-loading-screen';
+        loadingDiv.style.cssText = 
+            'position: fixed !important;' +
+            'top: 0 !important; left: 0 !important;' +
+            'width: 100vw !important; height: 100dvh !important;' +
+            'background-color: #0d0d0d !important;' +
+            'display: flex !important; flex-direction: column !important;' +
+            'justify-content: center !important; align-items: center !important;' +
+            'z-index: 999999999 !important;' +
+            'font-family: sans-serif !important; cursor: pointer !important;';
 
-                    if (!document.getElementById('loading-screen-style')) {
-                        var style = document.createElement('style');
-                        style.id = 'loading-screen-style';
-                        style.textContent = 
-                            '#custom-loading-screen {' +
-                            '    position: fixed !important;' +
-                            '    top: 0 !important; left: 0 !important;' +
-                            '    width: 100vw !important; height: 100dvh !important;' +
-                            '    background-color: #0d0d0d !important;' +
-                            '    display: flex !important; flex-direction: column !important;' +
-                            '    justify-content: center !important; align-items: center !important;' +
-                            '    z-index: 999999999 !important;' +
-                            '    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;' +
-                            '}' +
-                            '.custom-spinner {' +
-                            '    width: 48px; height: 48px;' +
-                            '    border: 4px solid rgba(255, 255, 255, 0.1);' +
-                            '    border-left-color: #e50914;' +
-                            '    border-radius: 50%;' +
-                            '    animation: custom-spin 0.8s linear infinite;' +
-                            '}' +
-                            '.custom-loading-text {' +
-                            '    color: #cccccc; margin-top: 16px; font-size: 14px; font-weight: 500;' +
-                            '}' +
-                            '@keyframes custom-spin {' +
-                            '    0% { transform: rotate(0deg); }' +
-                            '    100% { transform: rotate(360deg); }' +
-                            '}';
-                        targetElem.appendChild(style);
-                    }
+        loadingDiv.innerHTML = 
+            '<div class="custom-spinner"></div>' +
+            '<div style="color:#ccc; margin-top:16px; font-size:14px; text-align:center;">Đang tải trình phát...<br><small style="color:#777; font-size:11px;">(Chạm vào màn hình để đóng nếu bị treo)</small></div>' +
+            '<style>' +
+            '.custom-spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #e50914; border-radius: 50%; animation: custom-spin 0.8s linear infinite; }' +
+            '@keyframes custom-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }' +
+            '</style>';
 
-                    if (!document.getElementById('custom-loading-screen')) {
-                        var loadingDiv = document.createElement('div');
-                        loadingDiv.id = 'custom-loading-screen';
-                        loadingDiv.innerHTML = 
-                            '<div class="custom-spinner"></div>' +
-                            '<div class="custom-loading-text">Đang tải trình phát...</div>';
-                        
-                        var bodyTarget =  document.body || document.documentElement || targetElem;    
-                       
-                        bodyTarget.appendChild(loadingDiv);
-                    }
-                }
-            } catch (err) {
-                log('[Loading Error]: ' + err.message);
-            }
-        }, 10);
+        // Cho phép bấm vào màn hình để tắt Loading thủ công
+        loadingDiv.onclick = function() {
+            hideLoadingScreen();
+        };
+
+        var targetElem = document.body || document.documentElement;
+        if (targetElem) {
+            targetElem.appendChild(loadingDiv);
+        }
     }
 
     function hideLoadingScreen() {
@@ -688,9 +651,6 @@ function rawJS() {
 
     showLoadingScreen();
 
-    // -------------------------------------------------------------
-    // 2. XỬ LÝ URL VÀ LỊCH SỬ (LOCALSTORAGE)
-    // -------------------------------------------------------------
     function parseUrlInfo() {
         try {
             const url = new URL(window.location.href);
@@ -726,130 +686,44 @@ function rawJS() {
                 lastEpi: epiNum,
                 time: Date.now()
             }));
-            log('[History] Da luu xem den Tap ' + epiNum);
         } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // 3. CHÈN CSS GIAO DIỆN CHÍNH
-    // -------------------------------------------------------------
     function injectStyles() {
         try {
             if (document.getElementById('custom-player-styles')) return;
             const style = document.createElement('style');
             style.id = 'custom-player-styles';
             style.textContent = 
-                '#custom-epi-wrapper {' +
-                '    position: fixed !important; top: 12px !important; right: 12px !important;' +
-                '    z-index: 999999 !important; font-family: -apple-system, sans-serif !important;' +
-                '}' +
-                '#custom-epi-toggle {' +
-                '    background: rgba(15, 15, 15, 0.9) !important; color: #fff !important;' +
-                '    border: 1px solid rgba(255,255,255,0.2) !important;' +
-                '    padding: 8px 14px !important; border-radius: 6px !important;' +
-                '    font-size: 13px !important; font-weight: bold !important; cursor: pointer !important;' +
-                '    backdrop-filter: blur(8px) !important;' +
-                '    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;' +
-                '    transition: all 0.2s ease !important;' +
-                '}' +
-                '#custom-epi-toggle:hover { background: #e50914 !important; border-color: #ff333d !important; }' +
-                '#custom-epi-grid {' +
-                '    display: none;' +
-                '    position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 6px !important;' +
-                '    background: rgba(15, 15, 15, 0.95) !important; backdrop-filter: blur(8px) !important;' +
-                '    padding: 8px !important; border-radius: 8px !important;' +
-                '    display: grid !important; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important;' +
-                '    gap: 6px !important; width: 220px !important; max-height: 200px !important;' +
-                '    overflow-y: auto !important; border: 1px solid rgba(255,255,255,0.1) !important;' +
-                '    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;' +
-                '}' +
+                '#custom-epi-wrapper { position: fixed !important; top: 12px !important; right: 12px !important; z-index: 999999 !important; font-family: sans-serif !important; }' +
+                '#custom-epi-toggle { background: rgba(15, 15, 15, 0.9) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; padding: 8px 14px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: bold !important; cursor: pointer !important; }' +
+                '#custom-epi-grid { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 6px !important; background: rgba(15, 15, 15, 0.95) !important; padding: 8px !important; border-radius: 8px !important; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important; gap: 6px !important; width: 220px !important; max-height: 200px !important; overflow-y: auto !important; border: 1px solid rgba(255,255,255,0.1) !important; }' +
                 '#custom-epi-grid.closed { display: none !important; }' +
                 '#custom-epi-grid.open { display: grid !important; }' +
-                '.custom-epi-btn {' +
-                '    background: #222 !important; color: #fff !important;' +
-                '    border: 1px solid #444 !important; border-radius: 5px !important;' +
-                '    padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important;' +
-                '    cursor: pointer !important; text-align: center !important;' +
-                '    transition: all 0.2s !important; position: relative !important;' +
-                '}' +
-                '.custom-epi-btn:hover { background: #444 !important; }' +
-                '.custom-epi-btn.active {' +
-                '    background: #e50914 !important; border-color: #ff333d !important; color: #fff !important;' +
-                '}' +
-                '.custom-epi-btn.watched {' +
-                '    border-color: #2196F3 !important;' +
-                '}' +
-                '.custom-epi-btn.watched::after {' +
-                '    content: "\\2022"; position: absolute; top: 1px; right: 3px;' +
-                '    color: #2196F3; font-size: 10px;' +
-                '}' +
-                '.custom-nav-btn {' +
-                '    position: fixed !important; top: 50% !important; transform: translateY(-50%) !important;' +
-                '    z-index: 999999 !important; background: rgba(0,0,0,0.6) !important;' +
-                '    color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important;' +
-                '    width: 44px !important; height: 44px !important; border-radius: 50% !important;' +
-                '    display: flex !important; align-items: center !important; justify-content: center !important;' +
-                '    font-size: 18px !important; cursor: pointer !important; opacity: 0.3 !important;' +
-                '    transition: opacity 0.3s !important; backdrop-filter: blur(4px) !important;' +
-                '    user-select: none !important;' +
-                '}' +
-                '.custom-nav-btn:hover, .custom-nav-btn:active { opacity: 1 !important; }' +
-                '#custom-btn-prev { left: 16px !important; }' +
-                '#custom-btn-next { right: 16px !important; }' +
-                '.custom-toast {' +
-                '    position: fixed !important; right: 20px !important; z-index: 9999999 !important;' +
-                '    background: #1f1f1f !important; color: #fff !important; padding: 12px 16px !important;' +
-                '    border-radius: 8px !important; border-left: 4px solid #e50914 !important;' +
-                '    box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;' +
-                '    font-family: -apple-system, sans-serif !important; font-size: 13px !important;' +
-                '    animation: custom-toast-in 0.3s ease !important;' +
-                '}' +
-                '#custom-history-toast { bottom: 30vh !important; max-width: 280px !important; }' +
-                '#custom-play-toast { bottom: 20px !important; border-left-color: #4CAF50 !important; }' +
-                '@keyframes custom-toast-in {' +
-                '    from { transform: translateX(100%); opacity: 0; }' +
-                '    to { transform: translateX(0); opacity: 1; }' +
-                '}' +
-                '.custom-toast-title { font-weight: bold !important; margin-bottom: 6px !important; }' +
-                '.custom-toast-btns { display: flex !important; gap: 6px !important; margin-top: 10px !important; }' +
-                '.custom-toast-btn {' +
-                '    background: #333 !important; color: #fff !important; border: none !important;' +
-                '    padding: 6px 8px !important; border-radius: 4px !important; font-size: 11px !important;' +
-                '    cursor: pointer !important; flex: 1 !important; text-align: center !important;' +
-                '}' +
-                '.custom-toast-btn:hover { background: #555 !important; }' +
-                '.custom-toast-btn.primary { background: #e50914 !important; }';
+                '.custom-epi-btn { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
+                '.custom-epi-btn.active { background: #e50914 !important; border-color: #ff333d !important; }' +
+                '.custom-nav-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 999999 !important; background: rgba(0,0,0,0.6) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; width: 44px !important; height: 44px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 18px !important; cursor: pointer !important; opacity: 0.5 !important; }' +
+                '#custom-btn-prev { left: 16px !important; } #custom-btn-next { right: 16px !important; }';
 
-            var target = document.head || document.documentElement || document.body;
-            if (target) target.appendChild(style);
-        } catch (e) {
-            log('[UI Style Error]: ' + e.message);
-        }
+            (document.head || document.documentElement).appendChild(style);
+        } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // 4. CHUYỂN TẬP BẰNG IFRAME NGẦM (BACKGROUND FETCH)
-    // -------------------------------------------------------------
     function switchEpisode(targetUrl) {
-        log('[Switch Episode] Dang tai ngam trang: ' + targetUrl);
         showLoadingScreen();
-
-        // 1. Tao iframe ngam de tai trang tap moi
         var bgFrame = document.createElement('iframe');
         bgFrame.style.display = 'none';
         bgFrame.id = 'bg-fetch-frame';
         bgFrame.src = targetUrl;
 
-        // Xoa iframe ngam cu neu co
         var oldFrame = document.getElementById('bg-fetch-frame');
         if (oldFrame) oldFrame.remove();
 
         (document.body || document.documentElement).appendChild(bgFrame);
 
         var attempts = 0;
-        var maxAttempts = 100; // Gioi han ~15s
+        var maxAttempts = 50; // Giảm xuống ~10 giây
         
-        // 2. Vong lap kiem tra Iframe ngam
         var bgTimer = setInterval(function () {
             attempts++;
             try {
@@ -857,55 +731,34 @@ function rawJS() {
                 if (doc) {
                     var iframes = doc.querySelectorAll('iframe');
                     for (var i = 0; i < iframes.length; i++) {
-                        if (iframes[i].src && iframes[i].src.includes(TARGET_PATTERN)) {
+                        var realSrc = iframes[i].src || iframes[i].getAttribute('data-src') || iframes[i].getAttribute('data-lazy-src');
+                        if (realSrc && realSrc.includes(TARGET_PATTERN)) {
                             clearInterval(bgTimer);
-                            var newSrc = iframes[i].src;
-                            log('[Bg Fetch Success] Da bat duoc src ngam: ' + newSrc);
-
-                            // 3. Gan src moi vao trinh phat chinh tren man hinh
                             var mainPlayer = document.getElementById('main-player-iframe');
-                            if (mainPlayer) {
-                                mainPlayer.src = newSrc;
-                            }
-
-                            // 4. Don dẹp iframe ngam
+                            if (mainPlayer) mainPlayer.src = realSrc;
                             bgFrame.remove();
-
-                            // 5. Cap nhat URL & History
                             window.history.pushState({}, '', targetUrl);
                             urlInfo = parseUrlInfo();
                             saveHistory(urlInfo.seriesKey, urlInfo.current);
-
-                            // 6. Ve lai UI nut bam
                             buildUI();
-
-                            // 7. Tat Loading
                             hideLoadingScreen();
                             return;
                         }
                     }
                 }
-            } catch (e) {
-                log('[Bg Fetch Error]: ' + e.message);
-            }
+            } catch (e) {}
 
             if (attempts >= maxAttempts) {
                 clearInterval(bgTimer);
                 bgFrame.remove();
                 hideLoadingScreen();
-                log('[Bg Fetch Timeout] Khong tim thay player ngam!');
-                alert('Không thể tải tập phim này!');
+                alert('Không thể tải tự động. Trang web có thể yêu cầu xác thực!');
             }
         }, CHECK_SPEED);
     }
 
-    // -------------------------------------------------------------
-    // 5. DỰNG VÀ CẬP NHẬT GIAO DIỆN UI NÚT BẤM
-    // -------------------------------------------------------------
     function buildUI() {
         injectStyles();
-
-        // Xoa UI cu neu co de ve lai UI moi
         var oldWrapper = document.getElementById('custom-epi-wrapper');
         if (oldWrapper) oldWrapper.remove();
         var oldPrev = document.getElementById('custom-btn-prev');
@@ -916,7 +769,6 @@ function rawJS() {
         const bodyElem = document.body || document.documentElement;
         if (!bodyElem) return;
 
-        // --- A. Danh sách tập THU GỌN ---
         const wrapperDiv = document.createElement('div');
         wrapperDiv.id = 'custom-epi-wrapper';
 
@@ -928,17 +780,11 @@ function rawJS() {
         gridDiv.id = 'custom-epi-grid';
         gridDiv.className = 'closed';
 
-        const lastWatchedEpi = prevHistory ? prevHistory.lastEpi : null;
-
         for (let i = 1; i <= urlInfo.maxEpi; i++) {
             (function (epiNum) {
                 const btn = document.createElement('button');
-                btn.className = 'custom-epi-btn';
+                btn.className = 'custom-epi-btn' + (epiNum === urlInfo.current ? ' active' : '');
                 btn.textContent = 'Tập ' + epiNum;
-
-                if (epiNum === urlInfo.current) btn.classList.add('active');
-                if (epiNum === lastWatchedEpi) btn.classList.add('watched');
-
                 btn.onclick = function () {
                     gridDiv.className = 'closed';
                     if (epiNum !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(epiNum));
@@ -952,21 +798,15 @@ function rawJS() {
             gridDiv.className = gridDiv.classList.contains('open') ? 'closed' : 'open';
         };
 
-        document.addEventListener('click', function () {
-            if (gridDiv) gridDiv.className = 'closed';
-        });
-
         wrapperDiv.appendChild(toggleBtn);
         wrapperDiv.appendChild(gridDiv);
         bodyElem.appendChild(wrapperDiv);
 
-        // --- B. Nút Prev / Next ---
         if (urlInfo.current > 1) {
             const prevBtn = document.createElement('div');
             prevBtn.className = 'custom-nav-btn';
             prevBtn.id = 'custom-btn-prev';
             prevBtn.innerHTML = '❮';
-            prevBtn.title = 'Tập trước';
             prevBtn.onclick = function () { switchEpisode(urlInfo.getEpiUrl(urlInfo.current - 1)); };
             bodyElem.appendChild(prevBtn);
         }
@@ -976,116 +816,56 @@ function rawJS() {
             nextBtn.className = 'custom-nav-btn';
             nextBtn.id = 'custom-btn-next';
             nextBtn.innerHTML = '❯';
-            nextBtn.title = 'Tập kế tiếp';
             nextBtn.onclick = function () { switchEpisode(urlInfo.getEpiUrl(urlInfo.current + 1)); };
             bodyElem.appendChild(nextBtn);
         }
-
-        // --- C. Toast Lịch Sử Xem Phim (CHỈ HIỆN LẦN ĐẦU TIÊN MỞ TRANG) ---
-        if (isInitialLoad) {
-            if (prevHistory && prevHistory.lastEpi && urlInfo.current !== (prevHistory.lastEpi + 1)) {
-                const historyToast = document.createElement('div');
-                historyToast.className = 'custom-toast';
-                historyToast.id = 'custom-history-toast';
-                
-                let nextEpiBtnHtml = '';
-                if (prevHistory.lastEpi < urlInfo.maxEpi) {
-                    nextEpiBtnHtml = '<button class="custom-toast-btn" id="toast-btn-next">Tập Kế (' + (prevHistory.lastEpi + 1) + ')</button>';
-                }
-
-                historyToast.innerHTML = 
-                    '<div class="custom-toast-title">Lịch Sử Xem Phim</div>' +
-                    '<div>Lần trước bạn đang xem tới <b>Tập ' + prevHistory.lastEpi + '</b>.</div>' +
-                    '<div class="custom-toast-btns">' +
-                        '<button class="custom-toast-btn primary" id="toast-btn-last">Tập Vừa Xem (' + prevHistory.lastEpi + ')</button>' +
-                        nextEpiBtnHtml +
-                        '<button class="custom-toast-btn" id="toast-btn-ignore">Bỏ Qua</button>' +
-                    '</div>';
-                bodyElem.appendChild(historyToast);
-
-                const timerToast = setTimeout(function () { historyToast.remove(); }, 15000);
-
-                const btnLast = historyToast.querySelector('#toast-btn-last');
-                if (btnLast) {
-                    btnLast.addEventListener('click', function () {
-                        clearTimeout(timerToast);
-                        switchEpisode(urlInfo.getEpiUrl(prevHistory.lastEpi));
-                    });
-                }
-
-                const btnNext = historyToast.querySelector('#toast-btn-next');
-                if (btnNext) {
-                    btnNext.addEventListener('click', function () {
-                        clearTimeout(timerToast);
-                        switchEpisode(urlInfo.getEpiUrl(prevHistory.lastEpi + 1));
-                    });
-                }
-
-                const btnIgnore = historyToast.querySelector('#toast-btn-ignore');
-                if (btnIgnore) {
-                    btnIgnore.addEventListener('click', function () {
-                        clearTimeout(timerToast);
-                        historyToast.remove();
-                    });
-                }
-            }
-
-            // Đánh dấu đã qua lần đầu tải trang -> Tắt thông báo lịch sử cho các lần bấm chuyển tập sau
-            isInitialLoad = false;
-        }
-
-        // --- D. Toast Nhắc Play Video ---
-        const playToast = document.createElement('div');
-        playToast.className = 'custom-toast';
-        playToast.id = 'custom-play-toast';
-        playToast.innerHTML = '▶️ <b>Sẵn sàng!</b> Bấm Play để tiếp tục xem video.';
-        bodyElem.appendChild(playToast);
-
-        setTimeout(function () { playToast.remove(); }, 5000);
     }
 
-    // -------------------------------------------------------------
-    // 6. KHỞI CHẠY QUY TRÌNH LẦN ĐẦU (INITIALIZATION)
-    // -------------------------------------------------------------
+    // KHỞI CHẠY
     urlInfo = parseUrlInfo();
     prevHistory = getHistory(urlInfo.seriesKey);
     saveHistory(urlInfo.seriesKey, urlInfo.current);
 
-    // Quét tìm iframe trình phát lần đầu tiên trên DOM chính
+    var initAttempts = 0;
+    var maxInitAttempts = 50; // Quét tối đa 10 giây (50 * 200ms)
+
     const initTimer = setInterval(function () {
+        initAttempts++;
         try {
-            if (!document || !document.querySelectorAll) return;
-            const iframes = document.querySelectorAll('iframe');
+            if (document && document.querySelectorAll) {
+                const iframes = document.querySelectorAll('iframe');
 
-            for (let i = 0; i < iframes.length; i++) {
-                const iframe = iframes[i];
+                for (let i = 0; i < iframes.length; i++) {
+                    const iframe = iframes[i];
+                    const realSrc = iframe.src || iframe.getAttribute('data-src') || iframe.getAttribute('data-lazy-src');
 
-                if (iframe && iframe.src && iframe.src.includes(TARGET_PATTERN)) {
-                    clearInterval(initTimer);
+                    if (realSrc && realSrc.includes(TARGET_PATTERN)) {
+                        clearInterval(initTimer);
 
-                    log('[Initial Match] Tim thay iframe dau tien: ' + iframe.src);
-                    const src = iframe.src;
+                        log('[Found Player]: ' + realSrc);
+                        var iframeHtml = '<iframe id="main-player-iframe" src="' + realSrc + '" width="100%" style="width: 100% !important;height: 100% !important;border: 0 !important;display: block !important;margin: auto !important;max-height:100dvh!important;"></iframe>';
 
-                    // Thay the body thanh Player Full-screen voi id="main-player-iframe"
-                    var iframeHtml = '<iframe id="main-player-iframe" src="' + src + '" width="100%" style="width: 100% !important;height: 100% !important;border: 0 !important;display: block !important;margin: 0 !important;padding: 0 !important;margin: auto !important;max-height:580px!important;"></iframe>';
+                        document.body.style.cssText = 'margin: 0 !important;padding: 0 !important;width: 100vw !important;height: 100vh !important;height: 100dvh !important;overflow: hidden !important;background-color: #000 !important;display: flex !important;justify-content: center !important;align-items: center !important;';
+                        document.body.innerHTML = iframeHtml;
 
-                    document.body.style.cssText = 'margin: 0 !important;padding: 0 !important;width: 100vw !important;height: 100vh !important;height: 100dvh !important;overflow: hidden !important;background-color: #000 !important;display: flex !important;justify-content: center !important;align-items: center !important;';
-                    document.body.innerHTML = iframeHtml;
-
-                    buildUI();
-                    hideLoadingScreen();
-                    break;
+                        buildUI();
+                        hideLoadingScreen();
+                        return;
+                    }
                 }
             }
         } catch (e) {
             log('[Init Loop Error]: ' + e.message);
         }
+
+        // Hết 10 giây không thấy Player -> Hủy Loading để người dùng tương tác với trang gốc
+        if (initAttempts >= maxInitAttempts) {
+            clearInterval(initTimer);
+            hideLoadingScreen();
+            log('[Init Timeout] Khong tim thay iframe player!');
+        }
     }, CHECK_SPEED);
 })();
-
-
-
-
 `;
 }
 
