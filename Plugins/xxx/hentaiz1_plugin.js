@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.2.1",
+    "version": "1.2.2",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -598,18 +598,12 @@ function rawJS() {
         } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // LẤY CONTAINER AN TOÀN TRÊN UI
-    // -------------------------------------------------------------
     function getSafeContainer() {
         var topBar = document.getElementById('v-top-bar');
         if (topBar) return topBar;
         return document.body || document.documentElement;
     }
 
-    // -------------------------------------------------------------
-    // THÔNG BÁO TOAST TRỰC TIẾP LÊN MÀN HÌNH
-    // -------------------------------------------------------------
     function showToast(msg) {
         log('[Toast] ' + msg);
         try {
@@ -649,9 +643,6 @@ function rawJS() {
         } catch(e) {}
     }
 
-    // -------------------------------------------------------------
-    // CHỜ DOM SẴN SÀNG
-    // -------------------------------------------------------------
     function ensureDOMReady(callback) {
         if (document && (document.body || document.documentElement)) {
             callback();
@@ -665,9 +656,6 @@ function rawJS() {
         }
     }
 
-    // -------------------------------------------------------------
-    // MULTI-TIER SMART STORAGE
-    // -------------------------------------------------------------
     var SmartStorage = (function() {
         var memCache = {};
 
@@ -754,9 +742,6 @@ function rawJS() {
         };
     })();
 
-    // -------------------------------------------------------------
-    // LÁ CHẮN ANTI-POPUP & ANTI-REDIRECT CỰC MẠNH CHO MOBILE
-    // -------------------------------------------------------------
     (function applyAntiPopupShield() {
         try {
             var dummyWin = { focus: function () {}, blur: function () {}, close: function () {}, closed: true, postMessage: function () {} };
@@ -807,9 +792,6 @@ function rawJS() {
     const CHECK_SPEED = 200;
     var urlInfo = null;
 
-    // -------------------------------------------------------------
-    // CẤY CSS
-    // -------------------------------------------------------------
     function injectStyles() {
         try {
             if (document.getElementById('v-style-block')) return;
@@ -1068,9 +1050,11 @@ function rawJS() {
                             bgFrame.remove();
                             window.history.pushState({}, '', targetUrl);
                             urlInfo = parseUrlInfo();
-                            // Lưu lịch sử MỚI SAU KHI đã chuyển tập thành công
+                            
+                            // CHỈ LƯU LỊCH SỬ KHI NGƯỜI DÙNG BẤM CHUYỂN TẬP
                             saveHistory(urlInfo.seriesKey, urlInfo.current);
-                            buildUI(false); // Không bung popup lịch sử khi tự chuyển tập qua lại
+                            
+                            buildUI(false);
                             hideLoadingScreen();
                             showToast('Đã chuyển sang Tập ' + urlInfo.current);
                             return;
@@ -1148,12 +1132,14 @@ function rawJS() {
         epiWrapper.appendChild(toggleBtn);
         epiWrapper.appendChild(gridDiv);
 
-        // --- ĐỌC LỊCH SỬ CŨ TRƯỚC KHI GHI ĐÈ ---
+        // --- ĐỌC LỊCH SỬ CŨ ---
         var prevHist = getHistory(urlInfo.seriesKey);
         var prevEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
         
-        // --- BÂY GIỜ MỚI CẬP NHẬT LỊCH SỬ CHO TẬP HIỆN TẠI ---
-        saveHistory(urlInfo.seriesKey, urlInfo.current);
+        // Nếu vào xem bộ này lần đầu tiên (chưa có lịch sử), thì mới ghi nhận tập hiện tại làm mốc khởi đầu
+        if (prevEpi === null && isInitialLoad) {
+            saveHistory(urlInfo.seriesKey, urlInfo.current);
+        }
 
         const histBtn = document.createElement('button');
         histBtn.id = 'v-btn-hist';
@@ -1198,7 +1184,12 @@ function rawJS() {
             resetIdleTimer();
         };
 
-        document.addEventListener('click', function () {
+        // --- SỬA LỖI TỰ ĐÓNG SAU 0.5S ---
+        // Chỉ đóng dropdown khi click ra ngoài vùng top-bar (không click nhầm vào menu)
+        document.addEventListener('click', function (e) {
+            if (e.target.closest && e.target.closest('#v-top-bar')) {
+                return;
+            }
             if (gridDiv) gridDiv.className = 'closed';
             if (histDiv) histDiv.className = 'closed';
         });
@@ -1254,9 +1245,7 @@ function rawJS() {
 
         updatePlayerDimensions();
 
-        // Xử lý tự hiện Toast / Dropdown lịch sử khi vừa truy cập lần đầu
         if (isInitialLoad) {
-            // Nếu có lịch sử cũ và tập cũ khác với tập hiện tại đang truy cập -> Bật dropdown lịch sử nhắc nhở
             if (prevEpi !== null && prevEpi !== urlInfo.current) {
                 histDiv.className = 'open';
                 showToast('Lần trước xem: Tập ' + prevEpi);
@@ -1268,9 +1257,6 @@ function rawJS() {
         setupIdleEvents();
     }
 
-    // -------------------------------------------------------------
-    // KHỞI CHẠY TRÌNH PHÁT
-    // -------------------------------------------------------------
     ensureDOMReady(function() {
         var initAttempts = 0;
         var maxInitAttempts = 50;
@@ -1303,7 +1289,7 @@ function rawJS() {
 
                             urlInfo = parseUrlInfo();
                             
-                            buildUI(true); // Truyền true để kích hoạt kiểm tra và hiện lịch sử cũ chuẩn xác
+                            buildUI(true);
                             hideLoadingScreen();
 
                             return;
