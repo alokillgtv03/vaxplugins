@@ -11,7 +11,6 @@ function getManifest() {
     baseUrl: "https://vicdn.cc",
     iconUrl: "https://vicdn.cc/vicdn.png",
     isEnabled: true,
-    "debug": true,
     "adblock": false,
     type: "MOVIE",
     playerType: "embed",
