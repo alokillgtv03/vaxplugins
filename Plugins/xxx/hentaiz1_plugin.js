@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.1.5",
+    "version": "1.1.6",
     info: "Nguồn phim hentai vietsub của VN.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -580,13 +580,11 @@ function parseDetailResponse(html, url) {
 }
 
 
-
 function rawJS() {
 
   return `
 (function () {
     var LOGGER = true;
-    var isInitialLoad = true;
 
     function log(msg) {
         if (!LOGGER) return;
@@ -601,15 +599,14 @@ function rawJS() {
         } catch (e) {}
     }
 
-    log('[Init] Script khoi chay che do Mobile Viewport & Default Fill Screen...');
+    log('[Init] Script khoi chay - JS Hardcode Pixel Fit Mode...');
 
     const TARGET_PATTERN = 'haiten.org';
     const CHECK_SPEED = 200;
     var urlInfo = null;
-    var prevHistory = null;
 
     // -------------------------------------------------------------
-    // 0. KHÓA VIEWPORT MOBILE CHỐNG CUỘN TRANG
+    // 0. KHÓA VIEWPORT MOBILE & RESET BODY
     // -------------------------------------------------------------
     function applyMobileViewport() {
         try {
@@ -627,11 +624,10 @@ function rawJS() {
                 style.id = styleId;
                 style.textContent = 
                     'html, body {' +
-                    '    width: 100vw !important; height: 100vh !important; height: 100dvh !important;' +
+                    '    width: 100% !important; height: 100% !important;' +
                     '    margin: 0 !important; padding: 0 !important;' +
                     '    overflow: hidden !important; position: fixed !important;' +
                     '    top: 0 !important; left: 0 !important;' +
-                    '    touch-action: none !important;' +
                     '    background-color: #000 !important;' +
                     '}';
                 (document.head || document.documentElement).appendChild(style);
@@ -654,7 +650,7 @@ function rawJS() {
         loadingDiv.style.cssText = 
             'position: fixed !important;' +
             'top: 0 !important; left: 0 !important;' +
-            'width: 100vw !important; height: 100dvh !important;' +
+            'width: 100vw !important; height: 100vh !important;' +
             'background-color: #0d0d0d !important;' +
             'display: flex !important; flex-direction: column !important;' +
             'justify-content: center !important; align-items: center !important;' +
@@ -726,7 +722,114 @@ function rawJS() {
     }
 
     // -------------------------------------------------------------
-    // 3. CSS CHO PLAYER & FIT MODES
+    // 3. ĐO KÍCH THƯỚC MÀN HÌNH & ÉP PIXEL IFRAME (JS HARDCODE)
+    // -------------------------------------------------------------
+    var FIT_MODES = [
+        { key: 'fill', label: '↔️ Co giãn' },
+        { key: 'contain', label: '📐 Vừa khung' },
+        { key: 'cover', label: '🔍 Phóng to' }
+    ];
+
+    var savedFitKey = localStorage.getItem('watch_player_fit_mode') || 'fill';
+    var currentFitIndex = FIT_MODES.findIndex(function(m) { return m.key === savedFitKey; });
+    if (currentFitIndex === -1) currentFitIndex = 0;
+
+    function getScreenSize() {
+        var w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0, screen.width || 0);
+        var h = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0, screen.height || 0);
+        return { width: w, height: h };
+    }
+
+    function updatePlayerDimensions() {
+        var player = document.getElementById('main-player-iframe');
+        if (!player) return;
+
+        var sz = getScreenSize();
+        var mode = FIT_MODES[currentFitIndex].key;
+
+        log('[Update Dimensions] Screen: ' + sz.width + 'x' + sz.height + ' | Mode: ' + mode);
+
+        // Reset style vị trí cơ bản
+        player.style.position = 'fixed';
+        player.style.margin = '0px';
+        player.style.padding = '0px';
+        player.style.border = '0px none';
+        player.style.zIndex = '1';
+
+        if (mode === 'fill') {
+            // Ép cứng 100% kích thước màn hình tính bằng Pixel
+            player.style.top = '0px';
+            player.style.left = '0px';
+            player.style.width = sz.width + 'px';
+            player.style.height = sz.height + 'px';
+            player.style.transform = 'none';
+        } else if (mode === 'contain') {
+            // Giữ tỉ lệ chuẩn 16:9 vừa khít trong màn hình
+            var targetRatio = 16 / 9;
+            var currentRatio = sz.width / sz.height;
+            var finalW, finalH;
+
+            if (currentRatio > targetRatio) {
+                finalH = sz.height;
+                finalW = sz.height * targetRatio;
+            } else {
+                finalW = sz.width;
+                finalH = sz.width / targetRatio;
+            }
+
+            player.style.width = Math.round(finalW) + 'px';
+            player.style.height = Math.round(finalH) + 'px';
+            player.style.top = Math.round((sz.height - finalH) / 2) + 'px';
+            player.style.left = Math.round((sz.width - finalW) / 2) + 'px';
+            player.style.transform = 'none';
+        } else if (mode === 'cover') {
+            // Phóng to phủ kín màn hình (trùng tỉ lệ 16:9 nhưng bị xén lề)
+            var targetRatio = 16 / 9;
+            var currentRatio = sz.width / sz.height;
+            var finalW, finalH;
+
+            if (currentRatio > targetRatio) {
+                finalW = sz.width;
+                finalH = sz.width / targetRatio;
+            } else {
+                finalH = sz.height;
+                finalW = sz.height * targetRatio;
+            }
+
+            player.style.width = Math.round(finalW) + 'px';
+            player.style.height = Math.round(finalH) + 'px';
+            player.style.top = Math.round((sz.height - finalH) / 2) + 'px';
+            player.style.left = Math.round((sz.width - finalW) / 2) + 'px';
+            player.style.transform = 'none';
+        }
+    }
+
+    function applyFitMode(index) {
+        currentFitIndex = index % FIT_MODES.length;
+        var mode = FIT_MODES[currentFitIndex];
+
+        try {
+            localStorage.setItem('watch_player_fit_mode', mode.key);
+        } catch (e) {}
+
+        var fitBtn = document.getElementById('custom-fit-toggle');
+        if (fitBtn) {
+            fitBtn.innerHTML = mode.label;
+        }
+
+        updatePlayerDimensions();
+    }
+
+    // Tự động cập nhật lại kích thước khi xoay màn hình hoặc đổi size trình duyệt
+    window.addEventListener('resize', function() {
+        updatePlayerDimensions();
+    });
+    window.addEventListener('orientationchange', function() {
+        setTimeout(updatePlayerDimensions, 300);
+    });
+
+    // -------------------------------------------------------------
+    // 4. CSS CHO GIAO DIỆN NÚT BẤM
     // -------------------------------------------------------------
     function injectStyles() {
         try {
@@ -743,49 +846,10 @@ function rawJS() {
                 '.custom-epi-btn { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
                 '.custom-epi-btn.active { background: #e50914 !important; border-color: #ff333d !important; }' +
                 '.custom-nav-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 999999 !important; background: rgba(0,0,0,0.5) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 16px !important; cursor: pointer !important; opacity: 0.6 !important; }' +
-                '#custom-btn-prev { left: 10px !important; } #custom-btn-next { right: 10px !important; }' +
-
-                '/* CSS FIT MODES */' +
-                '#main-player-iframe.fit-fill { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: fill !important; transform: none !important; }' +
-                '#main-player-iframe.fit-contain { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: contain !important; transform: none !important; }' +
-                '#main-player-iframe.fit-cover { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: cover !important; transform: scale(1.25) !important; }';
+                '#custom-btn-prev { left: 10px !important; } #custom-btn-next { right: 10px !important; }';
 
             (document.head || document.documentElement).appendChild(style);
         } catch (e) {}
-    }
-
-    // -------------------------------------------------------------
-    // 4. BẬT/TẮT CÁC CHẾ ĐỘ XEM (MẶC ĐỊNH LÀ FILL / CO GIÃN)
-    // -------------------------------------------------------------
-    var FIT_MODES = [
-        { key: 'fill', label: '↔️ Co giãn' },
-        { key: 'contain', label: '📐 Vừa khung' },
-        { key: 'cover', label: '🔍 Phóng to' }
-    ];
-
-    // Lấy chế độ đã lưu từ localStorage, nếu chưa có thì lấy 'fill'
-    var savedFitKey = localStorage.getItem('watch_player_fit_mode') || 'fill';
-    var currentFitIndex = FIT_MODES.findIndex(function(m) { return m.key === savedFitKey; });
-    if (currentFitIndex === -1) currentFitIndex = 0; // Mặc định index 0 là 'fill'
-
-    function applyFitMode(index) {
-        currentFitIndex = index % FIT_MODES.length;
-        var mode = FIT_MODES[currentFitIndex];
-
-        // Lưu chế độ hiện tại vào localStorage
-        try {
-            localStorage.setItem('watch_player_fit_mode', mode.key);
-        } catch (e) {}
-
-        var player = document.getElementById('main-player-iframe');
-        if (player) {
-            player.className = 'fit-' + mode.key;
-        }
-
-        var fitBtn = document.getElementById('custom-fit-toggle');
-        if (fitBtn) {
-            fitBtn.innerHTML = mode.label;
-        }
     }
 
     // -------------------------------------------------------------
@@ -840,7 +904,7 @@ function rawJS() {
     }
 
     // -------------------------------------------------------------
-    // 6. TẠO GIAO DIỆN NÚT BẤM
+    // 6. TẠO GIAO DIỆN NÚT BẤM & KHỞI TẠO
     // -------------------------------------------------------------
     function buildUI() {
         injectStyles();
@@ -926,15 +990,14 @@ function rawJS() {
             bodyElem.appendChild(nextBtn);
         }
 
-        // Kích hoạt ngay chế độ xem hiện tại lên iframe player
-        applyFitMode(currentFitIndex);
+        // Cập nhật kích thước ép pixel ngay
+        updatePlayerDimensions();
     }
 
     // -------------------------------------------------------------
-    // 7. KHỞI CHẠY QUY TRÌNH
+    // 7. KHỞI CHẠY QUY TRÌNH QUAN SÁT IFRAME
     // -------------------------------------------------------------
     urlInfo = parseUrlInfo();
-    prevHistory = getHistory(urlInfo.seriesKey);
     saveHistory(urlInfo.seriesKey, urlInfo.current);
 
     var initAttempts = 0;
@@ -954,9 +1017,9 @@ function rawJS() {
                         clearInterval(initTimer);
 
                         log('[Found Player]: ' + realSrc);
-                        var iframeHtml = '<iframe id="main-player-iframe" src="' + realSrc + '" width="100%" height="100%" allowfullscreen frameborder="0" style="border: 0 !important; display: block !important; margin: 0 !important; padding: 0 !important;"></iframe>';
+                        var iframeHtml = '<iframe id="main-player-iframe" src="' + realSrc + '" allowfullscreen frameborder="0"></iframe>';
 
-                        document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; overflow: hidden !important; background-color: #000 !important; display: flex !important; justify-content: center !important; align-items: center !important;';
+                        document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #000 !important;';
                         document.body.innerHTML = iframeHtml;
 
                         buildUI();
@@ -978,7 +1041,6 @@ function rawJS() {
 })();
 `;
 }
-
 
 
 
