@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    version: "1.0",
+    version: "1.1",
     info: "Nguồn phim hentai vietsub của VN.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -666,9 +666,9 @@ function rawJS() {
                         loadingDiv.id = 'custom-loading-screen';
                         loadingDiv.innerHTML = 
                             '<div class="custom-spinner"></div>' +
-                            '<div class="custom-loading-text">Đang tải trình phát...</div><style>body, body *{background:black;display:none}</style>';
+                            '<div class="custom-loading-text">Đang tải trình phát...</div>';
                         
-                        var bodyTarget =  document.head || document.body || document.documentElement || targetElem;    
+                        var bodyTarget =  document.body || document.documentElement || targetElem;    
                        
                         bodyTarget.appendChild(loadingDiv);
                     }
