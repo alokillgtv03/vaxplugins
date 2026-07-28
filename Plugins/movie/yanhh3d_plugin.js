@@ -208,47 +208,24 @@ function getUrlYears() {
 function parseListResponse(html, $url) {
     try {
         log("parseListResponse[url]: \n" + $url);
-        var items = [];
+        if ($url.indexOf("/?q=") > -1) {
+            var script = _$(html).find("script:content('const allData')").html()
 
-        _$(html).find(".flw-item").each(function () {
-            var year = "";
-            var lang = "";
-            var current = this.find(".tick-rate").text();
-            var href = this.find("a").attr("href");
-            var quality = this.find(".tick-dub").text();
-            var title = this.find("a").attr("title");
-            var src = this.find("img").attr("src");
-            if (src.indexOf("http") == -1) {
-                src = BASEURL + src;
+            var $obj = script.match(/\[\s*\{[\s\S]*?\}\s*\]/i);
+            if ($obj) {
+                $data = JSON.parse($obj[0]);
+                return domfetch($data, $url);
             }
+        } else {
+            var $allData = JSON.parse(html)
 
-            if (href && href.indexOf("http") > -1) {
-                var cleanThumb = src.replace(/&amp;/g, '&');
-
-                items.push({
-                    "id": href,
-                    "title": title.trim(),
-                    "posterUrl": cleanThumb,
-                    "backdropUrl": cleanThumb,
-                    "quality": quality,
-                    "episode_current": current
-                });
-            }
-        });
-
-        return JSON.stringify({
-            "items": items,
-            "pagination": {
-                "currentPage": 1,
-                "totalPages": 999
-            }
-        });
-
+            return domfetch($allData.data, $url);
+        }
     } catch (e) {
         log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
             "items": [{
-                "id": $url,
+                "id": $url || "error_url",
                 "title": "Lỗi: " + e,
                 "posterUrl": "",
                 "backdropUrl": ""
@@ -260,6 +237,45 @@ function parseListResponse(html, $url) {
         });
     }
 }
+
+function parseJSDataIsolated(str) {
+    // Loại bỏ phần khai báo biến nếu có, chỉ giữ lại phần mảng/object
+    const code = str.replace(/^(const|let|var)\s+\w+\s*=\s*/, '');
+
+    // Trả về dữ liệu bằng cách bọc trong return
+    return new Function(`"use strict"; return (${code});`)();
+}
+
+function domfetch($data, $url) {
+
+    var items = [];
+    for (var $j = 0; $j < $data.length; $j++) {
+        var item = $data[$j];
+        items.push({
+            "id": BASEAPI + "/info/" + item.slug, // https://vicdn.cc/api/info/tv-278275-1
+            "title": item.vname,
+            "posterUrl": "https://image.tmdb.org/t/p/w130_and_h195_face/" + item.poster + ".jpg", // https://image.tmdb.org/t/p/w130_and_h195_face/qWx7w7Af5qvqmTmjwjxIWMIBHPB.jpg
+            "backdropUrl": "https://image.tmdb.org/t/p/w533_and_h300_face/" + item.banner + ".jpg", // https://image.tmdb.org/t/p/w533_and_h300_face/t5uqDBIYtxKtWeJjXAZd4l919hF.jpg
+            "quality": item.type.toUpperCase(),
+            "episode_current": "Tập " + item.stt + "/" + item.total
+        });
+
+    }
+    return JSON.stringify({
+        "items": items,
+        "pagination": {
+            "currentPage": 1,
+            "totalPages": 999
+        }
+    });
+
+}
+//html = sourceHTML;
+// https://vicdn.cc/api/type/hoat-hinh/1
+// https://vicdn.cc/?q=ta
+//JSON.parse(parseListResponse(sourceHTML, "https://vicdn.cc/api/type/hoat-hinh/1"))
+
+
 
 function parseSearchResponse(html) {
     try {
@@ -275,6 +291,8 @@ function parseSearchResponse(html) {
         });
     }
 }
+
+
 
 function parseMovieDetail(htmlContent, url) {
     try {

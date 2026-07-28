@@ -13,7 +13,7 @@ function getManifest() {
     "isAdult": true,
     "adblock": false,
     type: "MOVIE",
-    playerTpye: "embed",
+    playerType: "embed",
   });
 }
 
@@ -334,110 +334,6 @@ function parseListResponse(html, $url) {
         });
     }
 }
-function parseListResponse(html, $url) {
-    try {
-        log("parseListResponse[url]: \n" + $url);
-        
-        // Sử dụng Map để lọc trùng theo tiêu đề/ID chuẩn
-        var itemsMap = new Map();
-
-        _$(html).find(".item-box").each(function() {
-            var href = this.find("a").attr("href");
-            if (!href) return;
-
-            if (href.indexOf("http") == -1) {
-                href = BASEURL + href;
-            }
-
-            // --- BẮT ĐẦU SỬA ĐỔI TẠI ĐÂY ---
-            // Regex hỗ trợ cả 2 dạng: -tap-123 VÀ -123 ở cuối URL
-            // Match group 1 = clearhref, Match group 2 = epiNum
-            var match = href.match(/^(.*?)(?:-tap-|-)(\d+)\/?$/i);
-            
-            var clearhref = href;
-            var epiNum = 1;
-
-            if (match) {
-                clearhref = match[1];            // Ví dụ: https://.../the-animation
-                epiNum = parseInt(match[2], 10); // Ví dụ: 1
-            } else {
-                // Trường hợp URL không có số tập ở cuối (phim lẻ / OVA 1 tập)
-                clearhref = href.replace(/\/$/, "");
-            }
-            // --- KẾT THÚC SỬA ĐỔI ---
-
-            log("clearhref: " + clearhref + " | epiNum: " + epiNum);
-
-            var rawTitle = this.find("a").attr("title") || "";
-            var title = rawTitle.replace(/([\s\S]*?) \-.*$/, "$1").trim();
-
-            var episode_current_str = "Tập " + epiNum;
-            var finalHref = href + "?current=1&maxEpi=" + epiNum;
-
-            var src = this.find("img").attr("src") || "";
-            if (src && src.indexOf("http") == -1) {
-                src = BASEURL + src;
-            }
-
-            if (href && href.indexOf("http") > -1) {
-                var cleanThumb = src.replace(/&amp;/g, '&');
-
-                var newItem = {
-                    "id": finalHref,
-                    "title": title,
-                    "posterUrl": cleanThumb,
-                    "backdropUrl": cleanThumb,
-                    "quality": "",
-                    "lang": "",
-                    "episode_current": episode_current_str,
-                    "_epiNum": epiNum // Biến tạm để so sánh
-                };
-
-                // Dùng clearhref làm Key định danh phim
-                var groupKey = clearhref.toLowerCase();
-
-                if (!itemsMap.has(groupKey)) {
-                    itemsMap.set(groupKey, newItem);
-                } else {
-                    // Nếu đã có -> Chỉ ghi đè nếu số tập LỚN HƠN
-                    var existingItem = itemsMap.get(groupKey);
-                    if (newItem._epiNum > existingItem._epiNum) {
-                        itemsMap.set(groupKey, newItem);
-                    }
-                }
-            }
-        });
-
-        // Chuyển Map thành Array và xóa bỏ trường tạm `_epiNum`
-        var items = Array.from(itemsMap.values()).map(function(item) {
-            delete item._epiNum;
-            return item;
-        });
-
-        return JSON.stringify({
-            "items": items,
-            "pagination": {
-                "currentPage": 1,
-                "totalPages": 999
-            }
-        });
-    } catch (e) {
-        log("parseListResponse[err]:\n " + e);
-        return JSON.stringify({
-            "items": [{
-                "id": $url || "error_url",
-                "title": "Lỗi: " + e,
-                "posterUrl": "",
-                "backdropUrl": ""
-            }],
-            "pagination": {
-                "currentPage": 1,
-                "totalPages": 1
-            }
-        });
-    }
-}
-
 
 
 function parseSearchResponse(html, url) {
