@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.1.4",
+    "version": "1.1.5",
     info: "Nguồn phim hentai vietsub của VN.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -580,6 +580,7 @@ function parseDetailResponse(html, url) {
 }
 
 
+
 function rawJS() {
 
   return `
@@ -600,7 +601,7 @@ function rawJS() {
         } catch (e) {}
     }
 
-    log('[Init] Script khoi chay che do Mobile Viewport & Fit Screen...');
+    log('[Init] Script khoi chay che do Mobile Viewport & Default Fill Screen...');
 
     const TARGET_PATTERN = 'haiten.org';
     const CHECK_SPEED = 200;
@@ -620,7 +621,6 @@ function rawJS() {
             }
             meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
 
-            // Khóa triệt để scrolling trên HTML và Body
             var styleId = 'custom-viewport-lock';
             if (!document.getElementById(styleId)) {
                 var style = document.createElement('style');
@@ -745,38 +745,46 @@ function rawJS() {
                 '.custom-nav-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 999999 !important; background: rgba(0,0,0,0.5) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 16px !important; cursor: pointer !important; opacity: 0.6 !important; }' +
                 '#custom-btn-prev { left: 10px !important; } #custom-btn-next { right: 10px !important; }' +
 
-                '/* CSS FIT MODES CHO IFRAME PLAYER */' +
+                '/* CSS FIT MODES */' +
+                '#main-player-iframe.fit-fill { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: fill !important; transform: none !important; }' +
                 '#main-player-iframe.fit-contain { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: contain !important; transform: none !important; }' +
-                '#main-player-iframe.fit-cover { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: cover !important; transform: scale(1.25) !important; }' +
-                '#main-player-iframe.fit-fill { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: fill !important; transform: none !important; }';
+                '#main-player-iframe.fit-cover { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; object-fit: cover !important; transform: scale(1.25) !important; }';
 
             (document.head || document.documentElement).appendChild(style);
         } catch (e) {}
     }
 
     // -------------------------------------------------------------
-    // 4. BẬT/TẮT CÁC CHẾ ĐỘ XEM (FIT MODES)
+    // 4. BẬT/TẮT CÁC CHẾ ĐỘ XEM (MẶC ĐỊNH LÀ FILL / CO GIÃN)
     // -------------------------------------------------------------
-    // Modes: 0 = Contain (Vừa khung), 1 = Cover (Phóng to cắt lề), 2 = Fill (Co giãn tràn viền)
     var FIT_MODES = [
+        { key: 'fill', label: '↔️ Co giãn' },
         { key: 'contain', label: '📐 Vừa khung' },
-        { key: 'cover', label: '🔍 Phóng to' },
-        { key: 'fill', label: '↔️ Co giãn' }
+        { key: 'cover', label: '🔍 Phóng to' }
     ];
-    var currentFitIndex = parseInt(localStorage.getItem('watch_player_fit_idx')) || 0;
+
+    // Lấy chế độ đã lưu từ localStorage, nếu chưa có thì lấy 'fill'
+    var savedFitKey = localStorage.getItem('watch_player_fit_mode') || 'fill';
+    var currentFitIndex = FIT_MODES.findIndex(function(m) { return m.key === savedFitKey; });
+    if (currentFitIndex === -1) currentFitIndex = 0; // Mặc định index 0 là 'fill'
 
     function applyFitMode(index) {
         currentFitIndex = index % FIT_MODES.length;
-        localStorage.setItem('watch_player_fit_idx', currentFitIndex);
+        var mode = FIT_MODES[currentFitIndex];
+
+        // Lưu chế độ hiện tại vào localStorage
+        try {
+            localStorage.setItem('watch_player_fit_mode', mode.key);
+        } catch (e) {}
 
         var player = document.getElementById('main-player-iframe');
         if (player) {
-            player.className = 'fit-' + FIT_MODES[currentFitIndex].key;
+            player.className = 'fit-' + mode.key;
         }
 
         var fitBtn = document.getElementById('custom-fit-toggle');
         if (fitBtn) {
-            fitBtn.innerHTML = FIT_MODES[currentFitIndex].label;
+            fitBtn.innerHTML = mode.label;
         }
     }
 
@@ -848,11 +856,9 @@ function rawJS() {
         const bodyElem = document.body || document.documentElement;
         if (!bodyElem) return;
 
-        // Container chứa nút chọn Tập & nút chỉnh Khung hình
         const headerDiv = document.createElement('div');
         headerDiv.id = 'custom-ui-header';
 
-        // Nút chuyển Chế độ Fit Khung hình
         const fitBtn = document.createElement('button');
         fitBtn.id = 'custom-fit-toggle';
         fitBtn.className = 'custom-ui-btn';
@@ -862,7 +868,6 @@ function rawJS() {
             applyFitMode(currentFitIndex + 1);
         };
 
-        // Nút Mở Danh Sách Tập
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'custom-epi-toggle';
         toggleBtn.className = 'custom-ui-btn';
@@ -903,7 +908,6 @@ function rawJS() {
         headerDiv.appendChild(epiWrapper);
         bodyElem.appendChild(headerDiv);
 
-        // Nút Prev / Next
         if (urlInfo.current > 1) {
             const prevBtn = document.createElement('div');
             prevBtn.className = 'custom-nav-btn';
@@ -922,7 +926,7 @@ function rawJS() {
             bodyElem.appendChild(nextBtn);
         }
 
-        // Áp dụng ngay fit mode lên Iframe
+        // Kích hoạt ngay chế độ xem hiện tại lên iframe player
         applyFitMode(currentFitIndex);
     }
 
@@ -974,7 +978,6 @@ function rawJS() {
 })();
 `;
 }
-
 
 
 
