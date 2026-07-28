@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.1.6",
+    "version": "1.1.7",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -579,7 +579,6 @@ function parseDetailResponse(html, url) {
   }
 }
 
-
 function rawJS() {
 
   return `
@@ -599,11 +598,51 @@ function rawJS() {
         } catch (e) {}
     }
 
-    log('[Init] Script khoi chay - JS Hardcode Pixel Fit Mode...');
+    log('[Init] Script khoi chay - Shadow DOM Anti-AdBlock & Pixel Fit Mode...');
 
     const TARGET_PATTERN = 'haiten.org';
     const CHECK_SPEED = 200;
     var urlInfo = null;
+
+    // -------------------------------------------------------------
+    // SHADOW DOM CONTAINER (CHỐNG ADBLOCK TIÊM CSS QUÉT GIAO DIỆN)
+    // -------------------------------------------------------------
+    function getShadowRoot() {
+        var host = document.getElementById('app-viewport-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'app-viewport-host';
+            (document.body || document.documentElement).appendChild(host);
+        }
+        return host.shadowRoot || host.attachShadow({ mode: 'open' });
+    }
+
+    // -------------------------------------------------------------
+    // TOAST THÔNG BÁO CHỐNG CẢNH BÁO ADBLOCK
+    // -------------------------------------------------------------
+    function showToast(text) {
+        try {
+            var shadow = getShadowRoot();
+            var oldToast = shadow.getElementById('v-msg-badge');
+            if (oldToast) oldToast.remove();
+
+            var toast = document.createElement('div');
+            toast.id = 'v-msg-badge';
+            toast.style.cssText = 
+                'position: fixed !important; bottom: 20px !important; left: 50% !important;' +
+                'transform: translateX(-50%) !important; background: rgba(18, 18, 18, 0.9) !important;' +
+                'color: #fff !important; padding: 8px 16px !important; border-radius: 20px !important;' +
+                'font-size: 13px !important; font-family: sans-serif !important;' +
+                'border: 1px solid rgba(255,255,255,0.2) !important; z-index: 2147483645 !important;' +
+                'pointer-events: none !important; box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;';
+            toast.textContent = text;
+            shadow.appendChild(toast);
+
+            setTimeout(function() {
+                if (toast && toast.parentNode) toast.remove();
+            }, 2500);
+        } catch(e) {}
+    }
 
     // -------------------------------------------------------------
     // 0. KHÓA VIEWPORT MOBILE & RESET BODY
@@ -618,7 +657,7 @@ function rawJS() {
             }
             meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
 
-            var styleId = 'custom-viewport-lock';
+            var styleId = 'v-view-lock';
             if (!document.getElementById(styleId)) {
                 var style = document.createElement('style');
                 style.id = styleId;
@@ -640,13 +679,14 @@ function rawJS() {
     applyMobileViewport();
 
     // -------------------------------------------------------------
-    // 1. QUẢN LÝ LOADING SCREEN
+    // 1. QUẢN LÝ LOADING SCREEN (TRONG SHADOW DOM)
     // -------------------------------------------------------------
     function showLoadingScreen() {
-        if (document.getElementById('custom-loading-screen')) return;
+        var shadow = getShadowRoot();
+        if (shadow.getElementById('v-stage-layer')) return;
 
         var loadingDiv = document.createElement('div');
-        loadingDiv.id = 'custom-loading-screen';
+        loadingDiv.id = 'v-stage-layer';
         loadingDiv.style.cssText = 
             'position: fixed !important;' +
             'top: 0 !important; left: 0 !important;' +
@@ -654,26 +694,25 @@ function rawJS() {
             'background-color: #0d0d0d !important;' +
             'display: flex !important; flex-direction: column !important;' +
             'justify-content: center !important; align-items: center !important;' +
-            'z-index: 999999999 !important;' +
+            'z-index: 2147483640 !important;' +
             'font-family: sans-serif !important; cursor: pointer !important;';
 
         loadingDiv.innerHTML = 
-            '<div class="custom-spinner"></div>' +
+            '<div class="v-ring-spin"></div>' +
             '<div style="color:#ccc; margin-top:16px; font-size:14px; text-align:center;">Đang tải trình phát...<br><small style="color:#777; font-size:11px;">(Chạm vào màn hình để đóng nếu bị treo)</small></div>' +
             '<style>' +
-            '.custom-spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #e50914; border-radius: 50%; animation: custom-spin 0.8s linear infinite; }' +
-            '@keyframes custom-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }' +
+            '.v-ring-spin { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #e50914; border-radius: 50%; animation: v-spin 0.8s linear infinite; }' +
+            '@keyframes v-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }' +
             '</style>';
 
         loadingDiv.onclick = function() { hideLoadingScreen(); };
-
-        var targetElem = document.body || document.documentElement;
-        if (targetElem) targetElem.appendChild(loadingDiv);
+        shadow.appendChild(loadingDiv);
     }
 
     function hideLoadingScreen() {
         try {
-            var elem = document.getElementById('custom-loading-screen');
+            var shadow = getShadowRoot();
+            var elem = shadow.getElementById('v-stage-layer');
             if (elem) elem.remove();
         } catch (e) {}
     }
@@ -741,7 +780,7 @@ function rawJS() {
     }
 
     function updatePlayerDimensions() {
-        var player = document.getElementById('main-player-iframe');
+        var player = document.getElementById('v-media-frame');
         if (!player) return;
 
         var sz = getScreenSize();
@@ -749,7 +788,6 @@ function rawJS() {
 
         log('[Update Dimensions] Screen: ' + sz.width + 'x' + sz.height + ' | Mode: ' + mode);
 
-        // Reset style vị trí cơ bản
         player.style.position = 'fixed';
         player.style.margin = '0px';
         player.style.padding = '0px';
@@ -757,14 +795,12 @@ function rawJS() {
         player.style.zIndex = '1';
 
         if (mode === 'fill') {
-            // Ép cứng 100% kích thước màn hình tính bằng Pixel
             player.style.top = '0px';
             player.style.left = '0px';
             player.style.width = sz.width + 'px';
             player.style.height = sz.height + 'px';
             player.style.transform = 'none';
         } else if (mode === 'contain') {
-            // Giữ tỉ lệ chuẩn 16:9 vừa khít trong màn hình
             var targetRatio = 16 / 9;
             var currentRatio = sz.width / sz.height;
             var finalW, finalH;
@@ -783,7 +819,6 @@ function rawJS() {
             player.style.left = Math.round((sz.width - finalW) / 2) + 'px';
             player.style.transform = 'none';
         } else if (mode === 'cover') {
-            // Phóng to phủ kín màn hình (trùng tỉ lệ 16:9 nhưng bị xén lề)
             var targetRatio = 16 / 9;
             var currentRatio = sz.width / sz.height;
             var finalW, finalH;
@@ -812,7 +847,8 @@ function rawJS() {
             localStorage.setItem('watch_player_fit_mode', mode.key);
         } catch (e) {}
 
-        var fitBtn = document.getElementById('custom-fit-toggle');
+        var shadow = getShadowRoot();
+        var fitBtn = shadow.getElementById('v-btn-mode');
         if (fitBtn) {
             fitBtn.innerHTML = mode.label;
         }
@@ -820,7 +856,6 @@ function rawJS() {
         updatePlayerDimensions();
     }
 
-    // Tự động cập nhật lại kích thước khi xoay màn hình hoặc đổi size trình duyệt
     window.addEventListener('resize', function() {
         updatePlayerDimensions();
     });
@@ -829,26 +864,27 @@ function rawJS() {
     });
 
     // -------------------------------------------------------------
-    // 4. CSS CHO GIAO DIỆN NÚT BẤM
+    // 4. CSS CHO GIAO DIỆN (NẰM TRONG SHADOW DOM)
     // -------------------------------------------------------------
     function injectStyles() {
         try {
-            if (document.getElementById('custom-player-styles')) return;
+            var shadow = getShadowRoot();
+            if (shadow.getElementById('v-style-block')) return;
             const style = document.createElement('style');
-            style.id = 'custom-player-styles';
+            style.id = 'v-style-block';
             style.textContent = 
-                '#custom-ui-header { position: fixed !important; top: 10px !important; right: 10px !important; z-index: 999999 !important; display: flex !important; gap: 8px !important; align-items: center !important; font-family: sans-serif !important; }' +
-                '.custom-ui-btn { background: rgba(15, 15, 15, 0.85) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.25) !important; padding: 7px 12px !important; border-radius: 6px !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; backdrop-filter: blur(6px) !important; box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important; }' +
-                '.custom-ui-btn:active { background: #e50914 !important; }' +
-                '#custom-epi-grid { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 6px !important; background: rgba(15, 15, 15, 0.95) !important; padding: 8px !important; border-radius: 8px !important; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important; gap: 6px !important; width: 220px !important; max-height: 200px !important; overflow-y: auto !important; border: 1px solid rgba(255,255,255,0.2) !important; }' +
-                '#custom-epi-grid.closed { display: none !important; }' +
-                '#custom-epi-grid.open { display: grid !important; }' +
-                '.custom-epi-btn { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
-                '.custom-epi-btn.active { background: #e50914 !important; border-color: #ff333d !important; }' +
-                '.custom-nav-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 999999 !important; background: rgba(0,0,0,0.5) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 16px !important; cursor: pointer !important; opacity: 0.6 !important; }' +
-                '#custom-btn-prev { left: 10px !important; } #custom-btn-next { right: 10px !important; }';
+                '#v-top-bar { position: fixed !important; top: 10px !important; right: 10px !important; z-index: 2147483640 !important; display: flex !important; gap: 8px !important; align-items: center !important; font-family: sans-serif !important; }' +
+                '.v-btn-act { background: rgba(15, 15, 15, 0.85) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.25) !important; padding: 7px 12px !important; border-radius: 6px !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; backdrop-filter: blur(6px) !important; box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important; }' +
+                '.v-btn-act:active { background: #e50914 !important; }' +
+                '#v-box-list { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 6px !important; background: rgba(15, 15, 15, 0.95) !important; padding: 8px !important; border-radius: 8px !important; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)) !important; gap: 6px !important; width: 220px !important; max-height: 200px !important; overflow-y: auto !important; border: 1px solid rgba(255,255,255,0.2) !important; }' +
+                '#v-box-list.closed { display: none !important; }' +
+                '#v-box-list.open { display: grid !important; }' +
+                '.v-item-node { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
+                '.v-item-node.active { background: #e50914 !important; border-color: #ff333d !important; }' +
+                '.v-arrow-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 2147483640 !important; background: rgba(0,0,0,0.5) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 16px !important; cursor: pointer !important; opacity: 0.6 !important; }' +
+                '#v-arrow-prev { left: 10px !important; } #v-arrow-next { right: 10px !important; }';
 
-            (document.head || document.documentElement).appendChild(style);
+            shadow.appendChild(style);
         } catch (e) {}
     }
 
@@ -880,7 +916,7 @@ function rawJS() {
                         var realSrc = iframes[i].src || iframes[i].getAttribute('data-src') || iframes[i].getAttribute('data-lazy-src');
                         if (realSrc && realSrc.includes(TARGET_PATTERN)) {
                             clearInterval(bgTimer);
-                            var mainPlayer = document.getElementById('main-player-iframe');
+                            var mainPlayer = document.getElementById('v-media-frame');
                             if (mainPlayer) mainPlayer.src = realSrc;
                             bgFrame.remove();
                             window.history.pushState({}, '', targetUrl);
@@ -888,6 +924,7 @@ function rawJS() {
                             saveHistory(urlInfo.seriesKey, urlInfo.current);
                             buildUI();
                             hideLoadingScreen();
+                            showToast('Đã chuyển sang Tập ' + urlInfo.current);
                             return;
                         }
                     }
@@ -904,28 +941,27 @@ function rawJS() {
     }
 
     // -------------------------------------------------------------
-    // 6. TẠO GIAO DIỆN NÚT BẤM & KHỞI TẠO
+    // 6. TẠO GIAO DIỆN NÚT BẤM (GẮN VÀO SHADOW DOM)
     // -------------------------------------------------------------
     function buildUI() {
         injectStyles();
         applyMobileViewport();
 
-        var oldHeader = document.getElementById('custom-ui-header');
+        var shadow = getShadowRoot();
+
+        var oldHeader = shadow.getElementById('v-top-bar');
         if (oldHeader) oldHeader.remove();
-        var oldPrev = document.getElementById('custom-btn-prev');
+        var oldPrev = shadow.getElementById('v-arrow-prev');
         if (oldPrev) oldPrev.remove();
-        var oldNext = document.getElementById('custom-btn-next');
+        var oldNext = shadow.getElementById('v-arrow-next');
         if (oldNext) oldNext.remove();
 
-        const bodyElem = document.body || document.documentElement;
-        if (!bodyElem) return;
-
         const headerDiv = document.createElement('div');
-        headerDiv.id = 'custom-ui-header';
+        headerDiv.id = 'v-top-bar';
 
         const fitBtn = document.createElement('button');
-        fitBtn.id = 'custom-fit-toggle';
-        fitBtn.className = 'custom-ui-btn';
+        fitBtn.id = 'v-btn-mode';
+        fitBtn.className = 'v-btn-act';
         fitBtn.innerHTML = FIT_MODES[currentFitIndex].label;
         fitBtn.onclick = function (e) {
             e.stopPropagation();
@@ -933,18 +969,18 @@ function rawJS() {
         };
 
         const toggleBtn = document.createElement('button');
-        toggleBtn.id = 'custom-epi-toggle';
-        toggleBtn.className = 'custom-ui-btn';
+        toggleBtn.id = 'v-btn-epi';
+        toggleBtn.className = 'v-btn-act';
         toggleBtn.innerHTML = 'Tập ' + urlInfo.current + ' &#9660;';
 
         const gridDiv = document.createElement('div');
-        gridDiv.id = 'custom-epi-grid';
+        gridDiv.id = 'v-box-list';
         gridDiv.className = 'closed';
 
         for (let i = 1; i <= urlInfo.maxEpi; i++) {
             (function (epiNum) {
                 const btn = document.createElement('button');
-                btn.className = 'custom-epi-btn' + (epiNum === urlInfo.current ? ' active' : '');
+                btn.className = 'v-item-node' + (epiNum === urlInfo.current ? ' active' : '');
                 btn.textContent = 'Tập ' + epiNum;
                 btn.onclick = function () {
                     gridDiv.className = 'closed';
@@ -970,27 +1006,26 @@ function rawJS() {
 
         headerDiv.appendChild(fitBtn);
         headerDiv.appendChild(epiWrapper);
-        bodyElem.appendChild(headerDiv);
+        shadow.appendChild(headerDiv);
 
         if (urlInfo.current > 1) {
             const prevBtn = document.createElement('div');
-            prevBtn.className = 'custom-nav-btn';
-            prevBtn.id = 'custom-btn-prev';
+            prevBtn.className = 'v-arrow-btn';
+            prevBtn.id = 'v-arrow-prev';
             prevBtn.innerHTML = '❮';
             prevBtn.onclick = function () { switchEpisode(urlInfo.getEpiUrl(urlInfo.current - 1)); };
-            bodyElem.appendChild(prevBtn);
+            shadow.appendChild(prevBtn);
         }
 
         if (urlInfo.current < urlInfo.maxEpi) {
             const nextBtn = document.createElement('div');
-            nextBtn.className = 'custom-nav-btn';
-            nextBtn.id = 'custom-btn-next';
+            nextBtn.className = 'v-arrow-btn';
+            nextBtn.id = 'v-arrow-next';
             nextBtn.innerHTML = '❯';
             nextBtn.onclick = function () { switchEpisode(urlInfo.getEpiUrl(urlInfo.current + 1)); };
-            bodyElem.appendChild(nextBtn);
+            shadow.appendChild(nextBtn);
         }
 
-        // Cập nhật kích thước ép pixel ngay
         updatePlayerDimensions();
     }
 
@@ -1017,13 +1052,16 @@ function rawJS() {
                         clearInterval(initTimer);
 
                         log('[Found Player]: ' + realSrc);
-                        var iframeHtml = '<iframe id="main-player-iframe" src="' + realSrc + '" allowfullscreen frameborder="0"></iframe>';
+                        var iframeHtml = '<iframe id="v-media-frame" src="' + realSrc + '" allowfullscreen frameborder="0"></iframe>';
 
                         document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #000 !important;';
                         document.body.innerHTML = iframeHtml;
 
+                        // Tái khởi tạo Shadow Root sau khi reset innerHTML của body
+                        getShadowRoot();
                         buildUI();
                         hideLoadingScreen();
+                        showToast('Đang phát Tập ' + urlInfo.current);
                         return;
                     }
                 }
