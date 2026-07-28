@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.1.7",
+    "version": "1.1.8",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -563,7 +563,6 @@ function parseDetailResponse(html, url) {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Referer: url,
-        "Block-Ads": "true",
         "Custom-Js": customJS
       },
       subtitles: [],
@@ -578,6 +577,8 @@ function parseDetailResponse(html, url) {
     });
   }
 }
+
+
 
 function rawJS() {
 
@@ -597,6 +598,76 @@ function rawJS() {
             }
         } catch (e) {}
     }
+
+    // -------------------------------------------------------------
+    // LÁ CHẮN ANTI-POPUP & ANTI-REDIRECT (CHẠY TẠI DOCUMENT-START)
+    // -------------------------------------------------------------
+    (function applyAntiPopupShield() {
+        try {
+            log('[Shield] Dang kich hoat la chan Anti-Popup & Anti-Redirect...');
+
+            // 1. Ghi đè window.open bằng Dummy Window
+            var dummyWin = {
+                focus: function () {},
+                blur: function () {},
+                close: function () {},
+                closed: true,
+                postMessage: function () {}
+            };
+
+            window.open = function (url, target, features) {
+                log('[Anti-Popup] Da chan window.open attempt: ' + url);
+                return dummyWin;
+            };
+
+            // 2. Chặn các phương thức chuyển hướng location
+            try {
+                window.location.assign = function (url) {
+                    log('[Anti-Redirect] Da chan location.assign: ' + url);
+                };
+                window.location.replace = function (url) {
+                    log('[Anti-Redirect] Da chan location.replace: ' + url);
+                };
+            } catch (e) {}
+
+            // 3. Khóa window.onbeforeunload để tránh bị kẹt dialog
+            try {
+                Object.defineProperty(window, 'onbeforeunload', {
+                    configurable: false,
+                    get: function () { return null; },
+                    set: function () { log('[Anti-Redirect] Da triet hạ onbeforeunload'); }
+                });
+            } catch (e) {}
+
+            // 4. Bẫy sự kiện Click cấp cao (Capture Phase) chặn Popup đè
+            window.addEventListener('click', function (e) {
+                // Cho phép click bình thường nếu phát ra từ Shadow DOM của chúng ta
+                var host = document.getElementById('app-viewport-host');
+                if (host && e.composedPath && e.composedPath().includes(host)) {
+                    return;
+                }
+
+                // Kiểm tra nếu click trúng thẻ <a> mở tab mới
+                var target = e.target;
+                while (target && target !== document) {
+                    if (target.tagName === 'A') {
+                        var attrTarget = target.getAttribute('target');
+                        if (attrTarget === '_blank' || target.target === '_blank') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            log('[Anti-Popup] Da chan click the <a> target _blank');
+                            return;
+                        }
+                    }
+                    target = target.parentNode;
+                }
+            }, true);
+
+            log('[Shield] La chan anti-popup/redirect san sang!');
+        } catch (e) {
+            log('[Shield Error]: ' + e.message);
+        }
+    })();
 
     log('[Init] Script khoi chay - Shadow DOM Anti-AdBlock & Pixel Fit Mode...');
 
@@ -1052,12 +1123,13 @@ function rawJS() {
                         clearInterval(initTimer);
 
                         log('[Found Player]: ' + realSrc);
-                        var iframeHtml = '<iframe id="v-media-frame" src="' + realSrc + '" allowfullscreen frameborder="0"></iframe>';
+                        
+                        // Tích hợp sandbox chống top-navigation (Chặn player tự đổi URL trang cha)
+                        var iframeHtml = '<iframe id="v-media-frame" src="' + realSrc + '" allowfullscreen frameborder="0" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"></iframe>';
 
                         document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #000 !important;';
                         document.body.innerHTML = iframeHtml;
 
-                        // Tái khởi tạo Shadow Root sau khi reset innerHTML của body
                         getShadowRoot();
                         buildUI();
                         hideLoadingScreen();
@@ -1079,7 +1151,6 @@ function rawJS() {
 })();
 `;
 }
-
 
 
 
