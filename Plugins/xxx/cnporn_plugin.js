@@ -6,10 +6,11 @@ function getManifest() {
         "id": "cnporn",
         "name": "Porn Gái Trung",
         "info": "Nguồn XXX Trung Quốc Hay.",
-        "version": "1.8.1",
+        "version": "1.8.2",
         "baseUrl": "https://cnporn.org",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL"
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
@@ -262,7 +263,7 @@ function parseMovieDetail(html, $url) {
         
         if (servers[0]) {
             stream1 = BASEURL + servers[0];
-            epi.push({ id: stream1, name: "Server 1", slug: "full" });
+            epi.push({ id: stream1, name: "Server Full", slug: "full" });
         }
         if (servers[1]) {
             stream2 = BASEURL + servers[1];
