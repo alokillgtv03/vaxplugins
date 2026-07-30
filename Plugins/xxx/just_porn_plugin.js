@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
@@ -13,8 +13,8 @@ function getManifest() {
     "isAdult": true,
     "layoutType": "HORIZONTAL",
     "type": "VIDEO",
-    debug: true,
-    "playerType": "embed"
+    "playerType": "auto"
+    debug: true
   });
 }
 // https://www.justporn.com/latest-updates/1/
