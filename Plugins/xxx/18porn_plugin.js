@@ -5,11 +5,12 @@ function getManifest() {
         "id": "newporn",          
         "name": "18porn",
         "description": "Nguồn xem phim XXX ổn định",
-        "version": "1.3.5",             
+        "version": "1.3.6",             
         "baseUrl": "https://www.18porn.sex",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/18porn.jpg", 
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
         "isEnabled": true,
+        debug: true,
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
@@ -306,8 +307,9 @@ function parseDetailResponse(html, url) {
     var dlink = url;
     rmatch = html.match(/video_url:\s*['"](https:\/\/[^'"]+)['"]/i);
     if (rmatch && rmatch[1]) { 
-    dlink = rmatch[1].trim(); 
+        dlink = rmatch[1].trim(); 
     }
+    console.log("parseDetailResponse:" + dlink)
     return JSON.stringify({
       "url": dlink,
       "isEmbed": false,

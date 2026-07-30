@@ -10,7 +10,6 @@ function getManifest() {
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
         "isEnabled": true,
-        debug: true,
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
