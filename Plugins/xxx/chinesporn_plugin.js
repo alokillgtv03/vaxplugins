@@ -6,7 +6,7 @@ function getManifest() {
         "id": "chinesporn",          
         "name": "Sex Trung",
         "description": "Nguồn XXX trung quốc Hay",
-        "version": "1.4",             
+        "version": "1.5",             
         "baseUrl": "https://ppp.porn",
         "info": "Nguồn XXX trung quốc khá hay.",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/chinesporn.jpg", 
@@ -286,8 +286,13 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+        var $stream = url;
+        var $linkURL = html.match(/var\sstream[^"']+["']([^"']+)["']/i);
+        if ($linkURL && $linkURL[1]) {
+            $stream = $linkURL[1];
+        }
         return JSON.stringify({
-            "url": "",
+            "url": $stream,
             "isEmbed": false,
             "mimeType": "video/mp4",
             "headers": {
