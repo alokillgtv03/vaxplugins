@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.5.5",
+    "version": "1.5.6",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
@@ -14,7 +14,7 @@ function getManifest() {
     "layoutType": "HORIZONTAL",
     "type": "VIDEO",
     debug: true,
-    "playerType": "exoplayer"
+    "playerType": "embed"
   });
 }
 // https://www.justporn.com/latest-updates/1/
@@ -289,7 +289,8 @@ console.log("Stream: " + stream1)
           "mimeType": "video/mp4",
           "headers": {
             "Referer": BASEURL,
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Custom-Js": customjs()
           },
           "subtitles": []
         });
@@ -297,6 +298,98 @@ console.log("Stream: " + stream1)
     } catch (e) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
+}
+
+
+function customjs(){
+  return `
+  // 1. Hàm khởi tạo ArtPlayer
+function initArtPlayer(videoSrc) {
+  // Thay thế '.artplayer-app' bằng selector của container chứa player trên trang của bạn
+  const playerContainer = document.querySelector('#artplayer') || document.querySelector('.artplayer-app');
+  
+  if (!playerContainer) {
+    console.error('Không tìm thấy container chứa ArtPlayer!');
+    return;
+  }
+
+  // Khởi tạo ArtPlayer
+  const art = new Artplayer({
+    container: playerContainer,
+    url: videoSrc,
+    autoplay: false,
+    pip: true,
+    screenshot: true,
+    setting: true,
+    fullscreen: true,
+    fullscreenWeb: true,
+  });
+
+  console.log('Khởi tạo ArtPlayer thành công với nguồn:', videoSrc);
+}
+
+// 2. Hàm lấy SRC từ thẻ video
+function getVideoSourceAndInit() {
+  const videoElement = document.querySelector('video');
+
+  if (!videoElement) {
+    console.warn('Không tìm thấy thẻ <video> trên trang.');
+    return false;
+  }
+
+  // Lấy src từ thẻ video hoặc từ thẻ <source> bên trong nó
+  let src = videoElement.src;
+  
+  if (!src) {
+    const sourceElement = videoElement.querySelector('source');
+    if (sourceElement) {
+      src = sourceElement.src;
+    }
+  }
+
+  if (src) {
+    // Ẩn hoặc xóa thẻ video cũ để tránh bị trùng phát âm thanh/hình ảnh
+    videoElement.style.display = 'none';
+    videoElement.pause();
+
+    // Gọi hàm tạo ArtPlayer
+    initArtPlayer(src);
+    return true;
+  }
+
+  return false;
+}
+
+// 3. Xử lý chờ Website tải xong (Bao gồm cả trường hợp Lazy-load)
+function onPageReady() {
+  // Thử lấy src ngay khi trang vừa sẵn sàng
+  const success = getVideoSourceAndInit();
+
+  // Nếu thẻ video chưa xuất hiện (do website render chậm hoặc dùng framework như React/Vue),
+  // sử dụng MutationObserver để lắng nghe thay đổi của DOM cho tới khi thẻ video xuất hiện.
+  if (!success) {
+    console.log('Đang chờ thẻ video xuất hiện trong DOM...');
+    
+    const observer = new MutationObserver((mutations, obs) => {
+      if (getVideoSourceAndInit()) {
+        obs.disconnect(); // Dừng lắng nghe khi đã tìm thấy và khởi tạo thành công
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+}
+
+// Kiểm tra trạng thái tải của trang Web
+if (document.readyState === 'complete') {
+  onPageReady();
+} else {
+  window.addEventListener('load', onPageReady);
+}
+  `
 }
 
 
