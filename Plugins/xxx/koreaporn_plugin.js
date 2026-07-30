@@ -7,13 +7,12 @@ function getManifest() {
         "name": "Sex Hàn",
         "description": "Nguồn XXX Hay",
         "version": "1.7.6",      
-        "info": "",
+        "info": "Nguồn phim Hàn Quốc siêu hay.\n\nNếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
         "baseUrl": "https://koreanpornmovie.com",
         "iconUrl": "https://koreanpornmovie.com/wp-content/uploads/2025/01/sadasdasdasdas.png", 
         "isEnabled": true,
         "isAdult": true,
         "layoutType": "HORIZONTAL",
-        debug: true,
         "type": "VIDEO",
         "playerType": "auto"
     });

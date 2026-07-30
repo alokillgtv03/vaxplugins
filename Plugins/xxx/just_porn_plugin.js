@@ -6,7 +6,7 @@ function getManifest() {
     "name": "Just Porn",
     "description": "XXX Hay",
     "version": "1.6.5",
-    "info": "Nguồn phim XXX chất lượng cao.",
+    "info": "Nguồn phim Hàn Quốc siêu hay.\n\nNếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
     "isEnabled": true,
