@@ -4,7 +4,7 @@ function getManifest() {
         "id": "heovl",
         "name": "Heovl",
         "description": "XXX Hay",
-        "version": "1.7.2",
+        "version": "1.7.3",
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://heovl.im",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
@@ -403,13 +403,14 @@ function checkRaw(scriptStr, returnFixed) {
     return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
   }
 }
+
 function parseDetailResponse(html,url) {
 console.log("parseDetailResponse[Đang xử lý]: " + url)
 console.log("parseDetailResponse[Raw]: " + html)
     try {
 
       var episodes = [];
-        
+      var  $stream = "";  
         // 2. Kiểm tra xem có nút bấm server hay không bằng Regex MatchAll
         // Tìm tất cả các đoạn có data-source="..." trong class button tương ứng
         var serverRegex = /data-source="([^"]+)"/gi;
@@ -434,16 +435,7 @@ console.log("parseDetailResponse[Raw]: " + html)
             if (iframeMatch && iframeMatch[1]) {
                 $stream = iframeMatch[1];
             }
-        }
-        
-        servers = [{
-            name: "Server",
-            episodes: episodes
-        }];
-        
-    } catch (e) {
-        //console.error("Lỗi parse dữ liệu: ", e);
-    }
+        }        
         return JSON.stringify({
             url: $stream,
             isEmbed: true // Vẫn cần fetch tiếp
