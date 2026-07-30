@@ -5,7 +5,7 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "info": "Nguồn phim Hàn Quốc siêu hay. Nếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
-        "version": "1.1.5",
+        "version": "1.1.6",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
@@ -23,11 +23,10 @@ function getHomeSections() {
 }
 
 function getPrimaryCategories() {
-}
-
     var listurl = getLISTmenu();
     var menulist = buildMenu(listurl);
     return JSON.stringify(menulist);
+}
 // ĐÃ SỬA: Lỗi cú pháp khai báo biến trong JSON.stringify
 function getFilterConfig() {
     var listurl = getLISTmenu();
