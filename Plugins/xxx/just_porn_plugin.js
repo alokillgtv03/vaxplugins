@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.5.4",
+    "version": "1.5.5",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
@@ -269,6 +269,7 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+console.log("parseDetailResponse: " + url)
   var stream1 = "";
   var script = html.match(/var\s+flashvars\s+=\s+({[\s\S]*?}\;)/i);
   if (script && script[1]) {
@@ -279,7 +280,7 @@ function parseDetailResponse(html, url) {
       stream1 = jsonObj.video_url;
     }
   }
-
+console.log("Stream: " + stream1)
 
         return JSON.stringify({
           "url": stream1,
