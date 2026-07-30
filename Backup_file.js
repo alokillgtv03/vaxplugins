@@ -4,7 +4,7 @@ function getManifest() {
         "id": "1porn",
         "name": "1Porn",
         "description": "XXX 4K",
-        "version": "1.2.8",
+        "version": "1.2.9",
         "baseUrl": "https://www.1porn.tv",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
@@ -344,8 +344,24 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
     try {
+var servers = [];
+		var $items = [];
+        var stream = "";
+        /*
+		_$(html).find("source").each(function() {
+			var link = this.attr("src") + "#.m3u8";
+			var name = this.attr("label");
+			var item = {
+				id: link,
+				name: "HQ: " + name,
+				slug: name
+			}
+			$items.push(item);
+		})
+        */
+       stream = _$(html).find("source").eq(0).attr("src");
         return JSON.stringify({
-            "url": "",
+            "url": stream,
             "isEmbed": false,
             "mimeType": "application/x-mpegURL",
             "headers": {
