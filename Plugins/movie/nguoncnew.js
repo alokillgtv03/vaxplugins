@@ -282,7 +282,7 @@ function parseMovieDetail(apiResponseJson) {
 
 function parseDetailResponse(html, url) {
     try {
-        var customjs = textJS();
+        var customjs = rawJS();
         return JSON.stringify({
             "url": url,
             "headers": {
