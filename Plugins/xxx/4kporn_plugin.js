@@ -386,9 +386,29 @@ function sortEpisodesByName(data) {
 
 function parseDetailResponse(html, url) {
     try {
+        var sourcevd = _$(html).find(".video-js").html();
+        var regvid = /src=["']([^"']+)["'][^>]+label=["']([^"']+)["']/g;
+        var epi = [];
+        var stream = url;
+        var number = 0;
+
+        if (sourcevd) {
+            for (const match of sourcevd.matchAll(regvid)) {
+                number++;
+                var link = match[1];
+                var type = match[2];
+                if (number == 1) {
+                    stream = link;
+                }
+                if (type.indexOf("2160") > -1) {
+                    stream = link;
+                }
+                epi.push({ id: link + "#video.m3u8", name: "Độ Phân Giải " + type, slug: lname ? lname.replace(/\s/g, "_") : "" });
+            }
+        }
         log("Đang phát: " + url)
         return JSON.stringify({
-            "url": "",
+            "url": stream,
             "isEmbed": false,
             "mimeType": "video/mp4",
             "headers": {
