@@ -11,7 +11,6 @@ function getManifest() {
         "isEnabled": true,
         "isAdult": true,
         "type": "MOVIE",
-        debug: true,
         "playerType": "embed"
     });
 }
