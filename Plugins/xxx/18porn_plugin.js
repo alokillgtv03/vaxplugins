@@ -1,11 +1,11 @@
-BASEURL = "https://www.18porn.sex";
+BaseURL = "https://www.18porn.sex";
 
 function getManifest() {
     return JSON.stringify({
         "id": "newporn",          
         "name": "18porn",
         "description": "Nguồn xem phim XXX ổn định",
-        "version": "1.3.7",             
+        "version": "1.3.8",             
         "baseUrl": "https://www.18porn.sex",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/18porn.jpg", 
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
@@ -46,9 +46,9 @@ function getFilters() {
 
 function getUrlList(slug, filtersJson) {
     try {
-        // Tương thích linh hoạt với cả BASEURL lẫn BASEURL
-        var BASEURL = typeof BASEURL !== 'undefined' ? BASEURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        var BASEURLClean = BASEURL.replace(/\/+$/, "");
+        // Tương thích linh hoạt với cả BaseURL lẫn BASEURL
+        var baseUrl = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
+        var baseUrlClean = baseUrl.replace(/\/+$/, "");
 
         var page = 1;
         var path = slug || "";
@@ -82,10 +82,10 @@ function getUrlList(slug, filtersJson) {
         }
 
         // 3. Xử lý đường dẫn tương đối
-        if (!path) return BASEURLClean + "/";
+        if (!path) return baseUrlClean + "/";
 
         path = path.replace(/^\/+|\/+$/g, "");
-        var targetUrl = BASEURLClean + "/" + path;
+        var targetUrl = baseUrlClean + "/" + path;
 
         if (page > 1) {
             targetUrl += "/" + page;
@@ -99,7 +99,7 @@ function getUrlList(slug, filtersJson) {
 
     } catch (e) {
         console.log(e);
-        var fallbackBase = typeof BASEURL !== 'undefined' ? BASEURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
+        var fallbackBase = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
         if (slug && slug.indexOf("http") > -1) {
             return slug;
         }
@@ -110,8 +110,8 @@ function getUrlList(slug, filtersJson) {
 
 function getUrlSearch(keyword, filtersJson) {
     try {
-        var BASEURL = typeof BASEURL !== 'undefined' ? BASEURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        var BASEURLClean = BASEURL.replace(/\/+$/, "");
+        var baseUrl = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
+        var baseUrlClean = baseUrl.replace(/\/+$/, "");
 
         var page = 1;
 
@@ -126,7 +126,7 @@ function getUrlSearch(keyword, filtersJson) {
 
         // 2. Tạo URL tìm kiếm theo cấu trúc /search/keyword/ hoặc /search/keyword/page
         var encodedKeyword = encodeURIComponent(keyword || "");
-        var targetUrl = BASEURLClean + "/search/" + encodedKeyword;
+        var targetUrl = baseUrlClean + "/search/" + encodedKeyword;
 
         if (page > 1) {
             targetUrl += "/" + page + "/";
@@ -138,7 +138,7 @@ function getUrlSearch(keyword, filtersJson) {
 
     } catch (e) {
         console.log(e);
-        var fallbackBase = typeof BASEURL !== 'undefined' ? BASEURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
+        var fallbackBase = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
         var fallback = fallbackBase + "/search/" + encodeURIComponent(keyword || "") + "/";
         return fallback.replace(/([^:]\/)\/+/g, "$1");
     }
@@ -147,10 +147,10 @@ function getUrlSearch(keyword, filtersJson) {
 function getUrlDetail(slug) {
  if (!slug) return "";
  if (slug.indexOf('http') === 0) return slug;
- return BASEURL + "/" + slug;
+ return BaseURL + "/" + slug;
 }
 
-function getUrlCategories() { return BASEURL; }
+function getUrlCategories() { return BaseURL; }
 function getUrlCountries() { return ""; }
 function getUrlYears() { return ""; }
 
@@ -260,7 +260,7 @@ function parseMovieDetail(html,url) {
   rmatch = html.match(/video_id[\s\S]*?\'(\d+)\'/);
   if (rmatch && rmatch[1]) { 
    var idvideo = rmatch[1].trim();
-   elink = BASEURL + "/embed/" + idvideo;
+   elink = BaseURL + "/embed/" + idvideo;
   }
   
   rmatch = html.match(/video_url:\s*['"](https:\/\/[^'"]+)['"]/i);
