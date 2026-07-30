@@ -5,7 +5,7 @@ function getManifest() {
         "id": "bemyhole",
         "name": "Bemyhole XXX",
         "description": "XXX Độc Lạ.",
-        "version": "1.7.5",
+        "version": "1.7.6",
         "baseUrl": "https://www.bemyhole.com",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
@@ -400,8 +400,18 @@ function sortEpisodesByName(data) {
 
 function parseDetailResponse(html, url) {
     try {
+        var vdObj = "";
+        var script = _$(html).find('script:content("var flashvars")').html();
+        var objectVD = script ? script.match(/flashvars\s+=+\s({[\s\S]*?};)/i) : null;
+        if (objectVD && objectVD[1]) {
+            vdObj = (new Function("return " + objectVD[1]))();
+        }
+        var $stream = "";
+        if (vdObj) {
+            var $stream = vdObj.video_alt_url;
+        }
         return JSON.stringify({
-            "url": "",
+            "url": $stream,
             "isEmbed": false,
             "mimeType": "video/mp4",
             "headers": {
