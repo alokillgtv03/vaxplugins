@@ -6,7 +6,7 @@ function getManifest() {
         "id": "koreaporn",          
         "name": "Sex Hàn",
         "description": "Nguồn XXX Hay",
-        "version": "1.7.4",      
+        "version": "1.7.5",      
         "info": "",
         "baseUrl": "https://koreanpornmovie.com",
         "iconUrl": "https://koreanpornmovie.com/wp-content/uploads/2025/01/sadasdasdasdas.png", 
@@ -292,11 +292,13 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+        console.log("parseDetailResponse: " + url)
         var $stream = "";
         var $linkURL = html.match(/responsive-player[\s\S]*?iframe\ssrc=["']([^"']+)["']/i);
         if ($linkURL && $linkURL[1]) {
             $stream = $linkURL[1];
         }
+        console.log("stream: " + $stream);
         return JSON.stringify({
             url: $stream,
             isEmbed: true
@@ -309,12 +311,13 @@ function parseDetailResponse(html, url) {
 
 function parseEmbedResponse(html, sourceUrl) {
     try {
+        console.log("parseEmbedResponse: " + sourceUrl)
         var videoUrl = sourceUrl;
         var linkvid = html.match(/source\ssrc=["']([^"']+)["']/i);
         if (linkvid && linkvid[1]) {
             videoUrl = linkvid[1];
         }
-
+        console.log("videoUrl: " + videoUrl);
         return JSON.stringify({
           "url": videoUrl + "#video.m3u8",
           "isEmbed": false,
