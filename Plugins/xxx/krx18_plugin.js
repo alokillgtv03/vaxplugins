@@ -5,7 +5,7 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "info": "Nguồn phim Hàn Quốc siêu hay. Nếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
-        "version": "1.1.6",
+        "version": "1.1.7",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
@@ -251,6 +251,37 @@ JSON.parse(parseMovieDetail(html,$url))
 */
 
 function parseDetailResponse(html,url) {
+  var $stream = url;
+    try {
+   rmatch = html.match(/id=["']dooplay-ajax-counter["']\s+data-postid=["']([^"']+)["']/i);
+    if (rmatch && rmatch[1]) { 
+        idvideo = rmatch[1];
+        $linkser = "https://krx18.com/wp-json/dooplayer/v2/"+idvideo+"/movie/1";
+    }
+    $stream = $linkser;
+    
+
+    // {"embed_url":"https:\/\/play.playkrx18.site\/play\/6a4f1c63ee633ccb0191a32f","type":"iframe"}
+    // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
+        return JSON.stringify({
+    "url": $stream,
+    "headers": {
+        "Referer": BASEURL,
+        "Origin": BASEURL,
+        isEmbed: true,
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    },
+    "subtitles": []
+});
+
+    } catch (e) {
+      	console.log("parseDetailResponse[error]: " + e)
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
+}
+
+
+function parseEmbedResponse(html,url) {
     try {
         var link = url;
         //if(html.indexOf("embed_url") > -1){
@@ -268,7 +299,7 @@ function parseDetailResponse(html,url) {
     "headers": {
         "Referer": BASEURL,
         "Origin": BASEURL,
-        isEmbed: true,
+        isEmbed: false,
         "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
         // Đánh lừa thuật toán Client Hints của tường lửa
         "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
@@ -290,30 +321,7 @@ function parseDetailResponse(html,url) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
 }
-/*
-function parseEmbedResponse(html, sourceUrl) {
-  try{      
-        var link = sourceUrl;
-       // if (html.indexOf("embed_url") > -1) {
-            var $embed = JSON.parse(html);
-            link = $embed.embed_url;
-       // }
 
-        var customjs = runjS();
-				
-        return JSON.stringify({
-            url: link,
-            isEmbed: false, // Kết thúc, đây là link stream cuối// Báo App đây là HLS
-            headers: { "Referer": BASEURL,
-            "Custom-Js": customjs               
-            }
-        });
-  } catch(e){
-    console.log("parseEmbedResponse[error]: " + e);
-    return JSON.stringify({ url: "", isEmbed: false });
-  }
-}
-*/
 
 
 function runjS() {
