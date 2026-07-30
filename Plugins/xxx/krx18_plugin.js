@@ -11,7 +11,6 @@ function getManifest() {
         "isEnabled": true,
         "isAdult": true,
         "layoutType": "HORIZONTAL",
-        debug: true,
         "type": "VIDEO",
         "playerType": "embed"
     });
