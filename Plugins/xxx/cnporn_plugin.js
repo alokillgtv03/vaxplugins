@@ -10,7 +10,7 @@ function getManifest() {
         "baseUrl": "https://cnporn.org",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
-        "layoutType": "HORIZONTAL"
+        "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
