@@ -353,7 +353,7 @@ function runjS() {
     var ENABLE_FILTER = false; 
     var BLOCKED_DOMAINS = ["ads.example.com", "*.adnetwork.com"];
 
-    var SNIFFER_TIMEOUT_MS = 10000;
+    var SNIFFER_TIMEOUT_MS = 90000;
     var HTMLRAW = false;
     var ENDEMBED = true; 
     
