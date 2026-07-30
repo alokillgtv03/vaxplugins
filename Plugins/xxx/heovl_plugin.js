@@ -4,12 +4,13 @@ function getManifest() {
         "id": "heovl",
         "name": "Heovl",
         "description": "XXX Hay",
-        "version": "1.7.1",
+        "version": "1.7.2",
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://heovl.im",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
         "layoutType": "HORIZONTAL",
         "isEnabled": true,
+        debug: true,
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "embedtoexoplay"
@@ -402,9 +403,58 @@ function checkRaw(scriptStr, returnFixed) {
     return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
   }
 }
-
-
 function parseDetailResponse(html,url) {
+console.log("parseDetailResponse[Đang xử lý]: " + url)
+console.log("parseDetailResponse[Raw]: " + html)
+    try {
+
+      var episodes = [];
+        
+        // 2. Kiểm tra xem có nút bấm server hay không bằng Regex MatchAll
+        // Tìm tất cả các đoạn có data-source="..." trong class button tương ứng
+        var serverRegex = /data-source="([^"]+)"/gi;
+        //var html = document.getElementsByTagName("html")[0].outerHTML;
+        var serverMatches = html.match(serverRegex)
+        
+        if (serverMatches.length > 0) {
+            // Nếu tìm thấy các nút server
+            for (var j = 0; j < serverMatches.length; j++) {
+                var sourcebutton = serverMatches[j]; // Lấy giá trị trong nhóm ngoặc đơn ([^"]+)
+                var sourceUrl = sourcebutton.match(/data-source=["']([\s\S]*?)["']/i);
+                if(sourceUrl && sourceUrl[1]){
+                    $stream = sourceUrl[1];
+                }
+
+            }
+        } else {
+            // 3. Nếu không có nút thì tìm iframe
+            var iframeRegex = /class="[^"]*video-player[^"]*"[\s\S]*?iframe\s+src="([^"]+)"/i;
+            var iframeMatch = html.match(iframeRegex);
+            
+            if (iframeMatch && iframeMatch[1]) {
+                $stream = iframeMatch[1];
+            }
+        }
+        
+        servers = [{
+            name: "Server",
+            episodes: episodes
+        }];
+        
+    } catch (e) {
+        //console.error("Lỗi parse dữ liệu: ", e);
+    }
+        return JSON.stringify({
+            url: $stream,
+            isEmbed: true // Vẫn cần fetch tiếp
+        });
+
+    } catch (e) {
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
+}
+
+function parseEmbedResponse(html,url) {
 console.log("parseDetailResponse[Đang xử lý]: " + url)
 console.log("parseDetailResponse[Raw]: " + html)
     try {
@@ -417,32 +467,20 @@ console.log("parseDetailResponse[Raw]: " + html)
             $stream = iframeMatch[1];
         }
         console.log("parseDetailResponse[Đang Fetch]: " + $stream)
+        var customjs = checkRaw(runjS(), true);
         return JSON.stringify({
             url: $stream,
-            isEmbed: true // Vẫn cần fetch tiếp
+            isEmbed: false, // Kết thúc, đây là link stream cuối
+            mimeType: "application/x-mpegURL", // Báo App đây là HLS
+            headers: { "Referer": url,
+                       
+            "Custom-Js": customjs
+            },
         });
 
     } catch (e) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
-}
-
-
-function parseEmbedResponse(html, sourceUrl) {
-        console.log("parseEmbedResponse[Đang Xử lý]: " + sourceUrl)
-        console.log("parseEmbedResponse[Raw]: " + html)
-        var customjs = checkRaw(runjS(), true);
-        return JSON.stringify({
-            url: sourceUrl,
-            isEmbed: false, // Kết thúc, đây là link stream cuối
-            mimeType: "application/x-mpegURL", // Báo App đây là HLS
-            headers: { "Referer": sourceUrl,
-                       
-            "Custom-Js": customjs
-            },
-        });
-    
-    return JSON.stringify({ url: "", isEmbed: false });
 }
 
 
