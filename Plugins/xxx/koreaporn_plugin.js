@@ -12,6 +12,8 @@ function getManifest() {
         "iconUrl": "https://koreanpornmovie.com/wp-content/uploads/2025/01/sadasdasdasdas.png", 
         "isEnabled": true,
         "isAdult": true,
+        "layoutType": "HORIZONTAL",
+        debug: true,
         "type": "VIDEO",
         "playerType": "exoplayer"
     });
