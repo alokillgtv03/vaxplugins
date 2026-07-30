@@ -5,12 +5,13 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "info": "Nguồn phim Hàn Quốc siêu hay. Nếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
-        "version": "1.1.7",
+        "version": "1.1.8",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
         "isAdult": true,
         "layoutType": "HORIZONTAL",
+        debug: true,
         "type": "VIDEO",
         "playerType": "embed"
     });
@@ -251,16 +252,15 @@ JSON.parse(parseMovieDetail(html,$url))
 */
 
 function parseDetailResponse(html,url) {
+  console.log("parseDetailResponse: " + url);
   var $stream = url;
     try {
    rmatch = html.match(/id=["']dooplay-ajax-counter["']\s+data-postid=["']([^"']+)["']/i);
     if (rmatch && rmatch[1]) { 
         idvideo = rmatch[1];
-        $linkser = "https://krx18.com/wp-json/dooplayer/v2/"+idvideo+"/movie/1";
+        $stream = "https://krx18.com/wp-json/dooplayer/v2/"+idvideo+"/movie/1";
     }
-    $stream = $linkser;
-    
-
+    console.log("parseDetailResponse[stream]: " + $stream)
     // {"embed_url":"https:\/\/play.playkrx18.site\/play\/6a4f1c63ee633ccb0191a32f","type":"iframe"}
     // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
         return JSON.stringify({
@@ -282,6 +282,7 @@ function parseDetailResponse(html,url) {
 
 
 function parseEmbedResponse(html,url) {
+  console.log("parseEmbedResponse: " + url);
     try {
         var link = url;
         //if(html.indexOf("embed_url") > -1){
@@ -291,7 +292,7 @@ function parseEmbedResponse(html,url) {
         
         
 		var customjs = runjS();
-
+  console.log("parseEmbedResponse[stream]: " + link);
     // {"embed_url":"https:\/\/play.playkrx18.site\/play\/6a4f1c63ee633ccb0191a32f","type":"iframe"}
     // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
         return JSON.stringify({
