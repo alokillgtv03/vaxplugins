@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.5.8",
+    "version": "1.5.9",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
