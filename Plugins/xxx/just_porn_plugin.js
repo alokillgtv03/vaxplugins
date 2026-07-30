@@ -13,8 +13,7 @@ function getManifest() {
     "isAdult": true,
     "layoutType": "HORIZONTAL",
     "type": "VIDEO",
-    "playerType": "auto",
-    debug: true
+    "playerType": "auto"
   });
 }
 // https://www.justporn.com/latest-updates/1/
