@@ -5,12 +5,13 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.5.3",
+    "version": "1.5.4",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
     "isEnabled": true,
     "isAdult": true,
+    "layoutType": "HORIZONTAL",
     "type": "VIDEO",
     "playerType": "exoplayer"
   });
@@ -268,8 +269,20 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+  var stream1 = "";
+  var script = html.match(/var\s+flashvars\s+=\s+({[\s\S]*?}\;)/i);
+  if (script && script[1]) {
+    var jsonObj = new Function(`return ${script[1]}`)();
+    if (jsonObj.video_alt_url && jsonObj.video_alt_url.match(/http|.mp4/)) {
+      stream1 = jsonObj.video_alt_url;
+    } else {
+      stream1 = jsonObj.video_url;
+    }
+  }
+
+
         return JSON.stringify({
-          "url":"",
+          "url": stream1,
           "isEmbed": false,
           "mimeType": "video/mp4",
           "headers": {
