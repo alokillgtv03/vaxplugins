@@ -10,7 +10,6 @@ function getManifest() {
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
         "layoutType": "HORIZONTAL",
         "isEnabled": true,
-        debug: true,
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "embedtoexoplay"

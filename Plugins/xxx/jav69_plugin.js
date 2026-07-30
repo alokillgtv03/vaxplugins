@@ -5,12 +5,13 @@ function getManifest() {
         "id": "jav69",
         "name": "JAV69",
         "description": "XXX hay.",
-        "version": "1.02",
+        "version": "1.0.3",
         "BASEURL": "https://jav69.sbs",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
+        "layoutType": "HORIZONTAL",
         "playerType": "embed"
     });
 }
