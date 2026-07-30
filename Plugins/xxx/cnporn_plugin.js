@@ -6,7 +6,7 @@ function getManifest() {
         "id": "cnporn",
         "name": "Porn Gái Trung",
         "info": "Nguồn XXX Trung Quốc Hay.",
-        "version": "1.8",
+        "version": "1.8.1",
         "baseUrl": "https://cnporn.org",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
@@ -304,6 +304,42 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+        var epi = [];
+        var stream1 = "";
+        var stream2 = "";
+        var stream3 = "";
+        const regex = /data-server\s*=\s*["']([^"']+)["']/g;
+        const servers = Array.from(html.matchAll(regex), match => match[1]);
+        
+        if (servers[0]) {
+            stream1 = BASEURL + servers[0];
+        }
+        /*
+        if (servers[1]) {
+            stream2 = BASEURL + servers[1];
+        }
+        if (servers[2]) {
+            stream3 = BASEURL + servers[2];
+        }
+        */
+        return JSON.stringify({
+            "url": stream1,
+            "isEmbed": true,
+            "headers": {
+                "Referer": BASEURL,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            "subtitles": []
+        });
+        
+    } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
+}
+
+function parseEmbedResponse(html, url) {
+    try {
         var streamlink = "";
         const matches = html.match(/https?[^\s"']+\.(?:m3u8|mp4)[^\s"']*/g);
         if (matches) {
@@ -330,8 +366,6 @@ function parseDetailResponse(html, url) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
 }
-
-
 
 function parseCategoriesResponse(apiResponseJson) {
     var listurl = getLISTmenu();

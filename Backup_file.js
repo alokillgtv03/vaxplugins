@@ -1,14 +1,14 @@
-BaseURL = "https://www.18porn.sex";
+
+BASEURL = "https://cnporn.org";
 
 function getManifest() {
     return JSON.stringify({
-        "id": "newporn",          
-        "name": "18porn",
-        "description": "Nguồn xem phim XXX ổn định",
-        "version": "1.3.4",             
-        "baseUrl": "https://www.18porn.sex",
-        "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/18porn.jpg", 
-      "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
+        "id": "cnporn",
+        "name": "Porn Gái Trung",
+        "info": "Nguồn XXX Trung Quốc Hay.",
+        "version": "1.8.1",
+        "baseUrl": "https://cnporn.org",
+        "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
@@ -16,402 +16,374 @@ function getManifest() {
     });
 }
 
+DEV = "false";
+
+function log(msg) {
+    try {
+        if (DEV) {
+            if (typeof console !== 'undefined' && console.log) {
+                console.log("[" + BASEURL.replace(/^(https?:\/\/)?(www\.)?/, "") + "]: " + msg);
+            }
+        }
+    } catch (e) {
+        // Tránh vòng lặp vô tận nếu log bị lỗi
+    }
+}
+
 function getHomeSections() {
- return JSON.stringify([
-  { slug: 'new/', title: 'Hàng Mới', type: 'Grid' }
- ]);
+    try {
+        return JSON.stringify([
+            { "slug": "/", "title": "Hàng Mới", "type": "Grid" }
+        ]);
+    } catch (e) {
+        log("getHomeSections[err]:\n " + e);
+    }
 }
-//"/search/" + encodeURIComponent(keyword);
+
 function getPrimaryCategories() {
- return JSON.stringify([
-  { name: 'Vú Bự', slug: 'categories/big-tits/' },
-  { name: 'Xinh Đẹp', slug: 'categories/beuatiful/' },
-  { name: 'Châu Á', slug: 'categories/asian/' },
-  { name: 'Chơi 3', slug: 'categories/threesome/' },
-  { name: 'Lỗ Nhị', slug: 'categories/anal/' },
-  { name: 'Black', slug: '/search/black/' },
-  { name: 'Clip Hay', slug: 'best/' }
- ]);
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+    }
 }
 
-function getFilters() {
- return JSON.stringify({
-  "sort": [
-   { "name": "Mới nhất", "value": "newest" }
-  ]
- });
+function getFilterConfig() {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+    }
 }
-
 
 function getUrlList(slug, filtersJson) {
     try {
-        // Tương thích linh hoạt với cả BaseURL lẫn BASEURL
-        var baseUrl = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        var baseUrlClean = baseUrl.replace(/\/+$/, "");
-
-        var page = 1;
-        var path = slug || "";
-
-        // 1. Cố gắng parse JSON an toàn (xử lý cả key không ngoặc kép và dấu phẩy thừa)
+        if (slug && slug.indexOf("http") > -1 || slug.indexOf("search/") > -1) {
+            log("getUrlList[url]: \n" + slug);
+            return slug;
+        }
+        let page = 1;
+        let path = slug || "";
+        
         if (filtersJson) {
-            var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
+            let fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                .replace(/:,/g, ':');
+            
             try {
-                var filters = JSON.parse(fixedJson);
+                let filters = JSON.parse(fixedJson);
                 page = parseInt(filters.page) || 1;
-
-                // Nếu không truyền slug trực tiếp, lấy category từ JSON
-                if (!slug && filters.category) {
+                
+                if (filters.category) {
                     if (Array.isArray(filters.category) && filters.category.length > 0) {
                         path = filters.category[0].slug;
                     } else if (typeof filters.category === 'string') {
                         path = filters.category;
                     }
                 }
-            } catch (jsonErr) {}
-        }
-
-        // 2. Nếu path đã là URL tuyệt đối (chứa http:// hoặc https://)
-        if (/^https?:\/\//i.test(path)) {
-            path = path.replace(/\/+$/, "");
-            if (page > 1) {
-                return (path + "/" + page).replace(/([^:]\/)\/+/g, "$1");
-            } else {
-                return (path + "/").replace(/([^:]\/)\/+/g, "$1");
+            } catch (jsonErr) {
+                // Ignore inner json parse error
             }
         }
-
-        // 3. Xử lý đường dẫn tương đối
-        if (!path) return baseUrlClean + "/";
-
-        path = path.replace(/^\/+|\/+$/g, "");
-        var targetUrl = baseUrlClean + "/" + path;
-
-        if (page > 1) {
-            targetUrl += "/" + page;
-        } else {
-            if (path.indexOf("?") !== 0) {
-                targetUrl += "/";
-            }
+        
+        let resultUrl = BASEURL;
+        if (path) {
+            resultUrl += path;
         }
-
-        return targetUrl.replace(/([^:]\/)\/+/g, "$1");
-
+        if (page > 1 && resultUrl.indexOf("filter=latest") == -1) {
+            resultUrl += "/page/" + page + "/";
+        }
+        let finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
+        
     } catch (e) {
-        console.log(e);
-        var fallbackBase = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        if (slug && slug.indexOf("http") > -1) {
-            return slug;
-        }
-        var fallback = fallbackBase + (slug ? "/" + slug : "");
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[err]:\n " + e);
+        let fallback = BASEURL + (slug ? "/" + slug : "");
+        let finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalFallback);
+        return finalFallback;
     }
 }
+
 
 function getUrlSearch(keyword, filtersJson) {
     try {
-        var baseUrl = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        var baseUrlClean = baseUrl.replace(/\/+$/, "");
-
-        var page = 1;
-
-        // 1. Cố gắng parse JSON an toàn để lấy thông tin trang (page)
-        if (filtersJson) {
-            var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/:,/g, ':');
-            try {
+         var page = 1;
+            if (filtersJson) {
+                var fixedJson = filtersJson.replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                    .replace(/:,/g, ':');
                 var filters = JSON.parse(fixedJson);
                 page = parseInt(filters.page) || 1;
-            } catch (jsonErr) {}
-        }
-
-        // 2. Tạo URL tìm kiếm theo cấu trúc /search/keyword/ hoặc /search/keyword/page
-        var encodedKeyword = encodeURIComponent(keyword || "");
-        var targetUrl = baseUrlClean + "/search/" + encodedKeyword;
-
-        if (page > 1) {
-            targetUrl += "/" + page + "/";
-        } else {
-            targetUrl += "/";
-        }
-
-        return targetUrl.replace(/([^:]\/)\/+/g, "$1");
-
+                // https://cnporn.org/search/page/4?key=girl
+                var url = BASEURL + "/search/page/"+page+"?key=" + encodeURIComponent(keyword);
+                log("getUrlSearch[url]: \n" + url);
+                return url
+                
+            }
+        
+        var url = BASEURL + "/search/?key=" + encodeURIComponent(keyword);
+        log("getUrlSearch[url]: \n" + url);
+        return url;
     } catch (e) {
-        console.log(e);
-        var fallbackBase = typeof BaseURL !== 'undefined' ? BaseURL : (typeof BASEURL !== 'undefined' ? BASEURL : "");
-        var fallback = fallbackBase + "/search/" + encodeURIComponent(keyword || "") + "/";
-        return fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[err]:\n " + e);
     }
 }
 
+
 function getUrlDetail(slug) {
- if (!slug) return "";
- if (slug.indexOf('http') === 0) return slug;
- return BaseURL + "/" + slug;
+    try {
+        if (!slug) {
+            log("getUrlDetail[url]: \n");
+            return "";
+        }
+        if (slug.indexOf('http') === 0) {
+            log("getUrlDetail[url]: \n" + slug);
+            return slug;
+        }
+        var url = BASEURL + slug;
+        log("getUrlDetail[url]: \n" + url);
+        return url;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+    }
 }
 
-function getUrlCategories() { return BaseURL; }
-function getUrlCountries() { return ""; }
-function getUrlYears() { return ""; }
+function getUrlCategories() {
+    try {
+        var url = BASEURL;
+        log("getUrlCategories[url]: \n" + url);
+        return url;
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+    }
+}
 
+function getUrlCountries() {
+    try {
+        log("getUrlCountries[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+    }
+}
 
-// =============================================================================
-// PARSERS - 18 PORN
-// =============================================================================
+function getUrlYears() {
+    try {
+        log("getUrlYears[url]: \n");
+        return "";
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+    }
+}
 
-function parseListResponse(html) {
- try {
-  var items = [];
-  var pattern = /(?=<div[^>]*class="[^"]*item[^"]*")/g;
-  var splitItems = html.split(pattern).filter(Boolean);
-  
-  for (var j = 1; j < splitItems.length; j++) {
-   var block = splitItems[j];
-   var hrefMatch = block.match(/href="([^"]+)"/i);
-   if (!hrefMatch) continue;
-   
-   var id = hrefMatch[1].trim().replace("/ttt/click?url=","");
-   var title = "";
-   
-   var altMatch = block.match(/title="([^"]+)"/i);
-   if (altMatch) {
-    title = altMatch[1].trim();
-   } else {
-    var labelMatch = block.match(/alt="([^"]+)"/i); 
-    title = labelMatch ? labelMatch[1].trim() : "";
-   }
-   
-   if (!title || title === "Video không tiêu đề") {
-    continue;
-   }
-   
-   var srcMatch = block.match(/data-src="([^"]+)"/i);
-   var posterUrl = srcMatch ? srcMatch[1].trim() : "";
-   
-   items.push({
-    "id": id,
-    "title": title,
-    "posterUrl": posterUrl,
-    "backdropUrl": posterUrl
-   });
-  }
-  
-  let currentPage = 1;
-  let currentMatch = html.match(/class="page-current"[^>]*>\s*<span>\s*(\d+)/i);
-  if (currentMatch) {
-    currentPage = parseInt(currentMatch[1], 10);
-  }
-  
-  let lastPage = 1;
-  let lastMatch = html.match(/class="last"[^>]*>\s*<a\s+href="[^"]*\/(\d+)\/"/i);
-  if (lastMatch) {
-    lastPage = parseInt(lastMatch[1], 10);
-  }
-  
-  return JSON.stringify({
-   items: items,
-   pagination: {
-    currentPage: currentPage,
-    totalPages: lastPage,
-    totalItems: items.length * lastPage,
-    itemsPerPage: items.length
-   }
-  });
- } catch (error) {
-  return JSON.stringify({ items: [], pagination: { currentPage: 1, totalPages: 1 } });
- }
+function parseListResponse(html, $url) {
+    try {
+        var items = [];
+        var regexList = `
+<div class=[^>]+tw-item[^>]*>[\\s\\S]*?
+<a[^>]+href=["']([^"']+)["'][\\s\\S]*?
+src=["']([^"']+)["'][^>]+
+alt="([^"]+)"
+`;
+        regexList = regexList.replace(/\r|\n|\t/g, "");
+        regmath = new RegExp(regexList, "g");
+        var matchList;
+        while ((matchList = regmath.exec(html)) !== null) {
+            if (matchList[1] && matchList[1].indexOf("http") > -1) {
+                var cleanThumb = matchList[2].replace(/&amp;/g, '&');
+                
+                items.push({
+                    "id": matchList[1],
+                    "title": matchList[3].trim(),
+                    "posterUrl": cleanThumb,
+                    "backdropUrl": cleanThumb
+                });
+            }
+        }
+        
+        var totalPages = 999;
+        var currentPage = 1;
+        
+        return JSON.stringify({
+            "items": items,
+            "pagination": { "currentPage": currentPage, "totalPages": totalPages }
+        });
+    } catch (e) {
+        log("parseListResponse[err]:\n " + e);
+        var items = [];
+        items.push({
+            "id": $url,
+            "title": "Lỗi: " + e,
+            "posterUrl": "",
+            "backdropUrl": ""
+        });
+        return JSON.stringify({ "items": items, "pagination": { "currentPage": 1, "totalPages": 1 } });
+    }
 }
 
 function parseSearchResponse(html) {
- return parseListResponse(html);
-}
-
-function parseMovieDetail(html,url) {
- var limg = "";
- var lname = "Đang cập nhật...";
- var ldes = "Không có mô tả.";
- var year = 2026;
- var direc = "????";
- var cast = "????";
- var status = "????";
- var duration = "1:09:00 | 16 | 16";
- var servers = [];
- var categories = "????";
- 
- try {
-  let rmatch = html.match(/meta\s+property="og:image"\s+content="([^"]+)"/i);
-  if (rmatch && rmatch[1]) { limg = rmatch[1]; }
-  
-  rmatch = html.match(/meta\s+property="og:title"\s+content="([^"]+)"/i);
-  if (rmatch && rmatch[1]) { lname = rmatch[1]; }
-  
-  rmatch = html.match(/meta\s+property="og:description"\s+content="([^"]+)"/i);
-  if (rmatch && rmatch[1]) { ldes = rmatch[1]; }
-  
-  rmatch = html.match(/class="item"[\s\S]*?Models:([\s\S]*?)<\/div>/i);
-  if (rmatch && rmatch[1]) { cast = rmatch[1].trim().replace(/<[^>]*>|\r|Models:/g, "").replace(/\n+/g, ", "); }
-  
-  rmatch = html.match(/Duration:[\s\S]*?em>([\s\S]*?)<\/em>/i);
-  if (rmatch && rmatch[1]) { duration = rmatch[1].trim().replace("min", "phút").replace("sec", "giây"); }
-  
-  var elink = "";
-  var dlink = "";
-  
-  rmatch = html.match(/video_id[\s\S]*?\'(\d+)\'/);
-  if (rmatch && rmatch[1]) { 
-   var idvideo = rmatch[1].trim();
-   elink = BaseURL + "/embed/" + idvideo;
-  }
-  
-  rmatch = html.match(/video_url:\s*['"](https:\/\/[^'"]+)['"]/i);
-  if (rmatch && rmatch[1]) { 
-   dlink = rmatch[1].trim(); 
-  }
-  
-  // SỬA ĐÚNG CHUẨN: Tách thành 2 Server riêng biệt để người dùng chọn nguồn
-  servers = [
-    {
-     name: "Server",
-     episodes: [{ id: dlink + "#video.m3u8", name: "Xem Ngay", slug: "full" }]
+    try {
+        return parseListResponse(html);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
     }
-  ];
-
-  return JSON.stringify({
-   id: url,
-   title: lname,
-   originName: lname || "",
-   posterUrl: limg,
-   backdropUrl: limg,
-   description: ldes,
-   year: year,
-   quality: "HD",
-   duration: duration || "",
-   servers: servers,
-   category: categories,
-   director: direc,
-   casts: cast,
-   status: status || ""
-  });
-  
- } catch (error) {
-  return "null";
- }
 }
 
-/**
- * SỬA ĐÚNG CHUẨN: Trả về trực tiếp đường dẫn ID truyền vào để phát video
- */
+function parseMovieDetail(html, $url) {
+    try {
+        var lurl = "";
+        var limg = "";
+        var lname = "Đang cập nhật...";
+        var ldes = "Không có mô tả.";
+        var streamUrl = "";
+
+        var rmatch = html.match(/link\s+rel="canonical"\s+href=["']([^"']+)["']/i);
+        if (rmatch && rmatch[1]) { lurl = rmatch[1] }
+
+        rmatch = html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i);
+        if (rmatch && rmatch[1]) { limg = rmatch[1]; }
+
+        rmatch = html.match(/<title>([^<]+)/i);
+        if (rmatch && rmatch[1]) { lname = rmatch[1]; }
+
+        ldes = lname;
+        var epi = [];
+        var stream1 = "";
+        var stream2 = "";
+        var stream3 = "";
+        const regex = /data-server\s*=\s*["']([^"']+)["']/g;
+        const servers = Array.from(html.matchAll(regex), match => match[1]);
+        
+        if (servers[0]) {
+            stream1 = BASEURL + servers[0];
+            epi.push({ id: stream1, name: "Server 1", slug: "full" });
+        }
+        if (servers[1]) {
+            stream2 = BASEURL + servers[1];
+            epi.push({ id: stream2, name: "Server 2", slug: "full" });      
+        }
+        if (servers[2]) {
+            stream3 = BASEURL + servers[2];
+            epi.push({ id: stream3, name: "Server 3", slug: "full" });
+        }
+
+        var $return = {
+            id: $url,
+            title: lname,
+            posterUrl: limg,
+            backdropUrl: limg,
+            description: "",
+            servers: [
+                {
+                    name: "Servers: ",
+                    episodes: epi
+                }
+            ],
+            quality: "HD",
+            year: 2026,
+            rating: 8.5,
+            status: "Full",
+            duration: "N/A",
+            casts: "N/A",
+            director: "N/A",
+            category: "18+"
+        };
+        var $objreturn = $return;
+        $return.description = ldes + "\r\n\r\n\r\n\r\n\r\n\r\n" + JSON.stringify($objreturn);
+        return JSON.stringify($return);
+    } catch (e) {
+        log("parseMovieDetail[err]:\n " + e);
+    }
+}
 
 function parseDetailResponse(html, url) {
- try {
-    return JSON.stringify({
-      "url": "",
-      "isEmbed": false,
-      "mimeType": "video/mp4",
-      "headers": {
-        "Referer": BASEURL,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      },
-      "subtitles": []
-    });
- } catch (e) {
-  return JSON.stringify({
-   "url": "",
-   "headers": {}
-  });
- }
+    try {
+        var streamlink = "";
+        const matches = html.match(/https?[^\s"']+\.(?:m3u8|mp4)[^\s"']*/g);
+        if (matches) {
+            const allLinks = matches ? matches.map(link => link.replace(/\\/g, '')) : [];
+            streamlink = [...new Set(allLinks)];
+            if (streamlink[0]) {
+                streamlink = streamlink[0];
+            }
+        }
+        
+        return JSON.stringify({
+            "url": streamlink,
+            "isEmbed": false,
+            "mimeType": "application/x-mpegURL",
+            "headers": {
+                "Referer": BASEURL,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            "subtitles": []
+        });
+        
+    } catch (e) {
+        log("parseDetailResponse[err]:\n " + e);
+        return JSON.stringify({ "url": "", "headers": {} });
+    }
 }
+
 
 
 function parseCategoriesResponse(apiResponseJson) {
- var listurl = getLISTmenu();
- var menulist = buildMenu(listurl);
- return JSON.stringify(menulist);
+    var listurl = getLISTmenu();
+    var menulist = buildMenu(listurl);
+    return JSON.stringify(menulist);
 }
 
 function parseCountriesResponse(html) { return "[]"; }
-
 function parseYearsResponse(html) { return "[]"; }
 
 function getLISTmenu() {
- return `
-new/@@Mới Nhất
-categories/dildo/@@Dildo
-categories/blonde/@@Blonde
-categories/small-tits/@@Small Tits
-categories/stockings/@@Stockings
-categories/brunette/@@Brunette
-categories/beuatiful/@@Beautiful
-categories/solo/@@Solo
-categories/masturbation/@@Masturbation
-categories/lesbian/@@Lesbian
-categories/blowjob/@@Blowjob
-categories/hairy-pussy/@@Hairy Pussy
-categories/redhead/@@Redhead
-categories/latina/@@Latina
-categories/asian/@@Asian
-categories/creampie/@@Creampie
-categories/fisting/@@Fisting
-categories/cumshot/@@Cumshot
-categories/threesome/@@Threesome
-categories/big-tits/@@Big Tits
-categories/cum-in-mouth/@@Cum In Mouth
-categories/anal/@@Anal
-categories/cum-on-face/@@Cum On Face
-categories/striptease/@@Striptease
-categories/webcam/@@Webcam
-categories/outdoors/@@Outdoors
-categories/amateur/@@Amateur
-categories/toys/@@Toys
-categories/teen/@@Teen
-categories/pussy-licking/@@Pussy Licking
-categories/shaved-pussy/@@Shaved Pussy
-categories/group/@@Group
-categories/hardcore/@@Hardcore
-categories/rimming/@@Rimming
-categories/interracial/@@Interracial
-categories/old-and-young/@@Old and Young
-`
+    return `
+/historical/@@Cổ Trang
+/incest/@@Loạn Luân
+/big-tits/@@Vú Bự
+/china-porn/@@Trung Quốc
+/cuckold/@@Cuck Old
+/teacher/@@Giáo Viên
+/hidden-cam/@@Cam Ẩn
+/rape/@@Hấp Diêm
+/threesome/@@Chơi Ba
+/younger-sister/@@Gái Trẻ
+`;
 }
 
-
-// Hàm tách menu bằng list - ĐÃ TỐI ƯU: Không dùng Regex lặp để tránh treo app
 function buildMenu(listurl) {
- let menulist = [];
- if (!listurl) return menulist;
- 
- let lines = listurl.split('\n');
- for (let i = 0; i < lines.length; i++) {
-  let line = lines[i].trim();
-  if (!line || line.indexOf('@@') === -1) continue;
-  
-  let parts = line.split('@@');
-  let link = parts[0] ? parts[0].trim() : "";
-  let name = parts[1] ? parts[1].trim() : "";
-  let check = parts[2] ? parts[2].trim() : undefined;
-  
-  if (!link || !name) continue;
-  
-  let item = {};
-  if (check === "false") {
-   item = { "slug": link, "title": name, "type": "Horizontal" };
-  } else if (check === "true") {
-   item = { "slug": link, "title": name, "type": "Grid" };
-  } else {
-   item = { "slug": link, "name": name };
-  }
-  menulist.push(item);
- }
- return menulist;
+    let menulist = [];
+    if (!listurl) return menulist;
+    
+    let lines = listurl.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line || line.indexOf('@@') === -1) continue;
+        
+        let parts = line.split('@@');
+        let link = parts[0] ? parts[0].trim() : "";
+        let name = parts[1] ? parts[1].trim() : "";
+        let check = parts[2] ? parts[2].trim() : undefined;
+        
+        if (!link || !name) continue;
+        
+        let item = {};
+        if (check === "false") {
+            item = { "slug": link, "title": name, "type": "Horizontal" };
+        } else if (check === "true") {
+            item = { "slug": link, "title": name, "type": "Grid" };
+        } else {
+            item = { "slug": link, "name": name };
+        }
+        menulist.push(item);
+    }
+    return menulist;
 }
 
-function trimHTML(inhtml) {
- var result = inhtml.replace(/<[^>]*>/g, '');
- result = result.replace(/&nbsp;/g, ' ')
-  .replace(/&amp;/g, '&')
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>')
-  .replace(/\n|\r/gi, ' - ')
-  .replace(/\s+/gi, ' ')
-  .replace(/^,+|,+$/g, "");
- return result;
-}
+
