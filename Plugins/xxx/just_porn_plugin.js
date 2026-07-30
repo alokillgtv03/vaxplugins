@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.6.2",
+    "version": "1.6.4",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
@@ -270,7 +270,7 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
-console.log("parseDetailResponse: " + url)
+console.log("parseDetailResponse2: " + url)
   var stream1 = "";
   var script = html.match(/var\s+flashvars\s+=\s+({[\s\S]*?}\;)/i);
   if (script && script[1]) {
@@ -289,7 +289,7 @@ console.log("Stream: " + stream1)
           "headers": {
             "Referer": BASEURL,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Custom-Js": customjs()
+            "Custom-Js": "";
           },
           "subtitles": []
         });
