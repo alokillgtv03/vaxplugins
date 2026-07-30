@@ -4,8 +4,8 @@ function getManifest() {
     return JSON.stringify({
         "id": "krx18",
         "name": "Phim 18+ Hàn",
-        "info": "Nguồn phim Hàn Quốc siêu hay.\n\nNếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
-        "version": "1.1.4",
+        "info": "Nguồn phim Hàn Quốc siêu hay. Nếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
+        "version": "1.1.5",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
