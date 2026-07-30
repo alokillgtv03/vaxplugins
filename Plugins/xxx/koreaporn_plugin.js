@@ -6,7 +6,7 @@ function getManifest() {
         "id": "koreaporn",          
         "name": "Sex Hàn",
         "description": "Nguồn XXX Hay",
-        "version": "1.7.5",      
+        "version": "1.7.6",      
         "info": "",
         "baseUrl": "https://koreanpornmovie.com",
         "iconUrl": "https://koreanpornmovie.com/wp-content/uploads/2025/01/sadasdasdasdas.png", 
@@ -15,7 +15,7 @@ function getManifest() {
         "layoutType": "HORIZONTAL",
         debug: true,
         "type": "VIDEO",
-        "playerType": "exoplayer"
+        "playerType": "auto"
     });
 }
 
@@ -319,7 +319,7 @@ function parseEmbedResponse(html, sourceUrl) {
         }
         console.log("videoUrl: " + videoUrl);
         return JSON.stringify({
-          "url": videoUrl + "#video.m3u8",
+          "url": videoUrl,
           "isEmbed": false,
           "mimeType": "video/mp4",
           "headers": {
