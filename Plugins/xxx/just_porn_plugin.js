@@ -5,7 +5,7 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.6.1",
+    "version": "1.6.2",
     "info": "Nguồn phim XXX chất lượng cao.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
@@ -307,11 +307,11 @@ function customjs(){
   // 1. Hàm tạo Log chuẩn chuẩn đoán lỗi
   function log(type, message, detail) {
     const time = new Date().toISOString().split('T')[1].slice(0, -1);
-    const prefix = \`[ArtPlayer-Loader ${time}] [${type.toUpperCase()}]\`;
+    const prefix = "[ArtPlayer-Loader "+time+"] ["+type+"]";
     if (detail !== undefined) {
-      console[type](\`${prefix} ${message}\`, detail);
+      console[type](prefix + " " + message, detail);
     } else {
-      console[type](\`${prefix} ${message}\`);
+      console[type](prefix + " " + message);
     }
   }
 
