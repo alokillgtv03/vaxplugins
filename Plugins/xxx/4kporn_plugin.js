@@ -12,7 +12,7 @@ function getManifest() {
         "isEnabled": true,
         debug: true,
         "isAdult": true,
-        "type": "VIDEO",
+        "type": "MOVIE",
         "playerType": "exoplayer"
     });
 }
