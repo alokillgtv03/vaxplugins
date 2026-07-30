@@ -329,9 +329,9 @@ function parseMovieDetail(html, url) {
             var urlVDhight = vdObj.video_alt_url;
         
             var $stream = urlVDhight;
-            var $item = {"id": urlVDhight + "#video.m3u8", "name": "Độ Phân Giải: " + nameVDhight, slug: "full"};
+            var $item = {"id": urlVDhight + "#video.m3u8", "name": "HQ: " + nameVDhight, slug: "full"};
             $link.push($item);
-            $item = {"id": urlVDlow + "#video.m3u8", "name": "Độ Phân Giải: " + nameVDlow, slug: "full"};
+            $item = {"id": urlVDlow + "#video.m3u8", "name": "HQ: " + nameVDlow, slug: "full"};
             $link.push($item);  
         }
         var servers = [];
