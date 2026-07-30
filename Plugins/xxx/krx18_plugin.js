@@ -5,7 +5,7 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "info": "Nguồn phim Hàn Quốc siêu hay. Nếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
-        "version": "1.1.8",
+        "version": "1.1.9",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
@@ -264,13 +264,9 @@ function parseDetailResponse(html,url) {
     // {"embed_url":"https:\/\/play.playkrx18.site\/play\/6a4f1c63ee633ccb0191a32f","type":"iframe"}
     // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
         return JSON.stringify({
-    "url": $stream,
-    "headers": {
-        "Referer": BASEURL,
-        "Origin": BASEURL,
-        isEmbed: true,
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-    },
+            url: $stream,
+            isEmbed: true
+        });
     "subtitles": []
 });
 
