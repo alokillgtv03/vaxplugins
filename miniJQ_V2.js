@@ -1,5 +1,5 @@
 // Global scope definition
-// "version": "1.4"
+// "version": "1.5"
 if (typeof window === 'undefined') {
     var window = this;
 }
@@ -12,7 +12,7 @@ window.log = function(msg) {
     } catch(e) {}
 };
 
-// --- 1. PARSER HTML AN TOÀN (SỬ DỤNG ID THAY CHO CẤU TRÚC VÒNG PARENT) ---
+// --- 1. PARSER HTML TỐI ƯU ---
 function parseHTML(htmlString) {
     let nodes = [];
     let root = { id: 0, tag: "ROOT", attrs: {}, childrenIds: [], parentId: null };
@@ -23,12 +23,12 @@ function parseHTML(htmlString) {
         if (!html) return { root, nodes };
 
         const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
-        let stack = [0]; // Lưu ID của parent
+        let stack = [0];
         let tagRegex = /<(?:\/([a-zA-Z0-9_-]+)|([a-zA-Z0-9_-]+)([^>]*?)(\/)?)\s*>/g;
         
         let lastIndex = 0;
         let match;
-        let maxIter = 30000;
+        let maxIter = 50000;
         let iter = 0;
 
         while ((match = tagRegex.exec(html)) !== null && iter++ < maxIter) {
@@ -37,8 +37,7 @@ function parseHTML(htmlString) {
 
             if (textBefore) {
                 let textId = nodes.length;
-                let textNode = { id: textId, tag: "#text", text: textBefore, attrs: {}, childrenIds: [], parentId: parentId };
-                nodes.push(textNode);
+                nodes.push({ id: textId, tag: "#text", text: textBefore, attrs: {}, childrenIds: [], parentId: parentId });
                 nodes[parentId].childrenIds.push(textId);
             }
 
@@ -99,11 +98,10 @@ function getNodeText(node, nodes, depth) {
     return text.trim();
 }
 
-// --- 2. QUERY ENGINE TÁCH SELECTOR CHÍNH XÁC ---
+// --- 2. MATCH SINGLE SELECTOR (ĐÃ HỖ TRỢ DẤU XƯỢC TAILWIND CSS) ---
 function matchSingleSelector(node, sel, nodes) {
     if (!node || node.tag === "#text" || node.tag === "ROOT") return false;
 
-    // Tách phần :content(...) nếu dính liền
     let cleanSel = sel;
     let pseudoContentArg = null;
 
@@ -113,7 +111,6 @@ function matchSingleSelector(node, sel, nodes) {
         cleanSel = sel.replace(contentMatch[0], "").trim();
     }
 
-    // Checking phần selector gốc (VD: td.py-2)
     if (cleanSel && cleanSel !== "*") {
         let tagMatch = cleanSel.match(/^[a-zA-Z0-9_-]+/);
         if (tagMatch && node.tag !== tagMatch[0].toLowerCase()) return false;
@@ -121,12 +118,14 @@ function matchSingleSelector(node, sel, nodes) {
         let idMatch = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
         if (idMatch && (!node.attrs || node.attrs.id !== idMatch[1])) return false;
 
-        let classMatches = cleanSel.match(/\.([a-zA-Z0-9_-]+)/g);
+        // Cập nhật Regex Class chấp nhận ký tự đặc biệt như / : [ ] trong Tailwind
+        let classMatches = cleanSel.match(/\.([a-zA-Z0-9_\-\/\\:]+)/g);
         if (classMatches) {
             if (!node.attrs || !node.attrs.class) return false;
             let elClasses = node.attrs.class.split(/\s+/);
             for (let c of classMatches) {
-                if (!elClasses.includes(c.substring(1))) return false;
+                let targetClass = c.substring(1);
+                if (!elClasses.includes(targetClass)) return false;
             }
         }
 
@@ -139,7 +138,6 @@ function matchSingleSelector(node, sel, nodes) {
         }
     }
 
-    // Checking nội dung :content
     if (pseudoContentArg !== null) {
         let fullText = getNodeText(node, nodes, 0);
         let keywords = pseudoContentArg.split("|").map(k => k.trim().toLowerCase());
@@ -150,53 +148,83 @@ function matchSingleSelector(node, sel, nodes) {
     return true;
 }
 
+// --- 3. QUERY ENGINE DỮ LIỆU CÓ HỖ TRỢ TÌM THEO DẤU CÁCH ("tr .class") ---
 function querySelectorAll(startNode, selector, nodes) {
     try {
         if (!startNode || !selector) return [];
-        let groupSelectors = selector.split(',').map(s => s.trim());
-        let results = [];
 
-        function search(currentId, depth) {
-            if (depth > 50) return;
-            let current = nodes[currentId];
-            if (!current) return;
+        // Nếu có dấu phẩy (mẫu selector nhóm)
+        if (selector.indexOf(',') !== -1) {
+            let groupSelectors = selector.split(',').map(s => s.trim());
+            let resMap = new Map();
+            for (let gSel of groupSelectors) {
+                let subRes = querySelectorAll(startNode, gSel, nodes);
+                for (let r of subRes) resMap.set(r.id, r);
+            }
+            return Array.from(resMap.values());
+        }
 
-            if (current.tag !== "ROOT" && current.tag !== "#text") {
-                for (let sel of groupSelectors) {
-                    if (matchSingleSelector(current, sel, nodes)) {
-                        results.push(current);
-                        break;
+        // Nếu có dấu cách (Mẫu selector phân cấp: "tr .class1")
+        let spaceParts = selector.trim().split(/\s+/);
+        if (spaceParts.length > 1) {
+            let currentNodes = [startNode];
+            for (let part of spaceParts) {
+                let nextLevelNodes = [];
+                let addedIds = new Set();
+                for (let cNode of currentNodes) {
+                    let subResults = querySelectorAllSingleLevel(cNode, part, nodes);
+                    for (let r of subResults) {
+                        if (!addedIds.has(r.id)) {
+                            addedIds.add(r.id);
+                            nextLevelNodes.push(r);
+                        }
                     }
                 }
+                currentNodes = nextLevelNodes;
+                if (currentNodes.length === 0) break;
             }
-            if (current.childrenIds) {
-                for (let cid of current.childrenIds) {
-                    search(cid, depth + 1);
-                }
-            }
+            return currentNodes;
         }
 
-        search(startNode.id, 0);
-
-        // Filter vị trí (:first, :last, :eq)
-        for (let sel of groupSelectors) {
-            let m = sel.match(/:([a-z]+)(?:\(([0-9]+)\))?/i);
-            if (m) {
-                let type = m[1].toLowerCase();
-                let idx = m[2] ? parseInt(m[2], 10) : 0;
-                if (type === "first") return results.slice(0, 1);
-                if (type === "last") return results.slice(-1);
-                if (type === "eq") return results[idx] ? [results[idx]] : [];
-            }
-        }
-
-        return results;
+        return querySelectorAllSingleLevel(startNode, selector, nodes);
     } catch (err) {
         return [];
     }
 }
 
-// --- 3. WRAPPER MINIJQ AN TOÀN TRUYỀN DỮ LIỆU ---
+function querySelectorAllSingleLevel(startNode, selector, nodes) {
+    let results = [];
+    function search(currentId, depth) {
+        if (depth > 50) return;
+        let current = nodes[currentId];
+        if (!current) return;
+
+        if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
+            if (matchSingleSelector(current, selector, nodes)) {
+                results.push(current);
+            }
+        }
+        if (current.childrenIds) {
+            for (let cid of current.childrenIds) {
+                search(cid, depth + 1);
+            }
+        }
+    }
+    search(startNode.id, 0);
+
+    let m = selector.match(/:([a-z]+)(?:\(([0-9]+)\))?/i);
+    if (m) {
+        let type = m[1].toLowerCase();
+        let idx = m[2] ? parseInt(m[2], 10) : 0;
+        if (type === "first") return results.slice(0, 1);
+        if (type === "last") return results.slice(-1);
+        if (type === "eq") return results[idx] ? [results[idx]] : [];
+    }
+
+    return results;
+}
+
+// --- 4. WRAPPER MINIJQ ---
 var MiniJQ = function(elements, nodesStore) {
     this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
     this.nodes = nodesStore || [];
@@ -207,9 +235,15 @@ MiniJQ.prototype = {
     find: function(selector) {
         if (this.elements.length === 0) return new MiniJQ([], this.nodes);
         let matched = [];
+        let addedIds = new Set();
         for (let el of this.elements) {
             let res = querySelectorAll(el, selector, this.nodes);
-            matched.push(...res);
+            for (let r of res) {
+                if (!addedIds.has(r.id)) {
+                    addedIds.add(r.id);
+                    matched.push(r);
+                }
+            }
         }
         return new MiniJQ(matched, this.nodes);
     },
