@@ -903,7 +903,7 @@ input#labJsSearchInput,#labJsGotoInput { width: 40px!important; }
 
                 try {
                     // 🚀 ĐƯỜNG DẪN ĐẾN FILE BẠN VỪA LƯU Ở BƯỚC 1 (Hãy đổi lại link này cho đúng cấu trúc web của bạn)
-                    const helperUrl = 'https://rawcdn.githack.com/alokillgtv-gif/VAXAPPSCRIPT/63f6f9ae298bf6958a6abc6b4f0b3e0c531622a5/miniJQ_V2.js';
+                    const helperUrl = 'https://rawcdn.githack.com/alokillgtv-gif/VAXAPPSCRIPT/a220eaecef4882e3f92bab6a2441e835b9892c43/miniJQ_V2.js';
 
                     const response = await fetch(helperUrl);
                     if (!response.ok) {
