@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov.",
-    "version": "1.2.2",
+    "version": "1.2.3",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -375,7 +375,7 @@ function parseMovieDetail(html, url) {
         var country = "";
         var quality = "";
         var director = "";
-        var $movie = JSON.parse(sourceHTML)
+        var $movie = JSON.parse(html)
         $data = $movie.movie
         limg = $data.thumb_url;
         lname = $data.name;
