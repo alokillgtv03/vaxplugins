@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov...",
-    "version": "1.2.8",
+    "version": "1.2.9",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -418,7 +418,7 @@ function parseMovieDetail(html, url) {
           // Duyệt qua từng tập phim trong server_data
           serverItem.server_data.forEach(function(episode) {
             episodes.push({
-              id: episode.link_embed,
+              id: episode.link_embed + "?currennt=" + episode.name + "&list=" + url, 
               name: "Tập " + episode.name,
               slug: episode.slug
             });
@@ -479,37 +479,99 @@ function parseMovieDetail(html, url) {
 
 //$data = JSON.parse(sourceHTML)
 
-
-
-function parseDetailResponse(html, url) {
-  try {
-    console.log("parseDetailResponse dang xu ly: " + url);
-    var m3u8 = url.replace("/video/","/stream/") + "/master.m3u8";
+/*
     var $doc = _$(html);
     var script = $doc.find("script:content('subtitles')").html()
     var match = script.match(/subtitles:\s*(\[\s*\{.*?\}\s*\])/s);
-    var domain = url.replace(/^(https?:\/\/[^\/]+).*/, "$1");
+    var domain = url.replace(/^(https?:\/\/[^\/]+).*\/, "$1");
     var subs = [];
-    if(match && match[1]){
-        var subtitle = JSON.parse(match[1]);
-        subtitle.forEach(function (box) {
-            var item = {
-                lang: box.code.replace("vie","Vietsub").replace("eng","Engsub"),
-                url: domain + box.url
-            }
-            subs.push(item)
-        })
+*/
+function checkRaw(scriptStr, returnFixed) {
+  try {
+    if (!scriptStr || typeof scriptStr !== 'string') {
+      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
+      return scriptStr || "";
     }
+
+    var lines = scriptStr.split('\n');
+    var fixedLines = [];
+    var hasError = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var currentLine = lines[i];
+      var lineNum = i + 1;
+      var lineErrorFound = false;
+
+      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
+      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
+      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
+      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
+      if (/([^\\])\\$/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      if (lineErrorFound) {
+        hasError = true;
+      }
+
+      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
+      var fixedLine = currentLine;
+      if (returnFixed) {
+        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
+        fixedLine = fixedLine
+          .replace(/\r/g, "")
+          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
+      }
+
+      fixedLines.push(fixedLine);
+    }
+
+    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
+    try {
+      new Function(scriptStr);
+    } catch (syntaxErr) {
+      hasError = true;
+      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
+    }
+
+    if (!hasError) {
+      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
+    }
+
+    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
+    return returnFixed ? fixedLines.join('\n') : scriptStr;
+
+  } catch (e) {
+    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
+    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
+  }
+}
+function parseDetailResponse(html, url) {
+  try {
+    console.log("parseDetailResponse dang xu ly: " + url);
     console.log("Stream: " + m3u8);
-    console.log("subtitle: " + subs);
+    console.log("subtitle: " + JSON.stringify(subs));
+    //var customJS = checkRaw(rawJS(url),true);
+    var customJS = "";
     return JSON.stringify({
-      url: m3u8,
+      url: "",
       isEmbed: false,
-      mimeType: "application/x-mpegURL",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: BASEURL
+        Referer: BASEURL,
+       "Custom-Js": customJS
       },
       subtitles: subs,
     });
@@ -523,6 +585,505 @@ function parseDetailResponse(html, url) {
     });
   }
 }
+
+function rawJS(stream) {
+  return `
+(function () {
+    var LOGGER = true;
+    var EMBED_STREAM_URL = ${JSON.stringify(stream || '')};
+
+    function log(step, msg, err) {
+        if (!LOGGER) return;
+        try {
+            var time = new Date().toISOString().split('T')[1].slice(0, 8);
+            var logText = '[CustomJS][' + time + '][' + step + '] ' + String(msg);
+            if (err) logText += ' | ❌ ERROR: ' + (err.stack || err.message || String(err));
+            
+            if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+                window.SnifferBridge.log(logText);
+            } else if (typeof console !== 'undefined') {
+                if (err) console.error(logText);
+                else console.log(logText);
+            }
+        } catch (e) {}
+    }
+
+    log('INIT', 'Bắt đầu khởi tạo CustomJS với EMBED_STREAM_URL = ' + EMBED_STREAM_URL);
+
+    function ensureDOMReady(callback) {
+        if (document && document.body) {
+            callback();
+        } else {
+            var checkCount = 0;
+            var checkTimer = setInterval(function () {
+                checkCount++;
+                if (document && document.body) {
+                    clearInterval(checkTimer);
+                    callback();
+                } else if (checkCount > 200) {
+                    clearInterval(checkTimer);
+                }
+            }, 30);
+        }
+    }
+
+    var SmartStorage = (function() {
+        var memCache = {};
+        return {
+            getItem: function(key, defaultVal) {
+                try {
+                    var val = localStorage.getItem(key);
+                    return val !== null ? val : defaultVal;
+                } catch(e) {
+                    return memCache[key] !== undefined ? memCache[key] : defaultVal;
+                }
+            },
+            setItem: function(key, val) {
+                memCache[key] = val;
+                try {
+                    localStorage.setItem(key, val);
+                } catch(e) {}
+            }
+        };
+    })();
+
+    (function applyAntiPopupShield() {
+        try {
+            var dummyWin = { focus: function () {}, blur: function () {}, close: function () {}, closed: true, postMessage: function () {} };
+            window.open = function (url) { return dummyWin; };
+            var blockHandler = function (e) {
+                var target = e.target;
+                while (target && target !== document) {
+                    if (target.id && target.id.indexOf('v-') === 0) return;
+                    if (target.tagName === 'A' && (target.getAttribute('target') === '_blank' || target.target === '_blank')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                    target = target.parentNode;
+                }
+            };
+            window.addEventListener('click', blockHandler, true);
+            window.addEventListener('touchstart', blockHandler, true);
+        } catch (e) {}
+    })();
+
+    function injectStyles() {
+        try {
+            if (document.getElementById('v-style-block')) return;
+            const style = document.createElement('style');
+            style.id = 'v-style-block';
+            style.textContent = 
+                'html, body { margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background: #000 !important; }' +
+                '#v-top-bar { position: fixed !important; top: 12px !important; right: 12px !important; z-index: 2147483647 !important; display: flex !important; gap: 8px !important; align-items: center !important; font-family: sans-serif !important; transition: opacity 0.4s ease !important; opacity: 1; }' +
+                '.v-btn-act { background: rgba(15, 15, 15, 0.9) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.3) !important; padding: 8px 14px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: bold !important; cursor: pointer !important; backdrop-filter: blur(8px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important; }' +
+                '.v-btn-act:active { background: #e50914 !important; }' +
+                '#v-box-list, #v-hist-box { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 8px !important; background: rgba(18, 18, 18, 0.95) !important; padding: 12px !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.2) !important; z-index: 2147483647 !important; backdrop-filter: blur(10px) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }' +
+                '#v-box-list { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important; gap: 6px !important; width: 240px !important; max-height: 220px !important; overflow-y: auto !important; }' +
+                '#v-hist-box { width: 260px !important; max-width: 85vw !important; flex-direction: column !important; gap: 10px !important; font-family: sans-serif !important; }' +
+                '#v-box-list.closed, #v-hist-box.closed { display: none !important; }' +
+                '#v-box-list.open { display: grid !important; }' +
+                '#v-hist-box.open { display: flex !important; }' +
+                '.v-item-node { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
+                '.v-item-node.active { background: #e50914 !important; border-color: #ff333d !important; }' +
+                '.v-hist-btn-group { display: flex !important; gap: 8px !important; width: 100% !important; }' +
+                '.v-hist-sub-btn { flex: 1 !important; padding: 8px 6px !important; border-radius: 6px !important; font-size: 11px !important; font-weight: bold !important; cursor: pointer !important; border: none !important; text-align: center !important; color: #fff !important; }' +
+                '.v-btn-seen { background: #f39c12 !important; } .v-btn-next { background: #27ae60 !important; }' +
+                '.v-arrow-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 2147483647 !important; background: rgba(0,0,0,0.6) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.3) !important; width: 42px !important; height: 42px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 18px !important; cursor: pointer !important; user-select: none !important; transition: opacity 0.4s ease !important; opacity: 1; }' +
+                '#v-arrow-prev { left: 12px !important; } #v-arrow-next { right: 12px !important; }' +
+                '.v-idle-fade { opacity: 0.2 !important; }';
+            (document.head || document.documentElement).appendChild(style);
+        } catch (e) {}
+    }
+
+    var idleTimer = null;
+    function resetIdleTimer() {
+        var topBar = document.getElementById('v-top-bar');
+        var prevBtn = document.getElementById('v-arrow-prev');
+        var nextBtn = document.getElementById('v-arrow-next');
+
+        var elements = [topBar, prevBtn, nextBtn];
+        
+        // Khi người dùng tương tác lại -> Hiển thị rõ các nút
+        elements.forEach(function(el) {
+            if (el) el.classList.remove('v-idle-fade');
+        });
+
+        if (idleTimer) clearTimeout(idleTimer);
+        
+        // Sau 5 giây không thao tác: Tự động ĐÓNG khung Lịch sử/Khung tập và LÀM MỜ nút
+        idleTimer = setTimeout(function() {
+            var gridDiv = document.getElementById('v-box-list');
+            var histDiv = document.getElementById('v-hist-box');
+
+            if (gridDiv) gridDiv.className = 'closed';
+            if (histDiv) histDiv.className = 'closed';
+
+            elements.forEach(function(el) {
+                if (el) el.classList.add('v-idle-fade');
+            });
+        }, 5000);
+    }
+
+    function setupAutoFadeEvents() {
+        ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'click', 'scroll'].forEach(function(evt) {
+            window.addEventListener(evt, resetIdleTimer, true);
+        });
+        resetIdleTimer();
+    }
+
+    var loadingTimer = null;
+    function showLoadingScreen(msg) {
+        try {
+            if (loadingTimer) clearTimeout(loadingTimer);
+            var loadingDiv = document.getElementById('v-stage-layer');
+            if (!loadingDiv) {
+                loadingDiv = document.createElement('div');
+                loadingDiv.id = 'v-stage-layer';
+                loadingDiv.style.cssText = 
+                    'position: fixed !important; top: 0 !important; left: 0 !important;' +
+                    'width: 100vw !important; height: 100vh !important; background-color: #0d0d0d !important;' +
+                    'display: flex !important; flex-direction: column !important; justify-content: center !important;' +
+                    'align-items: center !important; z-index: 2147483646 !important; font-family: sans-serif !important; cursor: pointer !important;';
+
+                loadingDiv.innerHTML = 
+                    '<div class="v-ring-spin"></div>' +
+                    '<div id="v-stage-text" style="color:#ccc; margin-top:16px; font-size:14px; text-align:center;">' + (msg || 'Đang tải tập phim...') + '<br><small style="color:#777; font-size:11px;">(Chạm để đóng)</small></div>' +
+                    '<style>.v-ring-spin { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #e50914; border-radius: 50%; animation: v-spin 0.8s linear infinite; } @keyframes v-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
+
+                loadingDiv.onclick = function() { hideLoadingScreen(); };
+                (document.body || document.documentElement).appendChild(loadingDiv);
+            } else {
+                var txt = document.getElementById('v-stage-text');
+                if (txt) txt.innerHTML = (msg || 'Đang tải tập phim...') + '<br><small style="color:#777; font-size:11px;">(Chạm để đóng)</small>';
+                loadingDiv.style.display = 'flex';
+            }
+        } catch(e) {}
+    }
+
+    function hideLoadingScreen() {
+        try {
+            if (loadingTimer) clearTimeout(loadingTimer);
+            var elem = document.getElementById('v-stage-layer');
+            if (elem) elem.remove();
+        } catch(e) {}
+    }
+
+    var currentEpisode = 1;
+    var episodeList = [];
+    var seriesKey = 'default_series';
+    var savedHistoryEpi = null;
+    var isFirstLoadWithHist = false;
+
+    function parseStreamUrl(urlStr) {
+        var result = { current: 1, listEpisodesUrl: '', streamUrl: urlStr };
+        try {
+            if (!urlStr) throw new Error('URL Stream trống!');
+            var urlObj = new URL(urlStr);
+            var listUrl = urlObj.searchParams.get('episodes');
+            if (listUrl) result.listEpisodesUrl = listUrl;
+
+            var currentFound = null;
+            if (listUrl) {
+                try {
+                    var listUrlObj = new URL(listUrl);
+                    currentFound = listUrlObj.searchParams.get('current');
+                } catch (e) {}
+            }
+            if (!currentFound) currentFound = urlObj.searchParams.get('current');
+            if (!currentFound) {
+                var pathParts = urlObj.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                    var match = pathParts[0].match(/-(\\d+)$/); 
+                    if (match && match[1]) currentFound = match[1];
+                }
+            }
+            if (currentFound) result.current = parseInt(currentFound, 10);
+
+            var pathName = urlObj.pathname.split('/').filter(Boolean)[0] || 'default_series';
+            seriesKey = pathName.replace(/-\\d+$/, ''); 
+        } catch(e) {}
+        return result;
+    }
+
+    function saveHistory(epiNum) {
+        try {
+            SmartStorage.setItem('watch_hist_' + seriesKey, JSON.stringify({
+                lastEpi: parseInt(epiNum, 10),
+                time: Date.now()
+            }));
+        } catch(e) {}
+    }
+
+    function getHistory() {
+        try {
+            var raw = SmartStorage.getItem('watch_hist_' + seriesKey, null);
+            if (!raw) return null;
+            return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    function tryPlayIframeVideo() {
+        try {
+            var iframe = document.getElementById('v-media-frame');
+            if (!iframe) return;
+            var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+            if (iDoc) {
+                var video = iDoc.querySelector('video');
+                if (video) {
+                    video.play();
+                    return;
+                }
+                var playBtn = iDoc.querySelector('.vjs-big-play-button, .jw-display-icon-container, .play-btn, [aria-label="Play"]');
+                if (playBtn) playBtn.click();
+            }
+        } catch(e) {}
+    }
+
+    function loadEpisode(epiItem) {
+        try {
+            showLoadingScreen('Đang chuyển sang Tập ' + epiItem.num + '...');
+            currentEpisode = parseInt(epiItem.num, 10);
+            
+            saveHistory(currentEpisode);
+            isFirstLoadWithHist = false; 
+
+            var iframe = document.getElementById('v-media-frame');
+            if (iframe) iframe.src = epiItem.streamUrl;
+
+            loadingTimer = setTimeout(function() {
+                hideLoadingScreen();
+                tryPlayIframeVideo();
+            }, 3000);
+
+            buildUI();
+        } catch(e) {}
+    }
+
+    function buildUI() {
+        try {
+            injectStyles();
+            var parent = document.body || document.documentElement;
+
+            var oldHeader = document.getElementById('v-top-bar'); if (oldHeader) oldHeader.remove();
+            var oldPrev = document.getElementById('v-arrow-prev'); if (oldPrev) oldPrev.remove();
+            var oldNext = document.getElementById('v-arrow-next'); if (oldNext) oldNext.remove();
+
+            const headerDiv = document.createElement('div');
+            headerDiv.id = 'v-top-bar';
+
+            // 1. NÚT CHỌN TẬP
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'v-btn-act';
+            toggleBtn.innerHTML = 'Tập ' + currentEpisode + ' &#9660;';
+
+            const gridDiv = document.createElement('div');
+            gridDiv.id = 'v-box-list';
+            gridDiv.className = 'closed';
+
+            episodeList.forEach(function(item) {
+                const btn = document.createElement('button');
+                const isCurrent = Number(item.num) === Number(currentEpisode);
+                btn.className = 'v-item-node' + (isCurrent ? ' active' : '');
+                btn.textContent = 'Tập ' + item.num;
+                btn.onclick = function (e) {
+                    e.stopPropagation();
+                    gridDiv.className = 'closed';
+                    if (Number(item.num) !== Number(currentEpisode)) loadEpisode(item);
+                };
+                gridDiv.appendChild(btn);
+            });
+
+            const epiWrapper = document.createElement('div');
+            epiWrapper.style.position = 'relative';
+            epiWrapper.appendChild(toggleBtn);
+            epiWrapper.appendChild(gridDiv);
+
+            toggleBtn.onclick = function (e) {
+                e.stopPropagation();
+                histDiv.className = 'closed';
+                gridDiv.className = gridDiv.classList.contains('open') ? 'closed' : 'open';
+            };
+
+            // 2. NÚT LỊCH SỬ & KHUNG THÔNG BÁO BÊN DƯỚI
+            const histBtn = document.createElement('button');
+            histBtn.className = 'v-btn-act';
+            histBtn.innerHTML = '📜 Lịch sử';
+
+            const histDiv = document.createElement('div');
+            histDiv.id = 'v-hist-box';
+            
+            var hasValidHist = savedHistoryEpi !== null && 
+                               Number(currentEpisode) !== Number(savedHistoryEpi) && 
+                               Number(currentEpisode) !== (Number(savedHistoryEpi) + 1);
+
+            if (hasValidHist) {
+                var nextEpiOfHist = Number(savedHistoryEpi) + 1;
+                histDiv.innerHTML = 
+                    '<div style="font-size: 13px; color: #fff; text-align: center;">Lần trước bạn đã xem ở <b>Tập ' + savedHistoryEpi + '</b></div>' +
+                    '<div class="v-hist-btn-group">' +
+                        '<button id="v-btn-hist-seen" class="v-hist-sub-btn v-btn-seen">Tập đã xem (' + savedHistoryEpi + ')</button>' +
+                        '<button id="v-btn-hist-next" class="v-hist-sub-btn v-btn-next">Tập kế tiếp (' + nextEpiOfHist + ')</button>' +
+                    '</div>';
+            } else {
+                histDiv.innerHTML = '<div style="font-size: 12px; color: #aaa; text-align: center;">Chưa có lịch sử phù hợp.</div>';
+            }
+
+            if (isFirstLoadWithHist && hasValidHist) {
+                histDiv.className = 'open';
+            } else {
+                histDiv.className = 'closed';
+            }
+
+            const histWrapper = document.createElement('div');
+            histWrapper.style.position = 'relative';
+            histWrapper.appendChild(histBtn);
+            histWrapper.appendChild(histDiv);
+
+            histBtn.onclick = function (e) {
+                e.stopPropagation();
+                gridDiv.className = 'closed';
+                histDiv.className = histDiv.classList.contains('open') ? 'closed' : 'open';
+            };
+
+            // CHỨC NĂNG ĐÓNG MENU KHI CHẠM / NHẤN RA NGOÀI
+            var hideMenusOnOutsideClick = function (e) {
+                var target = e.target;
+                if (!epiWrapper.contains(target) && !histWrapper.contains(target)) {
+                    gridDiv.className = 'closed';
+                    histDiv.className = 'closed';
+                }
+            };
+            window.addEventListener('click', hideMenusOnOutsideClick, true);
+            window.addEventListener('touchstart', hideMenusOnOutsideClick, true);
+
+            headerDiv.appendChild(epiWrapper);
+            headerDiv.appendChild(histWrapper);
+            parent.appendChild(headerDiv);
+
+            if (hasValidHist) {
+                var btnSeen = histDiv.querySelector('#v-btn-hist-seen');
+                if (btnSeen) {
+                    btnSeen.onclick = function(e) {
+                        e.stopPropagation();
+                        histDiv.className = 'closed';
+                        var targetItem = episodeList.find(function(x) { return Number(x.num) === Number(savedHistoryEpi); });
+                        if (targetItem) loadEpisode(targetItem);
+                    };
+                }
+
+                var btnNext = histDiv.querySelector('#v-btn-hist-next');
+                if (btnNext) {
+                    btnNext.onclick = function(e) {
+                        e.stopPropagation();
+                        histDiv.className = 'closed';
+                        var targetItem = episodeList.find(function(x) { return Number(x.num) === (Number(savedHistoryEpi) + 1); });
+                        if (targetItem) loadEpisode(targetItem);
+                    };
+                }
+            }
+
+            // 3. MŨI TÊN CHUYỂN TẬP BÊN TRÁI / PHẢI
+            var currentIndex = episodeList.findIndex(function(x) { return Number(x.num) === Number(currentEpisode); });
+            if (currentIndex > 0) {
+                const prevBtn = document.createElement('div');
+                prevBtn.className = 'v-arrow-btn';
+                prevBtn.id = 'v-arrow-prev';
+                prevBtn.innerHTML = '❮';
+                prevBtn.onclick = function () { loadEpisode(episodeList[currentIndex - 1]); };
+                parent.appendChild(prevBtn);
+            }
+
+            if (currentIndex >= 0 && currentIndex < episodeList.length - 1) {
+                const nextBtn = document.createElement('div');
+                nextBtn.className = 'v-arrow-btn';
+                nextBtn.id = 'v-arrow-next';
+                nextBtn.innerHTML = '❯';
+                nextBtn.onclick = function () { loadEpisode(episodeList[currentIndex + 1]); };
+                parent.appendChild(nextBtn);
+            }
+
+            setupAutoFadeEvents();
+        } catch(e) {}
+    }
+
+    ensureDOMReady(function() {
+        try {
+            showLoadingScreen('Đang chuẩn bị trình phát...');
+            document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #000 !important;';
+            document.body.innerHTML = '';
+
+            var parsed = parseStreamUrl(EMBED_STREAM_URL);
+            currentEpisode = parsed.current;
+
+            var prevHist = getHistory();
+            if (prevHist && prevHist.lastEpi) {
+                savedHistoryEpi = parseInt(prevHist.lastEpi, 10);
+                
+                if (Number(currentEpisode) !== Number(savedHistoryEpi) && 
+                    Number(currentEpisode) !== (Number(savedHistoryEpi) + 1)) {
+                    isFirstLoadWithHist = true; 
+                }
+            }
+
+            var mainIframe = document.createElement('iframe');
+            mainIframe.id = 'v-media-frame';
+            mainIframe.src = EMBED_STREAM_URL;
+            mainIframe.style.cssText = 'width: 100vw; height: 100vh; border: 0; position: fixed; top: 0; left: 0; z-index: 1;';
+            mainIframe.setAttribute('allowfullscreen', 'true');
+            mainIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+            document.body.appendChild(mainIframe);
+
+            saveHistory(currentEpisode);
+
+            if (parsed.listEpisodesUrl) {
+                fetch(parsed.listEpisodesUrl)
+                    .then(function(res) { return res.json(); })
+                    .then(function(resData) {
+                        var data = resData.data || resData;
+                        if (data && data.list_episodes && Array.isArray(data.list_episodes)) {
+                            episodeList = [];
+                            for (var j = 0; j < data.list_episodes.length; j++) {
+                                var item = data.list_episodes[j];
+                                var split = item.split("|");
+                                var epNum = parseInt(split[0], 10);
+                                episodeList.push({
+                                    id: EMBED_STREAM_URL + "?current=" + epNum,
+                                    name: "Tập " + epNum,
+                                    slug: "tap-" + epNum,
+                                    num: epNum,
+                                    streamUrl: split[1]
+                                });
+                            }
+                            buildUI();
+                        } else {
+                            throw new Error('Invalid JSON');
+                        }
+                    })
+                    .catch(function() {
+                        episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL }];
+                        buildUI();
+                    });
+            } else {
+                episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL }];
+                buildUI();
+            }
+
+            loadingTimer = setTimeout(function() {
+                hideLoadingScreen();
+                tryPlayIframeVideo();
+            }, 3000);
+
+        } catch(mainErr) {
+            hideLoadingScreen();
+        }
+    });
+})();
+`;
+}
+
 
 function parseCategoriesResponse(apiResponseJson) {
     try {
