@@ -1,4 +1,4 @@
-// "version": "2.5" - Fixed Nested Tags Parsing
+// "version": "2.6" - Fixed Nested Tags Parsing
 window.BASEURL = window.location.origin;
 window.log = function(msg) {
     if (typeof nativeLog !== 'undefined') {
