@@ -560,7 +560,6 @@ function checkRaw(scriptStr, returnFixed) {
 function parseDetailResponse(html, url) {
   try {
     console.log("parseDetailResponse dang xu ly: " + url);
-    console.log("subtitle: " + JSON.stringify(subs));
     //var customJS = checkRaw(rawJS(url),true);
     var customJS = "";
     return JSON.stringify({
