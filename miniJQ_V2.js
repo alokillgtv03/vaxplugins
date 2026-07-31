@@ -8,17 +8,11 @@ window.log = function(msg) {
     }
 }
 
-window._$ = (function () {
-    // ----------------------------------------------------------------------
-    // BỘ NHỚ ĐỆM (CACHE) - Parse chuỗi HTML 1 lần duy nhất
-    // ----------------------------------------------------------------------
-    var cache = {};
-    var selfClosingTags = ['img', 'br', 'hr', 'input', 'meta', 'link', 'source', 'area', 'base', 'embed', 'param', 'track', 'wbr'];
+window._$ = function (htmlOrBlock) {
+    var selfClosing = ['img', 'br', 'hr', 'input', 'meta', 'link', 'source'];
 
-    // ----------------------------------------------------------------------
-    // PARSER: Chuyển chuỗi HTML thành Virtual DOM Object Tree
-    // ----------------------------------------------------------------------
-    function parseHTML(htmlString) {
+    // --- 1. PARSER CORE (Biến HTML String thành Object Tree) ---
+    function parseToNodes(htmlString) {
         var root = { type: 'root', children: [], parent: null };
         var currentParent = root;
         var stack = [root];
@@ -45,14 +39,14 @@ window._$ = (function () {
                 var node = {
                     type: 'element',
                     tagName: tag,
-                    attributes: parseAttributes(attrs),
+                    attributes: parseAttrs(attrs),
                     children: [],
                     parent: currentParent
                 };
 
                 currentParent.children.push(node);
 
-                var isSelfClosing = fullMatch.slice(-2) === '/>' || selfClosingTags.indexOf(tag) !== -1;
+                var isSelfClosing = fullMatch.slice(-2) === '/>' || selfClosing.indexOf(tag) !== -1;
                 if (!isSelfClosing) {
                     stack.push(node);
                     currentParent = node;
@@ -62,7 +56,7 @@ window._$ = (function () {
         return root.children;
     }
 
-    function parseAttributes(attrString) {
+    function parseAttrs(attrString) {
         var attrs = {};
         if (!attrString) return attrs;
         var attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
@@ -75,33 +69,29 @@ window._$ = (function () {
         return attrs;
     }
 
-    // ----------------------------------------------------------------------
-    // QUERY & MATCH ENGINE
-    // ----------------------------------------------------------------------
+    // --- 2. SELECTOR MATCHING ---
     function matchNode(node, selector) {
         if (!node || node.type !== 'element') return false;
         var sel = selector.trim();
         if (!sel) return false;
 
-        // Content pseudo
         if (sel.indexOf(':content(') !== -1) {
             var contentMatch = sel.match(/:content\((?:["']?)(.*?)(?:["']?)\)/);
             if (contentMatch) {
                 var keywords = contentMatch[1].split('|');
-                var nodeText = renderText([node]);
-                var hasContent = false;
+                var nodeText = getText([node]);
+                var matched = false;
                 for (var k = 0; k < keywords.length; k++) {
                     if (nodeText.indexOf(keywords[k].trim()) !== -1) {
-                        hasContent = true;
+                        matched = true;
                         break;
                     }
                 }
-                if (!hasContent) return false;
+                if (!matched) return false;
                 sel = sel.replace(/:content\([^)]+\)/, "");
             }
         }
 
-        // Not pseudo
         if (sel.indexOf(':not(') !== -1) {
             var notMatch = sel.match(/:not\((.*?)\)/);
             if (notMatch) {
@@ -152,17 +142,17 @@ window._$ = (function () {
         return true;
     }
 
-    function walkDOM(nodes, callback) {
+    function walk(nodes, callback) {
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             if (node.type === 'element') {
                 callback(node);
-                if (node.children) walkDOM(node.children, callback);
+                if (node.children) walk(node.children, callback);
             }
         }
     }
 
-    function renderHTML(nodes) {
+    function getHTML(nodes) {
         var html = '';
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
@@ -173,24 +163,24 @@ window._$ = (function () {
                 for (var key in node.attributes) {
                     html += node.attributes[key] ? ' ' + key + '="' + node.attributes[key] + '"' : ' ' + key;
                 }
-                if (selfClosingTags.indexOf(node.tagName) !== -1) {
+                if (selfClosing.indexOf(node.tagName) !== -1) {
                     html += ' />';
                 } else {
-                    html += '>' + renderHTML(node.children) + '</' + node.tagName + '>';
+                    html += '>' + getHTML(node.children) + '</' + node.tagName + '>';
                 }
             }
         }
         return html;
     }
 
-    function renderText(nodes, separator) {
+    function getText(nodes, separator) {
         var textArr = [];
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             if (node.type === 'text') {
                 textArr.push(node.content.trim());
             } else if (node.type === 'element') {
-                var childText = renderText(node.children, separator);
+                var childText = getText(node.children, separator);
                 if (childText) textArr.push(childText);
             }
         }
@@ -201,143 +191,145 @@ window._$ = (function () {
         return clean.join(separator || ' ');
     }
 
-    // ----------------------------------------------------------------------
-    // CONSTRUCTOR
-    // ----------------------------------------------------------------------
-    function Core(htmlOrNodes) {
-        var elems = [];
-        var rootNodes = [];
+    // --- 3. KHỞI TẠO ĐẦU VÀO (LẤY TỪ CACHE NẾU ĐÃ PARSE) ---
+    var elements = [];
 
-        if (typeof htmlOrNodes === 'string') {
-            if (cache[htmlOrNodes]) {
-                rootNodes = cache[htmlOrNodes];
-            } else {
-                rootNodes = parseHTML(htmlOrNodes);
-                cache[htmlOrNodes] = rootNodes;
+    if (typeof htmlOrBlock === 'string') {
+        if (window._$htmlCache[htmlOrBlock]) {
+            // Lấy trực tiếp cây DOM đã parse sẵn
+            var cached = window._$htmlCache[htmlOrBlock];
+            for (var c = 0; c < cached.length; c++) {
+                if (cached[c].type === 'element') elements.push(cached[c]);
             }
-            for (var i = 0; i < rootNodes.length; i++) {
-                if (rootNodes[i].type === 'element') elems.push(rootNodes[i]);
+        } else {
+            // Parse lần đầu và lưu vào cache
+            var parsed = parseToNodes(htmlOrBlock);
+            window._$htmlCache[htmlOrBlock] = parsed;
+            for (var p = 0; p < parsed.length; p++) {
+                if (parsed[p].type === 'element') elements.push(parsed[p]);
             }
-        } else if (Array.isArray(htmlOrNodes)) {
-            for (var j = 0; j < htmlOrNodes.length; j++) {
-                if (htmlOrNodes[j] && htmlOrNodes[j].type === 'element') elems.push(htmlOrNodes[j]);
-            }
-        } else if (htmlOrNodes && htmlOrNodes.type === 'element') {
-            elems = [htmlOrNodes];
         }
-
-        this.elements = elems;
-        this.length = elems.length;
+    } else if (Array.isArray(htmlOrBlock)) {
+        elements = htmlOrBlock;
+    } else if (htmlOrBlock && typeof htmlOrBlock === 'object') {
+        if (htmlOrBlock.elements) {
+            return htmlOrBlock; // Trả về nếu đã là instance
+        }
+        if (htmlOrBlock.type === 'element') {
+            elements = [htmlOrBlock];
+        }
     }
 
-    // ----------------------------------------------------------------------
-    // PUBLIC METHODS (Mini jQuery API)
-    // ----------------------------------------------------------------------
-    Core.prototype.find = function (selector) {
-        if (selector.indexOf(',') !== -1) {
-            var selectors = selector.split(',');
-            var allResults = [];
-            for (var s = 0; s < selectors.length; s++) {
-                var sub = this.find(selectors[s].trim());
-                for (var r = 0; r < sub.elements.length; r++) {
-                    if (allResults.indexOf(sub.elements[r]) === -1) {
-                        allResults.push(sub.elements[r]);
+    // --- 4. TẠO INSTANCE OBJECT (Giữ đúng cấu trúc hàm gốc) ---
+    var instance = {
+        elements: elements,
+        length: elements.length,
+
+        find: function (selector) {
+            if (selector.indexOf(',') !== -1) {
+                var selectors = selector.split(',');
+                var allResults = [];
+                for (var s = 0; s < selectors.length; s++) {
+                    var sub = this.find(selectors[s].trim());
+                    for (var r = 0; r < sub.elements.length; r++) {
+                        if (allResults.indexOf(sub.elements[r]) === -1) {
+                            allResults.push(sub.elements[r]);
+                        }
+                    }
+                }
+                return _$(allResults);
+            }
+
+            var results = [];
+            walk(this.elements, function (node) {
+                if (matchNode(node, selector)) {
+                    results.push(node);
+                }
+            });
+
+            if (selector.indexOf(':first') !== -1 && results.length > 0) return _$([results[0]]);
+            if (selector.indexOf(':last') !== -1 && results.length > 0) return _$([results[results.length - 1]]);
+
+            return _$(results);
+        },
+
+        each: function (callback) {
+            for (var i = 0; i < this.elements.length; i++) {
+                var childInstance = _$(this.elements[i]);
+                callback.call(childInstance, i, this.elements[i]);
+            }
+            return this;
+        },
+
+        eq: function (index) {
+            if (index < 0) index = this.elements.length + index;
+            var elem = this.elements[index];
+            return _$(elem ? [elem] : []);
+        },
+
+        attr: function (attrName) {
+            if (this.elements.length === 0) return "";
+            return this.elements[0].attributes[attrName.toLowerCase()] || "";
+        },
+
+        html: function () {
+            if (this.elements.length === 0) return "";
+            return getHTML(this.elements[0].children);
+        },
+
+        text: function (separator) {
+            if (this.elements.length === 0) return "";
+            return getText(this.elements[0].children, separator);
+        },
+
+        textAll: function (separator) {
+            return getText(this.elements, separator);
+        },
+
+        next: function () {
+            var results = [];
+            for (var i = 0; i < this.elements.length; i++) {
+                var node = this.elements[i];
+                if (node.parent) {
+                    var siblings = node.parent.children;
+                    var index = siblings.indexOf(node);
+                    for (var j = index + 1; j < siblings.length; j++) {
+                        if (siblings[j].type === 'element') {
+                            if (results.indexOf(siblings[j]) === -1) results.push(siblings[j]);
+                            break;
+                        }
                     }
                 }
             }
-            return new Core(allResults);
-        }
+            return _$(results);
+        },
 
-        var results = [];
-        walkDOM(this.elements, function (node) {
-            if (matchNode(node, selector)) {
-                results.push(node);
+        parent: function () {
+            var results = [];
+            for (var i = 0; i < this.elements.length; i++) {
+                var p = this.elements[i].parent;
+                if (p && p.type === 'element' && results.indexOf(p) === -1) {
+                    results.push(p);
+                }
             }
-        });
+            return _$(results);
+        },
 
-        if (selector.indexOf(':first') !== -1 && results.length > 0) return new Core([results[0]]);
-        if (selector.indexOf(':last') !== -1 && results.length > 0) return new Core([results[results.length - 1]]);
-
-        return new Core(results);
-    };
-
-    Core.prototype.each = function (callback) {
-        for (var i = 0; i < this.elements.length; i++) {
-            callback.call(new Core(this.elements[i]), i, this.elements[i]);
-        }
-        return this;
-    };
-
-    Core.prototype.eq = function (index) {
-        if (index < 0) index = this.elements.length + index;
-        return new Core(this.elements[index] ? [this.elements[index]] : []);
-    };
-
-    Core.prototype.attr = function (attrName) {
-        if (this.elements.length === 0) return "";
-        return this.elements[0].attributes[attrName.toLowerCase()] || "";
-    };
-
-    Core.prototype.html = function () {
-        if (this.elements.length === 0) return "";
-        return renderHTML(this.elements[0].children);
-    };
-
-    Core.prototype.text = function (separator) {
-        if (this.elements.length === 0) return "";
-        return renderText(this.elements[0].children, separator);
-    };
-
-    Core.prototype.textAll = function (separator) {
-        return renderText(this.elements, separator);
-    };
-
-    Core.prototype.next = function () {
-        var results = [];
-        for (var i = 0; i < this.elements.length; i++) {
-            var node = this.elements[i];
-            if (node.parent) {
-                var siblings = node.parent.children;
-                var index = siblings.indexOf(node);
-                for (var j = index + 1; j < siblings.length; j++) {
-                    if (siblings[j].type === 'element') {
-                        if (results.indexOf(siblings[j]) === -1) results.push(siblings[j]);
+        closest: function (selector) {
+            var results = [];
+            for (var i = 0; i < this.elements.length; i++) {
+                var current = this.elements[i];
+                while (current && current.type === 'element') {
+                    if (matchNode(current, selector)) {
+                        if (results.indexOf(current) === -1) results.push(current);
                         break;
                     }
+                    current = current.parent;
                 }
             }
+            return _$(results);
         }
-        return new Core(results);
     };
 
-    Core.prototype.parent = function () {
-        var results = [];
-        for (var i = 0; i < this.elements.length; i++) {
-            var p = this.elements[i].parent;
-            if (p && p.type === 'element' && results.indexOf(p) === -1) {
-                results.push(p);
-            }
-        }
-        return new Core(results);
-    };
-
-    Core.prototype.closest = function (selector) {
-        var results = [];
-        for (var i = 0; i < this.elements.length; i++) {
-            var current = this.elements[i];
-            while (current && current.type === 'element') {
-                if (matchNode(current, selector)) {
-                    if (results.indexOf(current) === -1) results.push(current);
-                    break;
-                }
-                current = current.parent;
-            }
-        }
-        return new Core(results);
-    };
-
-    // Hàm factory chính
-    return function (htmlOrNodes) {
-        return new Core(htmlOrNodes);
-    };
-})();
+    return instance;
+}
