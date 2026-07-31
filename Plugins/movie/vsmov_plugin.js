@@ -1192,14 +1192,19 @@ function matchSingleSelector(node, sel, nodes) {
     if (!node || node.tag === "#text" || node.tag === "ROOT") return false;
 
     let cleanSel = sel;
-    let pseudoContentArg = null;
+    
+    // 1. Tách pseudo positional (:first, :last, :eq) ra trước để không làm hỏng class
+    cleanSel = cleanSel.replace(/:first|:last|:eq\([0-9]+\)/gi, "").trim();
 
-    let contentMatch = sel.match(/:content\((['"]?)(.*?)\1\)/i);
+    // 2. Tách pseudo :content(...)
+    let pseudoContentArg = null;
+    let contentMatch = cleanSel.match(/:content\((['"]?)(.*?)\1\)/i);
     if (contentMatch) {
         pseudoContentArg = contentMatch[2];
-        cleanSel = sel.replace(contentMatch[0], "").trim();
+        cleanSel = cleanSel.replace(contentMatch[0], "").trim();
     }
 
+    // 3. Khớp Selector gốc
     if (cleanSel && cleanSel !== "*") {
         let tagMatch = cleanSel.match(/^[a-zA-Z0-9_-]+/);
         if (tagMatch && node.tag !== tagMatch[0].toLowerCase()) return false;
@@ -1207,7 +1212,7 @@ function matchSingleSelector(node, sel, nodes) {
         let idMatch = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
         if (idMatch && (!node.attrs || node.attrs.id !== idMatch[1])) return false;
 
-        // Cập nhật Regex Class chấp nhận ký tự đặc biệt như / : [ ] trong Tailwind
+        // Bóc tách Class đúng chuẩn cả ký tự / \ : [ ]
         let classMatches = cleanSel.match(/\.([a-zA-Z0-9_\-\/\\:]+)/g);
         if (classMatches) {
             if (!node.attrs || !node.attrs.class) return false;
@@ -1235,6 +1240,43 @@ function matchSingleSelector(node, sel, nodes) {
     }
 
     return true;
+}
+
+// --- QUERY ENGINE XỬ LÝ VI TÍCH VỊ TRÍ (:first, :last, :eq) ---
+function querySelectorAllSingleLevel(startNode, selector, nodes) {
+    let results = [];
+    function search(currentId, depth) {
+        if (depth > 50) return;
+        let current = nodes[currentId];
+        if (!current) return;
+
+        if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
+            if (matchSingleSelector(current, selector, nodes)) {
+                results.push(current);
+            }
+        }
+        if (current.childrenIds) {
+            for (let cid of current.childrenIds) {
+                search(cid, depth + 1);
+            }
+        }
+    }
+    search(startNode.id, 0);
+
+    // Lọc danh sách theo :first, :last, :eq trên danh sách kết quả thực tế
+    if (selector.indexOf(":first") !== -1) {
+        return results.slice(0, 1);
+    }
+    if (selector.indexOf(":last") !== -1) {
+        return results.slice(-1);
+    }
+    let eqMatch = selector.match(/:eq\(([0-9]+)\)/i);
+    if (eqMatch) {
+        let idx = parseInt(eqMatch[1], 10);
+        return results[idx] ? [results[idx]] : [];
+    }
+
+    return results;
 }
 
 // --- 3. QUERY ENGINE DỮ LIỆU CÓ HỖ TRỢ TÌM THEO DẤU CÁCH ("tr .class") ---
@@ -1281,37 +1323,6 @@ function querySelectorAll(startNode, selector, nodes) {
     }
 }
 
-function querySelectorAllSingleLevel(startNode, selector, nodes) {
-    let results = [];
-    function search(currentId, depth) {
-        if (depth > 50) return;
-        let current = nodes[currentId];
-        if (!current) return;
-
-        if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
-            if (matchSingleSelector(current, selector, nodes)) {
-                results.push(current);
-            }
-        }
-        if (current.childrenIds) {
-            for (let cid of current.childrenIds) {
-                search(cid, depth + 1);
-            }
-        }
-    }
-    search(startNode.id, 0);
-
-    let m = selector.match(/:([a-z]+)(?:\(([0-9]+)\))?/i);
-    if (m) {
-        let type = m[1].toLowerCase();
-        let idx = m[2] ? parseInt(m[2], 10) : 0;
-        if (type === "first") return results.slice(0, 1);
-        if (type === "last") return results.slice(-1);
-        if (type === "eq") return results[idx] ? [results[idx]] : [];
-    }
-
-    return results;
-}
 
 // --- 4. WRAPPER MINIJQ ---
 var MiniJQ = function(elements, nodesStore) {
