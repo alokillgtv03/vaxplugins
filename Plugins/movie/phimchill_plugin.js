@@ -1,12 +1,12 @@
-BASEURL = "https://makai30.ac.pro/phimchill";
+BASEURL = "https://dub.sh/phimchill";
 
 function getManifest() {
     return JSON.stringify({
         "id": "phimchill",          
         "name": "Phim Chill",
         "description": "Phim online",
-        "version": "3.7.9",             
-        "baseUrl": "https://makai30.ac.pro/phimchill",
+        "version": "3.8.0",             
+        "baseUrl": "https://dub.sh/phimchill",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/motherless_logo.jpgphimchill.ico", 
         "isEnabled": true,
         "type": "MOVIE",
