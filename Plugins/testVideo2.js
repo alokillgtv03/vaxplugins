@@ -10,8 +10,8 @@ function getManifest() {
         "id": "testvideo3",          
         "name": "Test EMBED TO Exoplayer",
         "description": "Nguồn xem phim Online ổn định",
-        "version": "1.5.3",             
-        "baseUrl": BaseURL,
+        "version": "1.5.4",             
+        "baseUrl": "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec",
         "iconUrl": "https://crimescenesolutions.co.za/wp-content/uploads/2026/04/phimhayok-io-fav.jpg", 
         "isEnabled": true,
         "type": "MOVIE",
@@ -137,15 +137,15 @@ function parseDetailResponse(html,url) {
         var videoUrl = BaseJSON.link || "";
         var refUrl = BaseJSON.ref || "";
         var agent = BaseJSON.codeb || "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
-        var customjs = BaseJSON.coded;
         var $type = BaseJSON.codea;
-			return JSON.stringify({
-        "url": url,
-        "isEmbed": true, // PHẢI LÀ true để app chạy WebView ngầm (EmbedSniffer)
-        "headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": agent,
-            "Custom-Js": customjs
+		return JSON.stringify({
+            "url": videoUrl,
+            "isEmbed": false,
+            "mimeType": $type,
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": refUrl,
+
         }
     });
       
@@ -154,36 +154,6 @@ function parseDetailResponse(html,url) {
     }
 }
 
-
-function example(){
-  
-      var customjsa = `
-    (function() {
-        function sniffer() {
-            var streamUrl = "https://vip.opstream90.com/20260119/22737_57750683/index.m3u8";
-            var headers = JSON.stringify({
-                "Referer": "https://embed18.streamc.xyz/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-            });
-
-            // Gửi link về Android ExoPlayer
-            if (window.SnifferBridge && window.SnifferBridge.play) {
-                window.SnifferBridge.play(streamUrl, headers);
-            } 
-            // Gửi link về iOS AVPlayer
-            else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.m3u8Detected) {
-                window.webkit.messageHandlers.m3u8Detected.postMessage(streamUrl);
-            }
-        }
-
-        if (document.readyState === 'complete') {
-            sniffer();
-        } else {
-            window.addEventListener('load', sniffer);
-        }
-    })();
-    `;
-}
 
 function parseCategoriesResponse(html) { return "[]"; }
 function parseCountriesResponse(html) { return "[]"; }
