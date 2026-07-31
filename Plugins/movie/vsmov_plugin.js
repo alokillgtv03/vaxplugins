@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov...",
-    "version": "1.3.0",
+    "version": "1.3.1",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -560,7 +560,6 @@ function checkRaw(scriptStr, returnFixed) {
 function parseDetailResponse(html, url) {
   try {
     console.log("parseDetailResponse dang xu ly: " + url);
-    console.log("Stream: " + m3u8);
     console.log("subtitle: " + JSON.stringify(subs));
     //var customJS = checkRaw(rawJS(url),true);
     var customJS = "";
@@ -679,7 +678,7 @@ function rawJS(stream) {
                 '.v-btn-act { background: rgba(15, 15, 15, 0.9) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.3) !important; padding: 8px 14px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: bold !important; cursor: pointer !important; backdrop-filter: blur(8px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important; }' +
                 '.v-btn-act:active { background: #e50914 !important; }' +
                 '#v-box-list, #v-hist-box { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 8px !important; background: rgba(18, 18, 18, 0.95) !important; padding: 12px !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.2) !important; z-index: 2147483647 !important; backdrop-filter: blur(10px) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }' +
-                '#v-box-list { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important; gap: 6px !important; width: 240px !important; max-height: 220px !important; overflow-y: auto !important; }' +
+                '#v-box-list { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)) !important; gap: 6px !important; width: 250px !important; max-height: 220px !important; overflow-y: auto !important; }' +
                 '#v-hist-box { width: 260px !important; max-width: 85vw !important; flex-direction: column !important; gap: 10px !important; font-family: sans-serif !important; }' +
                 '#v-box-list.closed, #v-hist-box.closed { display: none !important; }' +
                 '#v-box-list.open { display: grid !important; }' +
@@ -703,15 +702,12 @@ function rawJS(stream) {
         var nextBtn = document.getElementById('v-arrow-next');
 
         var elements = [topBar, prevBtn, nextBtn];
-        
-        // Khi người dùng tương tác lại -> Hiển thị rõ các nút
         elements.forEach(function(el) {
             if (el) el.classList.remove('v-idle-fade');
         });
 
         if (idleTimer) clearTimeout(idleTimer);
         
-        // Sau 5 giây không thao tác: Tự động ĐÓNG khung Lịch sử/Khung tập và LÀM MỜ nút
         idleTimer = setTimeout(function() {
             var gridDiv = document.getElementById('v-box-list');
             var histDiv = document.getElementById('v-hist-box');
@@ -769,44 +765,46 @@ function rawJS(stream) {
         } catch(e) {}
     }
 
-    var currentEpisode = 1;
+    var currentEpisode = '1';
+    var isFullMovie = false;
     var episodeList = [];
     var seriesKey = 'default_series';
     var savedHistoryEpi = null;
     var isFirstLoadWithHist = false;
+    var listEpisodesUrl = '';
 
     function parseStreamUrl(urlStr) {
-        var result = { current: 1, listEpisodesUrl: '', streamUrl: urlStr };
+        var result = { current: '1', listEpisodesUrl: '', streamUrl: urlStr };
         try {
             if (!urlStr) throw new Error('URL Stream trống!');
             var urlObj = new URL(urlStr);
-            var listUrl = urlObj.searchParams.get('episodes');
+            
+            // Lấy param 'list' hoặc 'episodes'
+            var listUrl = urlObj.searchParams.get('list') || urlObj.searchParams.get('episodes');
             if (listUrl) result.listEpisodesUrl = listUrl;
 
-            var currentFound = null;
+            // Lấy param 'current' hoặc 'currennt' (chú ý typo)
+            var currentFound = urlObj.searchParams.get('current') || urlObj.searchParams.get('currennt');
+            if (currentFound) {
+                result.current = currentFound;
+            }
+
+            // Tạo key lưu storage dựa trên slug trang list
             if (listUrl) {
                 try {
                     var listUrlObj = new URL(listUrl);
-                    currentFound = listUrlObj.searchParams.get('current');
-                } catch (e) {}
-            }
-            if (!currentFound) currentFound = urlObj.searchParams.get('current');
-            if (!currentFound) {
-                var pathParts = urlObj.pathname.split('/').filter(Boolean);
-                if (pathParts.length > 0) {
-                    var match = pathParts[0].match(/-(\\d+)$/); 
-                    if (match && match[1]) currentFound = match[1];
+                    var parts = listUrlObj.pathname.split('/').filter(Boolean);
+                    seriesKey = parts[parts.length - 1] || 'default_series';
+                } catch(e) {
+                    seriesKey = 'default_series';
                 }
             }
-            if (currentFound) result.current = parseInt(currentFound, 10);
-
-            var pathName = urlObj.pathname.split('/').filter(Boolean)[0] || 'default_series';
-            seriesKey = pathName.replace(/-\\d+$/, ''); 
         } catch(e) {}
         return result;
     }
 
     function saveHistory(epiNum) {
+        if (isFullMovie || isNaN(parseInt(epiNum, 10))) return;
         try {
             SmartStorage.setItem('watch_hist_' + seriesKey, JSON.stringify({
                 lastEpi: parseInt(epiNum, 10),
@@ -816,6 +814,7 @@ function rawJS(stream) {
     }
 
     function getHistory() {
+        if (isFullMovie) return null;
         try {
             var raw = SmartStorage.getItem('watch_hist_' + seriesKey, null);
             if (!raw) return null;
@@ -845,13 +844,20 @@ function rawJS(stream) {
     function loadEpisode(epiItem) {
         try {
             showLoadingScreen('Đang chuyển sang Tập ' + epiItem.num + '...');
-            currentEpisode = parseInt(epiItem.num, 10);
+            currentEpisode = String(epiItem.num);
             
             saveHistory(currentEpisode);
             isFirstLoadWithHist = false; 
 
+            // Tạo URL mới kết hợp thông tin stream, current và list
+            var nextStreamUrl = epiItem.streamUrl;
+            if (listEpisodesUrl) {
+                var joinChar = nextStreamUrl.indexOf('?') !== -1 ? '&' : '?';
+                nextStreamUrl += joinChar + 'current=' + encodeURIComponent(currentEpisode) + '&list=' + encodeURIComponent(listEpisodesUrl);
+            }
+
             var iframe = document.getElementById('v-media-frame');
-            if (iframe) iframe.src = epiItem.streamUrl;
+            if (iframe) iframe.src = nextStreamUrl;
 
             loadingTimer = setTimeout(function() {
                 hideLoadingScreen();
@@ -860,6 +866,58 @@ function rawJS(stream) {
 
             buildUI();
         } catch(e) {}
+    }
+
+    // Dùng Iframe ẩn để lấy dữ liệu JSON thay vì dùng Fetch
+    function fetchJsonViaIframe(jsonUrl, callback) {
+        try {
+            var hiddenIframe = document.createElement('iframe');
+            hiddenIframe.style.display = 'none';
+            hiddenIframe.src = jsonUrl;
+
+            var isDone = false;
+            var cleanup = function() {
+                if (hiddenIframe && hiddenIframe.parentNode) {
+                    hiddenIframe.parentNode.removeChild(hiddenIframe);
+                }
+            };
+
+            hiddenIframe.onload = function() {
+                if (isDone) return;
+                isDone = true;
+                try {
+                    var iDoc = hiddenIframe.contentDocument || hiddenIframe.contentWindow.document;
+                    var bodyText = iDoc.body ? (iDoc.body.innerText || iDoc.body.textContent) : '';
+                    var parsedData = JSON.parse(bodyText);
+                    cleanup();
+                    callback(null, parsedData);
+                } catch(err) {
+                    cleanup();
+                    callback(err, null);
+                }
+            };
+
+            hiddenIframe.onerror = function(err) {
+                if (isDone) return;
+                isDone = true;
+                cleanup();
+                callback(err, null);
+            };
+
+            (document.body || document.documentElement).appendChild(hiddenIframe);
+
+            // Timeout phòng trường hợp iframe bị đơ
+            setTimeout(function() {
+                if (!isDone) {
+                    isDone = true;
+                    cleanup();
+                    callback(new Error('Timeout loading JSON iframe'), null);
+                }
+            }, 10000);
+
+        } catch(e) {
+            callback(e, null);
+        }
     }
 
     function buildUI() {
@@ -877,7 +935,7 @@ function rawJS(stream) {
             // 1. NÚT CHỌN TẬP
             const toggleBtn = document.createElement('button');
             toggleBtn.className = 'v-btn-act';
-            toggleBtn.innerHTML = 'Tập ' + currentEpisode + ' &#9660;';
+            toggleBtn.innerHTML = (isFullMovie ? 'Tập Full' : 'Tập ' + currentEpisode) + ' &#9660;';
 
             const gridDiv = document.createElement('div');
             gridDiv.id = 'v-box-list';
@@ -885,13 +943,13 @@ function rawJS(stream) {
 
             episodeList.forEach(function(item) {
                 const btn = document.createElement('button');
-                const isCurrent = Number(item.num) === Number(currentEpisode);
+                const isCurrent = String(item.num) === String(currentEpisode);
                 btn.className = 'v-item-node' + (isCurrent ? ' active' : '');
-                btn.textContent = 'Tập ' + item.num;
+                btn.textContent = (item.num === 'Full' || item.name === 'Full') ? 'Full' : 'Tập ' + item.num;
                 btn.onclick = function (e) {
                     e.stopPropagation();
                     gridDiv.className = 'closed';
-                    if (Number(item.num) !== Number(currentEpisode)) loadEpisode(item);
+                    if (String(item.num) !== String(currentEpisode)) loadEpisode(item);
                 };
                 gridDiv.appendChild(btn);
             });
@@ -903,106 +961,117 @@ function rawJS(stream) {
 
             toggleBtn.onclick = function (e) {
                 e.stopPropagation();
-                histDiv.className = 'closed';
+                if (histDiv) histDiv.className = 'closed';
                 gridDiv.className = gridDiv.classList.contains('open') ? 'closed' : 'open';
             };
 
-            // 2. NÚT LỊCH SỬ & KHUNG THÔNG BÁO BÊN DƯỚI
-            const histBtn = document.createElement('button');
-            histBtn.className = 'v-btn-act';
-            histBtn.innerHTML = '📜 Lịch sử';
+            headerDiv.appendChild(epiWrapper);
 
-            const histDiv = document.createElement('div');
-            histDiv.id = 'v-hist-box';
-            
-            var hasValidHist = savedHistoryEpi !== null && 
-                               Number(currentEpisode) !== Number(savedHistoryEpi) && 
-                               Number(currentEpisode) !== (Number(savedHistoryEpi) + 1);
+            // 2. NÚT LỊCH SỬ (Chỉ hiện khi KHÔNG PHẢI là phim Full)
+            var histDiv = null;
+            if (!isFullMovie) {
+                const histBtn = document.createElement('button');
+                histBtn.className = 'v-btn-act';
+                histBtn.innerHTML = '📜 Lịch sử';
 
-            if (hasValidHist) {
-                var nextEpiOfHist = Number(savedHistoryEpi) + 1;
-                histDiv.innerHTML = 
-                    '<div style="font-size: 13px; color: #fff; text-align: center;">Lần trước bạn đã xem ở <b>Tập ' + savedHistoryEpi + '</b></div>' +
-                    '<div class="v-hist-btn-group">' +
-                        '<button id="v-btn-hist-seen" class="v-hist-sub-btn v-btn-seen">Tập đã xem (' + savedHistoryEpi + ')</button>' +
-                        '<button id="v-btn-hist-next" class="v-hist-sub-btn v-btn-next">Tập kế tiếp (' + nextEpiOfHist + ')</button>' +
-                    '</div>';
-            } else {
-                histDiv.innerHTML = '<div style="font-size: 12px; color: #aaa; text-align: center;">Chưa có lịch sử phù hợp.</div>';
+                histDiv = document.createElement('div');
+                histDiv.id = 'v-hist-box';
+                
+                var currentNum = parseInt(currentEpisode, 10);
+                var savedNum = parseInt(savedHistoryEpi, 10);
+
+                var hasValidHist = savedHistoryEpi !== null && 
+                                   !isNaN(currentNum) && !isNaN(savedNum) &&
+                                   currentNum !== savedNum && 
+                                   currentNum !== (savedNum + 1);
+
+                if (hasValidHist) {
+                    var nextEpiOfHist = savedNum + 1;
+                    histDiv.innerHTML = 
+                        '<div style="font-size: 13px; color: #fff; text-align: center;">Lần trước bạn đã xem ở <b>Tập ' + savedHistoryEpi + '</b></div>' +
+                        '<div class="v-hist-btn-group">' +
+                            '<button id="v-btn-hist-seen" class="v-hist-sub-btn v-btn-seen">Tập đã xem (' + savedHistoryEpi + ')</button>' +
+                            '<button id="v-btn-hist-next" class="v-hist-sub-btn v-btn-next">Tập kế tiếp (' + nextEpiOfHist + ')</button>' +
+                        '</div>';
+                } else {
+                    histDiv.innerHTML = '<div style="font-size: 12px; color: #aaa; text-align: center;">Chưa có lịch sử phù hợp.</div>';
+                }
+
+                if (isFirstLoadWithHist && hasValidHist) {
+                    histDiv.className = 'open';
+                } else {
+                    histDiv.className = 'closed';
+                }
+
+                const histWrapper = document.createElement('div');
+                histWrapper.style.position = 'relative';
+                histWrapper.appendChild(histBtn);
+                histWrapper.appendChild(histDiv);
+
+                histBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    gridDiv.className = 'closed';
+                    histDiv.className = histDiv.classList.contains('open') ? 'closed' : 'open';
+                };
+
+                headerDiv.appendChild(histWrapper);
+
+                if (hasValidHist) {
+                    var btnSeen = histDiv.querySelector('#v-btn-hist-seen');
+                    if (btnSeen) {
+                        btnSeen.onclick = function(e) {
+                            e.stopPropagation();
+                            histDiv.className = 'closed';
+                            var targetItem = episodeList.find(function(x) { return String(x.num) === String(savedHistoryEpi); });
+                            if (targetItem) loadEpisode(targetItem);
+                        };
+                    }
+
+                    var btnNext = histDiv.querySelector('#v-btn-hist-next');
+                    if (btnNext) {
+                        btnNext.onclick = function(e) {
+                            e.stopPropagation();
+                            histDiv.className = 'closed';
+                            var targetItem = episodeList.find(function(x) { return String(x.num) === String(savedNum + 1); });
+                            if (targetItem) loadEpisode(targetItem);
+                        };
+                    }
+                }
             }
-
-            if (isFirstLoadWithHist && hasValidHist) {
-                histDiv.className = 'open';
-            } else {
-                histDiv.className = 'closed';
-            }
-
-            const histWrapper = document.createElement('div');
-            histWrapper.style.position = 'relative';
-            histWrapper.appendChild(histBtn);
-            histWrapper.appendChild(histDiv);
-
-            histBtn.onclick = function (e) {
-                e.stopPropagation();
-                gridDiv.className = 'closed';
-                histDiv.className = histDiv.classList.contains('open') ? 'closed' : 'open';
-            };
 
             // CHỨC NĂNG ĐÓNG MENU KHI CHẠM / NHẤN RA NGOÀI
             var hideMenusOnOutsideClick = function (e) {
                 var target = e.target;
-                if (!epiWrapper.contains(target) && !histWrapper.contains(target)) {
+                if (!headerDiv.contains(target)) {
                     gridDiv.className = 'closed';
-                    histDiv.className = 'closed';
+                    if (histDiv) histDiv.className = 'closed';
                 }
             };
             window.addEventListener('click', hideMenusOnOutsideClick, true);
             window.addEventListener('touchstart', hideMenusOnOutsideClick, true);
 
-            headerDiv.appendChild(epiWrapper);
-            headerDiv.appendChild(histWrapper);
             parent.appendChild(headerDiv);
 
-            if (hasValidHist) {
-                var btnSeen = histDiv.querySelector('#v-btn-hist-seen');
-                if (btnSeen) {
-                    btnSeen.onclick = function(e) {
-                        e.stopPropagation();
-                        histDiv.className = 'closed';
-                        var targetItem = episodeList.find(function(x) { return Number(x.num) === Number(savedHistoryEpi); });
-                        if (targetItem) loadEpisode(targetItem);
-                    };
-                }
-
-                var btnNext = histDiv.querySelector('#v-btn-hist-next');
-                if (btnNext) {
-                    btnNext.onclick = function(e) {
-                        e.stopPropagation();
-                        histDiv.className = 'closed';
-                        var targetItem = episodeList.find(function(x) { return Number(x.num) === (Number(savedHistoryEpi) + 1); });
-                        if (targetItem) loadEpisode(targetItem);
-                    };
-                }
-            }
-
             // 3. MŨI TÊN CHUYỂN TẬP BÊN TRÁI / PHẢI
-            var currentIndex = episodeList.findIndex(function(x) { return Number(x.num) === Number(currentEpisode); });
-            if (currentIndex > 0) {
-                const prevBtn = document.createElement('div');
-                prevBtn.className = 'v-arrow-btn';
-                prevBtn.id = 'v-arrow-prev';
-                prevBtn.innerHTML = '❮';
-                prevBtn.onclick = function () { loadEpisode(episodeList[currentIndex - 1]); };
-                parent.appendChild(prevBtn);
-            }
+            if (!isFullMovie && episodeList.length > 1) {
+                var currentIndex = episodeList.findIndex(function(x) { return String(x.num) === String(currentEpisode); });
+                if (currentIndex > 0) {
+                    const prevBtn = document.createElement('div');
+                    prevBtn.className = 'v-arrow-btn';
+                    prevBtn.id = 'v-arrow-prev';
+                    prevBtn.innerHTML = '❮';
+                    prevBtn.onclick = function () { loadEpisode(episodeList[currentIndex - 1]); };
+                    parent.appendChild(prevBtn);
+                }
 
-            if (currentIndex >= 0 && currentIndex < episodeList.length - 1) {
-                const nextBtn = document.createElement('div');
-                nextBtn.className = 'v-arrow-btn';
-                nextBtn.id = 'v-arrow-next';
-                nextBtn.innerHTML = '❯';
-                nextBtn.onclick = function () { loadEpisode(episodeList[currentIndex + 1]); };
-                parent.appendChild(nextBtn);
+                if (currentIndex >= 0 && currentIndex < episodeList.length - 1) {
+                    const nextBtn = document.createElement('div');
+                    nextBtn.className = 'v-arrow-btn';
+                    nextBtn.id = 'v-arrow-next';
+                    nextBtn.innerHTML = '❯';
+                    nextBtn.onclick = function () { loadEpisode(episodeList[currentIndex + 1]); };
+                    parent.appendChild(nextBtn);
+                }
             }
 
             setupAutoFadeEvents();
@@ -1017,13 +1086,17 @@ function rawJS(stream) {
 
             var parsed = parseStreamUrl(EMBED_STREAM_URL);
             currentEpisode = parsed.current;
+            listEpisodesUrl = parsed.listEpisodesUrl;
+
+            if (String(currentEpisode).toLowerCase() === 'full') {
+                isFullMovie = true;
+            }
 
             var prevHist = getHistory();
             if (prevHist && prevHist.lastEpi) {
                 savedHistoryEpi = parseInt(prevHist.lastEpi, 10);
-                
-                if (Number(currentEpisode) !== Number(savedHistoryEpi) && 
-                    Number(currentEpisode) !== (Number(savedHistoryEpi) + 1)) {
+                var curNum = parseInt(currentEpisode, 10);
+                if (!isNaN(curNum) && curNum !== savedHistoryEpi && curNum !== (savedHistoryEpi + 1)) {
                     isFirstLoadWithHist = true; 
                 }
             }
@@ -1038,36 +1111,39 @@ function rawJS(stream) {
 
             saveHistory(currentEpisode);
 
-            if (parsed.listEpisodesUrl) {
-                fetch(parsed.listEpisodesUrl)
-                    .then(function(res) { return res.json(); })
-                    .then(function(resData) {
-                        var data = resData.data || resData;
-                        if (data && data.list_episodes && Array.isArray(data.list_episodes)) {
-                            episodeList = [];
-                            for (var j = 0; j < data.list_episodes.length; j++) {
-                                var item = data.list_episodes[j];
-                                var split = item.split("|");
-                                var epNum = parseInt(split[0], 10);
-                                episodeList.push({
-                                    id: EMBED_STREAM_URL + "?current=" + epNum,
-                                    name: "Tập " + epNum,
-                                    slug: "tap-" + epNum,
-                                    num: epNum,
-                                    streamUrl: split[1]
-                                });
-                            }
-                            buildUI();
-                        } else {
-                            throw new Error('Invalid JSON');
+            if (listEpisodesUrl) {
+                // Sử dụng Iframe ẩn để tải link JSON thay vì dùng fetch
+                fetchJsonViaIframe(listEpisodesUrl, function(err, resData) {
+                    if (!err && resData && resData.episodes && Array.isArray(resData.episodes) && resData.episodes.length > 0) {
+                        episodeList = [];
+                        var serverData = resData.episodes[0].server_data || [];
+                        
+                        for (var j = 0; j < serverData.length; j++) {
+                            var item = serverData[j];
+                            var epNum = item.name || item.filename || (j + 1);
+                            
+                            episodeList.push({
+                                id: item.slug || ("tap-" + epNum),
+                                name: item.name || ("Tập " + epNum),
+                                slug: item.slug,
+                                num: epNum,
+                                streamUrl: item.link_embed
+                            });
                         }
-                    })
-                    .catch(function() {
-                        episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL }];
+
+                        if (episodeList.length === 1 && String(episodeList[0].num).toLowerCase() === 'full') {
+                            isFullMovie = true;
+                        }
+
                         buildUI();
-                    });
+                    } else {
+                        // Fallback nếu tải danh sách qua Iframe thất bại
+                        episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL, name: currentEpisode }];
+                        buildUI();
+                    }
+                });
             } else {
-                episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL }];
+                episodeList = [{ num: currentEpisode, streamUrl: EMBED_STREAM_URL, name: currentEpisode }];
                 buildUI();
             }
 
