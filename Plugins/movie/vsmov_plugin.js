@@ -6,12 +6,13 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov.",
-    "version": "1.2",
+    "version": "1.2.1",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
     isEnabled: true,
     "adblock": false,
+    "layoutType": "HORIZONTAL",
     type: "MOVIE",
     playerType: "embed",
   });
@@ -355,8 +356,7 @@ function decodeHTMLEntities(str) {
 function parseMovieDetail(html, url) {
     try {
         log("parseMovieDetail[url]: \n" + url);
-        var $jsdata = JSON.parse(html);
-        var $data = $jsdata.data;
+
         // === BƯỚC 2: TRÍCH XUẤT THÔNG TIN PHIM ===
         var lurl = "";
         var limg = "";
@@ -370,37 +370,84 @@ function parseMovieDetail(html, url) {
         var episode_current = "";
         var year = 2026;
         var extra = "";
-        limg = $data.banner;
-        lname = $data.vname;
+        var lang = "";
+        var country = "";
+        var quality = "";
+        var director = "";
+        var $movie = JSON.parse(sourceHTML)
+        $data = $movie.movie
+        limg = $data.thumb_url;
+        lname = $data.name;
         ldes = $data.content;
-        lactor = $data.cast.join(" - ");
-        lduran = $data.duration + " phút";
-        status = "Tập " + $data.stt + "/" + $data.total;
-        category = $data.genre.join(" - ");
-        episode_current = "Tập " + $data.stt;
+        lactor = $data.actor.join(" - ");
+        lduran = $data.time;
+        status = $data.status.replace("completed","Hoàn Thành");
+        var categoryArray =  [];
+        // Dùng forEach để duyệt qua từng object
+        $data.category.forEach(function (item) {
+          if (item.name && item.slug) {
+            categoryArray.push("[" + item.name + "](/the-loai/" + item.slug + "/)");
+          }
+        });
+        // Nối lại thành chuỗi phân cách bởi dấu phẩy
+        category = categoryArray.join(", ");
+        
+        episode_current = $data.episode_current;
         year = $data.year;
+        lang = $data.lang;
+        var countryArray =  [];
+        // Dùng forEach để duyệt qua từng object
+        $data.country.forEach(function (item) {
+          if (item.name && item.slug) {
+            countryArray.push("[" + item.name + "](/quoc-gia/" + item.slug + ")");
+          }
+        });
+        // Nối lại thành chuỗi phân cách bởi dấu phẩy
+        country = countryArray.join(", ");
+        director = $data.director.join(" - ");;
+        quality = $data.quality;
+
+        var rawData = $movie.episodes;
+
         var servers = [];
-        var episodes = [];
-        for (var $j = 0; $j < $data.list_episodes.length; $j++) {
-            var item = $data.list_episodes[$j];
-            var split = item.split("|");
+
+        rawData.forEach(function(serverItem) {
+          var episodes = [];
+        
+          // Duyệt qua từng tập phim trong server_data
+          serverItem.server_data.forEach(function(episode) {
             episodes.push({
-                id: url + "?current=" + split[0],
-                name: "Tập " + split[0],
-                slug: "tap-" + split[0]
-            })
-        }
-        servers.push({
-            name: "Server",
+              id: episode.link_embed,
+              name: "Tập " + episode.name,
+              slug: episode.slug
+            });
+          });
+        
+          // Làm sạch tên server (xóa khoảng trắng và ký tự \r\n thừa)
+          var cleanServerName = serverItem.server_name.replace(/\r?\n|\r/g, "").trim().replace(/\s+/g," ");
+        
+          // Đẩy vào mảng server
+          servers.push({
+            name: cleanServerName,
             episodes: episodes
-        })
+          });
+            servers.sort(function(a, b) {
+              var aIsThuyetMinh = a.name.toLowerCase().includes("thuyết minh");
+              var bIsThuyetMinh = b.name.toLowerCase().includes("thuyết minh");
+            
+              if (aIsThuyetMinh && !bIsThuyetMinh) return -1; // a lên trước b
+              if (!aIsThuyetMinh && bIsThuyetMinh) return 1;  // b lên trước a
+              return 0; // Giữ nguyên vị trí nếu cùng loại
+            });
+        });
+        
         return JSON.stringify({
             id: url,
             title: lname,
             posterUrl: limg,
             backdropUrl: limg,
             description: ldes,
-            quality: "HD",
+            quality: quality,
             year: year,
             rating: 8.5,
             status: status,
@@ -409,7 +456,9 @@ function parseMovieDetail(html, url) {
             servers: servers,
             duration: lduran || "",
             casts: lactor || "",
-            director: ldirec || "",
+            director: director || "",
+            lang: lang,
+            country: country,
             extra: extra
         });
 
@@ -422,6 +471,7 @@ function parseMovieDetail(html, url) {
         });
     }
 }
+
 //var html = sourceHTML;
 //var url = "https://hentaivietsub.com/hentai/enjo-kouhai-tap-11?//current=1&maxEpi=11"
 //JSON.parse(parseMovieDetail(sourceHTML, "https://vicdn.cc/api/info/tv-278275-1"))
@@ -502,23 +552,9 @@ function checkRaw(scriptStr, returnFixed) {
 
 function parseDetailResponse(html, url) {
   try {
-    var $jsdata = JSON.parse(html);
-    var $data = $jsdata.data;
-    var servers = [];
-    var current = url.match(/current=(\d+)/i)[1];
-    var stream = url;
-    current = Number(current);
-    for (var $j = 0; $j < $data.list_episodes.length; $j++) {
-        var item = $data.list_episodes[$j];
-        var split = item.split("|");
-        if(Number(split[0]) == current){
-          stream = split[1] + "?episodes=" + url;
-        }
-    }
-    var customJS = checkRaw(rawJS(stream),true);
-    log("Embed: " + stream)
+    var customJS = ""
     return JSON.stringify({
-      url: stream,
+      url: url,
       isEmbed: false,
       headers: {
         "User-Agent":
