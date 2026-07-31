@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov.",
-    "version": "1.2.5",
+    "version": "1.2.6",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -417,9 +417,8 @@ function parseMovieDetail(html, url) {
         
           // Duyệt qua từng tập phim trong server_data
           serverItem.server_data.forEach(function(episode) {
-            var m3u8 = episode.link_embed.replace("/video/","/stream/") + "/master.m3u8";
             episodes.push({
-              id: m3u8,
+              id: episode.link_embed,
               name: "Tập " + episode.name,
               slug: episode.slug
             });
@@ -554,17 +553,33 @@ function checkRaw(scriptStr, returnFixed) {
 
 function parseDetailResponse(html, url) {
   try {
-    var customJS = ""
+    var m3u8 = url.replace("/video/","/stream/") + "/master.m3u8";
+    var $doc = _$(html);
+    var script = $doc.find("script:content('subtitles')").html()
+    var match = script.match(/subtitles:\s*(\[\s*\{.*?\}\s*\])/s);
+    var domain = window.location.origin;
+    var subs = [];
+    if(match && match[1]){
+        var subtitle = JSON.parse(match[1]);
+        subtitle.forEach(function (box) {
+            var item = {
+                lang: box.code.replace("vie","Vietsub").replace("eng","Engsub"),
+                url: domain + box.url
+            }
+            subs.push(item)
+        })
+    }
+
     return JSON.stringify({
-      url: url,
+      url: m3u8,
       isEmbed: false,
+      mimeType: "application/x-mpegURL",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: BASEURL,
-        "Custom-Js": customJS
+        Referer: BASEURL
       },
-      subtitles: [],
+      subtitles: subs,
     });
   } catch (e) {
     log("parseDetailResponse[err]:\n " + e);
