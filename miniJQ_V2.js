@@ -1,4 +1,4 @@
-// "version": "2.6" - Fixed Nested Tags Parsing
+// "version": "1.0" - Fixed Nested Tags Parsing
 window.BASEURL = window.location.origin;
 window.log = function(msg) {
     if (typeof nativeLog !== 'undefined') {
@@ -8,45 +8,49 @@ window.log = function(msg) {
     }
 }
 
-window._$ = function (htmlOrBlock) {
-    var selfClosing = ['img', 'br', 'hr', 'input', 'meta', 'link', 'source'];
+window._$ = function (htmlOrNodes) {
+    // ----------------------------------------------------------------------
+    // 1. CORE ENGINE: PARSER (Chuyển String thành Object Tree)
+    // ----------------------------------------------------------------------
+    const selfClosingTags = ['img', 'br', 'hr', 'input', 'meta', 'link', 'source'];
 
-    // --- 1. PARSER CORE (Biến HTML String thành Object Tree) ---
-    function parseToNodes(htmlString) {
-        var root = { type: 'root', children: [], parent: null };
-        var currentParent = root;
-        var stack = [root];
-        var tagRegex = /<\/?([a-zA-Z0-9_-]+)([^>]*)>|([^<]+)/g;
-        var match;
+    function parseHTML(htmlString) {
+        const root = { type: 'root', children: [], parent: null };
+        let currentParent = root;
+        const stack = [root];
+
+        // Regex tách tag và text
+        const tagRegex = /<\/?([a-zA-Z0-9_-]+)([^>]*)>|([^<]+)/g;
+        let match;
 
         while ((match = tagRegex.exec(htmlString)) !== null) {
-            var fullMatch = match[0];
-            var tagName = match[1];
-            var attrs = match[2];
-            var text = match[3];
+            const [fullMatch, tagName, attrs, text] = match;
 
             if (text) {
                 if (text.trim() !== '') {
                     currentParent.children.push({ type: 'text', content: text, parent: currentParent });
                 }
-            } else if (fullMatch.indexOf('</') === 0) {
+            } else if (fullMatch.startsWith('</')) {
+                // Đóng tag: Quay lùi lại parent
                 if (stack.length > 1) {
                     stack.pop();
                     currentParent = stack[stack.length - 1];
                 }
             } else {
-                var tag = tagName.toLowerCase();
-                var node = {
+                // Mở tag
+                const tag = tagName.toLowerCase();
+                const node = {
                     type: 'element',
                     tagName: tag,
-                    attributes: parseAttrs(attrs),
+                    attributes: parseAttributes(attrs),
                     children: [],
                     parent: currentParent
                 };
 
                 currentParent.children.push(node);
 
-                var isSelfClosing = fullMatch.slice(-2) === '/>' || selfClosing.indexOf(tag) !== -1;
+                // Nếu không phải thẻ tự đóng, push vào stack
+                const isSelfClosing = fullMatch.endsWith('/>') || selfClosingTags.indexOf(tag) !== -1;
                 if (!isSelfClosing) {
                     stack.push(node);
                     currentParent = node;
@@ -56,192 +60,160 @@ window._$ = function (htmlOrBlock) {
         return root.children;
     }
 
-    function parseAttrs(attrString) {
-        var attrs = {};
+    function parseAttributes(attrString) {
+        const attrs = {};
         if (!attrString) return attrs;
-        var attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
-        var match;
+        const attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+        let match;
         while ((match = attrRegex.exec(attrString)) !== null) {
-            var key = match[1].toLowerCase();
-            var val = match[2] !== undefined ? match[2] : (match[3] !== undefined ? match[3] : (match[4] !== undefined ? match[4] : ""));
+            const key = match[1].toLowerCase();
+            const val = match[2] !== undefined ? match[2] : (match[3] !== undefined ? match[3] : (match[4] !== undefined ? match[4] : ""));
             attrs[key] = val;
         }
         return attrs;
     }
 
-    // --- 2. SELECTOR MATCHING ---
+    // ----------------------------------------------------------------------
+    // 2. HELPER: SELECTOR ENGINE & RENDERER
+    // ----------------------------------------------------------------------
     function matchNode(node, selector) {
-        if (!node || node.type !== 'element') return false;
-        var sel = selector.trim();
+        if (node.type !== 'element') return false;
+        
+        let sel = selector.trim();
         if (!sel) return false;
 
+        // Xử lý Custom Pseudo (như bản gốc của bạn)
         if (sel.indexOf(':content(') !== -1) {
-            var contentMatch = sel.match(/:content\((?:["']?)(.*?)(?:["']?)\)/);
+            const contentMatch = sel.match(/:content\((?:["']?)(.*?)(?:["']?)\)/);
             if (contentMatch) {
-                var keywords = contentMatch[1].split('|');
-                var nodeText = getText([node]);
-                var matched = false;
-                for (var k = 0; k < keywords.length; k++) {
-                    if (nodeText.indexOf(keywords[k].trim()) !== -1) {
-                        matched = true;
-                        break;
-                    }
-                }
-                if (!matched) return false;
+                const keywords = contentMatch[1].split('|');
+                const nodeText = renderText([node]);
+                if (!keywords.some(k => nodeText.indexOf(k.trim()) !== -1)) return false;
                 sel = sel.replace(/:content\([^)]+\)/, "");
             }
         }
 
+        let isNot = false;
         if (sel.indexOf(':not(') !== -1) {
-            var notMatch = sel.match(/:not\((.*?)\)/);
+            const notMatch = sel.match(/:not\((.*?)\)/);
             if (notMatch) {
+                isNot = true;
                 if (matchNode(node, notMatch[1])) return false;
                 sel = sel.replace(/:not\([^)]+\)/, "");
             }
         }
-        sel = sel.replace(/:first|:last/g, "");
+        sel = sel.replace(/:first|:last/g, ""); // First/last xử lý sau
 
-        if (!sel) return true;
+        if (!sel) return true; // Chỉ có pseudo
 
-        var tagMatch = sel.match(/^([a-zA-Z0-9_-]+)/);
-        var tag = tagMatch ? tagMatch[1].toLowerCase() : null;
-        var idMatch = sel.match(/#([a-zA-Z0-9_-]+)/);
-        var id = idMatch ? idMatch[1] : null;
+        // Tách tag, id, class, attr
+        const tagMatch = sel.match(/^([a-zA-Z0-9_-]+)/);
+        const tag = tagMatch ? tagMatch[1].toLowerCase() : null;
+        const idMatch = sel.match(/#([a-zA-Z0-9_-]+)/);
+        const id = idMatch ? idMatch[1] : null;
+        const classMatches = [...sel.matchAll(/\.([a-zA-Z0-9_-]+)/g)].map(m => m[1]);
+        const attrMatch = sel.match(/\[([a-zA-Z0-9_-]+)\s*([*^$]?=)?\s*(?:["']?)(.*?)(?:["']?)\]/);
 
-        var classMatches = [];
-        var classRegex = /\.([a-zA-Z0-9_-]+)/g;
-        var cMatch;
-        while ((cMatch = classRegex.exec(sel)) !== null) {
-            classMatches.push(cMatch[1]);
-        }
-
-        var attrMatch = sel.match(/\[([a-zA-Z0-9_-]+)\s*([*^$]?=)?\s*(?:["']?)(.*?)(?:["']?)\]/);
-
+        // Kiểm tra
         if (tag && node.tagName !== tag) return false;
         if (id && node.attributes['id'] !== id) return false;
-
         if (classMatches.length > 0) {
-            var nodeClasses = (node.attributes['class'] || "").split(/\s+/);
-            for (var c = 0; c < classMatches.length; c++) {
-                if (nodeClasses.indexOf(classMatches[c]) === -1) return false;
+            const nodeClasses = (node.attributes['class'] || "").split(/\s+/);
+            for (let c of classMatches) {
+                if (nodeClasses.indexOf(c) === -1) return false;
             }
         }
-
         if (attrMatch) {
-            var attrName = attrMatch[1];
-            var operator = attrMatch[2];
-            var attrVal = attrMatch[3];
-            var nodeAttr = node.attributes[attrName];
+            const [_, attrName, operator, attrVal] = attrMatch;
+            const nodeAttr = node.attributes[attrName];
             if (nodeAttr === undefined) return false;
             if (operator === "=" && nodeAttr !== attrVal) return false;
             if (operator === "*=" && nodeAttr.indexOf(attrVal) === -1) return false;
-            if (operator === "^=" && nodeAttr.indexOf(attrVal) !== 0) return false;
-            if (operator === "$=" && nodeAttr.slice(-attrVal.length) !== attrVal) return false;
+            if (operator === "^=" && !nodeAttr.startsWith(attrVal)) return false;
+            if (operator === "$=" && !nodeAttr.endsWith(attrVal)) return false;
         }
 
         return true;
     }
 
-    function walk(nodes, callback) {
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
+    function walkDOM(nodes, callback) {
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
             if (node.type === 'element') {
                 callback(node);
-                if (node.children) walk(node.children, callback);
+                if (node.children) walkDOM(node.children, callback);
             }
         }
     }
 
-    function getHTML(nodes) {
-        var html = '';
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
+    function renderHTML(nodes) {
+        let html = '';
+        for (let node of nodes) {
             if (node.type === 'text') {
                 html += node.content;
             } else if (node.type === 'element') {
-                html += '<' + node.tagName;
-                for (var key in node.attributes) {
-                    html += node.attributes[key] ? ' ' + key + '="' + node.attributes[key] + '"' : ' ' + key;
+                html += `<${node.tagName}`;
+                for (let key in node.attributes) {
+                    html += node.attributes[key] ? ` ${key}="${node.attributes[key]}"` : ` ${key}`;
                 }
-                if (selfClosing.indexOf(node.tagName) !== -1) {
-                    html += ' />';
+                if (selfClosingTags.indexOf(node.tagName) !== -1) {
+                    html += ` />`;
                 } else {
-                    html += '>' + getHTML(node.children) + '</' + node.tagName + '>';
+                    html += `>${renderHTML(node.children)}</${node.tagName}>`;
                 }
             }
         }
         return html;
     }
 
-    function getText(nodes, separator) {
-        var textArr = [];
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
+    function renderText(nodes, separator = "") {
+        let textArr = [];
+        for (let node of nodes) {
             if (node.type === 'text') {
                 textArr.push(node.content.trim());
             } else if (node.type === 'element') {
-                var childText = getText(node.children, separator);
+                const childText = renderText(node.children, separator);
                 if (childText) textArr.push(childText);
             }
         }
-        var clean = [];
-        for (var j = 0; j < textArr.length; j++) {
-            if (textArr[j] !== '') clean.push(textArr[j]);
-        }
-        return clean.join(separator || ' ');
+        return textArr.filter(t => t !== '').join(separator || ' ');
     }
 
-    // --- 3. KHỞI TẠO ĐẦU VÀO (LẤY TỪ CACHE NẾU ĐÃ PARSE) ---
-    var elements = [];
-
-    if (typeof htmlOrBlock === 'string') {
-        if (window._$htmlCache[htmlOrBlock]) {
-            // Lấy trực tiếp cây DOM đã parse sẵn
-            var cached = window._$htmlCache[htmlOrBlock];
-            for (var c = 0; c < cached.length; c++) {
-                if (cached[c].type === 'element') elements.push(cached[c]);
-            }
-        } else {
-            // Parse lần đầu và lưu vào cache
-            var parsed = parseToNodes(htmlOrBlock);
-            window._$htmlCache[htmlOrBlock] = parsed;
-            for (var p = 0; p < parsed.length; p++) {
-                if (parsed[p].type === 'element') elements.push(parsed[p]);
-            }
-        }
-    } else if (Array.isArray(htmlOrBlock)) {
-        elements = htmlOrBlock;
-    } else if (htmlOrBlock && typeof htmlOrBlock === 'object') {
-        if (htmlOrBlock.elements) {
-            return htmlOrBlock; // Trả về nếu đã là instance
-        }
-        if (htmlOrBlock.type === 'element') {
-            elements = [htmlOrBlock];
-        }
+    // ----------------------------------------------------------------------
+    // 3. MAIN API
+    // ----------------------------------------------------------------------
+    
+    // Khởi tạo đầu vào (chỉ Parse 1 lần duy nhất nếu là string)
+    let elements = [];
+    let rootNodes = [];
+    if (typeof htmlOrNodes === 'string') {
+        rootNodes = parseHTML(htmlOrNodes);
+        elements = rootNodes.filter(n => n.type === 'element');
+    } else if (Array.isArray(htmlOrNodes)) {
+        elements = htmlOrNodes.filter(n => n.type === 'element');
+        rootNodes = elements;
+    } else if (htmlOrNodes && htmlOrNodes.type === 'element') {
+        elements = [htmlOrNodes];
+        rootNodes = elements;
     }
 
-    // --- 4. TẠO INSTANCE OBJECT (Giữ đúng cấu trúc hàm gốc) ---
-    var instance = {
+    const instance = {
         elements: elements,
         length: elements.length,
 
-        find: function (selector) {
+        find: function(selector) {
             if (selector.indexOf(',') !== -1) {
-                var selectors = selector.split(',');
-                var allResults = [];
-                for (var s = 0; s < selectors.length; s++) {
-                    var sub = this.find(selectors[s].trim());
-                    for (var r = 0; r < sub.elements.length; r++) {
-                        if (allResults.indexOf(sub.elements[r]) === -1) {
-                            allResults.push(sub.elements[r]);
-                        }
-                    }
-                }
-                return _$(allResults);
+                const selectors = selector.split(',').map(s => s.trim());
+                let allResults = [];
+                selectors.forEach(sel => {
+                    allResults = allResults.concat(this.find(sel).elements);
+                });
+                // Remove duplicates
+                return _$([...new Set(allResults)]);
             }
 
-            var results = [];
-            walk(this.elements, function (node) {
+            const results = [];
+            walkDOM(this.elements, (node) => {
                 if (matchNode(node, selector)) {
                     results.push(node);
                 }
@@ -253,47 +225,51 @@ window._$ = function (htmlOrBlock) {
             return _$(results);
         },
 
-        each: function (callback) {
-            for (var i = 0; i < this.elements.length; i++) {
-                var childInstance = _$(this.elements[i]);
-                callback.call(childInstance, i, this.elements[i]);
+        each: function(callback) {
+            for (let i = 0; i < this.elements.length; i++) {
+                callback.call(_$([this.elements[i]]), i, this.elements[i]);
             }
             return this;
         },
 
-        eq: function (index) {
+        eq: function(index) {
             if (index < 0) index = this.elements.length + index;
-            var elem = this.elements[index];
-            return _$(elem ? [elem] : []);
+            return _$(this.elements[index] ? [this.elements[index]] : []);
         },
 
-        attr: function (attrName) {
+        attr: function(attrName) {
             if (this.elements.length === 0) return "";
             return this.elements[0].attributes[attrName.toLowerCase()] || "";
         },
 
-        html: function () {
+        html: function() {
             if (this.elements.length === 0) return "";
-            return getHTML(this.elements[0].children);
+            return renderHTML(this.elements[0].children); // innerHTML
         },
 
-        text: function (separator) {
+        outerHtml: function() {
             if (this.elements.length === 0) return "";
-            return getText(this.elements[0].children, separator);
+            return renderHTML([this.elements[0]]);
         },
 
-        textAll: function (separator) {
-            return getText(this.elements, separator);
+        text: function(separator = " ") {
+            if (this.elements.length === 0) return "";
+            return renderText(this.elements[0].children, separator);
         },
 
-        next: function () {
-            var results = [];
-            for (var i = 0; i < this.elements.length; i++) {
-                var node = this.elements[i];
+        textAll: function(separator = " ") {
+            return renderText(this.elements, separator);
+        },
+
+        next: function() {
+            const results = [];
+            for (let i = 0; i < this.elements.length; i++) {
+                const node = this.elements[i];
                 if (node.parent) {
-                    var siblings = node.parent.children;
-                    var index = siblings.indexOf(node);
-                    for (var j = index + 1; j < siblings.length; j++) {
+                    const siblings = node.parent.children;
+                    const index = siblings.indexOf(node);
+                    // Tìm node kế tiếp là element (bỏ qua text)
+                    for (let j = index + 1; j < siblings.length; j++) {
                         if (siblings[j].type === 'element') {
                             if (results.indexOf(siblings[j]) === -1) results.push(siblings[j]);
                             break;
@@ -304,10 +280,10 @@ window._$ = function (htmlOrBlock) {
             return _$(results);
         },
 
-        parent: function () {
-            var results = [];
-            for (var i = 0; i < this.elements.length; i++) {
-                var p = this.elements[i].parent;
+        parent: function() {
+            const results = [];
+            for (let i = 0; i < this.elements.length; i++) {
+                const p = this.elements[i].parent;
                 if (p && p.type === 'element' && results.indexOf(p) === -1) {
                     results.push(p);
                 }
@@ -315,10 +291,10 @@ window._$ = function (htmlOrBlock) {
             return _$(results);
         },
 
-        closest: function (selector) {
-            var results = [];
-            for (var i = 0; i < this.elements.length; i++) {
-                var current = this.elements[i];
+        closest: function(selector) {
+            const results = [];
+            for (let i = 0; i < this.elements.length; i++) {
+                let current = this.elements[i];
                 while (current && current.type === 'element') {
                     if (matchNode(current, selector)) {
                         if (results.indexOf(current) === -1) results.push(current);
