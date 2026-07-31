@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov.",
-    "version": "1.2.3",
+    "version": "1.2.4",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -15,7 +15,7 @@ function getManifest() {
     debug: true,
     "layoutType": "HORIZONTAL",
     type: "MOVIE",
-    playerType: "embed",
+    playerType: "exoplayer",
   });
 }
 
@@ -417,6 +417,7 @@ function parseMovieDetail(html, url) {
         
           // Duyệt qua từng tập phim trong server_data
           serverItem.server_data.forEach(function(episode) {
+            var m3u8 = episode.link_embed.replace("/video/","/stream/") + "/master.m3u8";
             episodes.push({
               id: episode.link_embed,
               name: "Tập " + episode.name,
