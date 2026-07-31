@@ -5,8 +5,8 @@ function getManifest() {
   return JSON.stringify({
     id: "vsmov",
     name: "Nguồn Vsmov",
-    description: "Nguồn phim Vsmov.",
-    "version": "1.2.6",
+    description: "Nguồn phim Vsmov..",
+    "version": "1.2.7",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -478,77 +478,7 @@ function parseMovieDetail(html, url) {
 //JSON.parse(parseMovieDetail(sourceHTML, "https://vicdn.cc/api/info/tv-278275-1"))
 
 //$data = JSON.parse(sourceHTML)
-function checkRaw(scriptStr, returnFixed) {
-  try {
-    if (!scriptStr || typeof scriptStr !== 'string') {
-      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
-      return scriptStr || "";
-    }
 
-    var lines = scriptStr.split('\n');
-    var fixedLines = [];
-    var hasError = false;
-
-    for (var i = 0; i < lines.length; i++) {
-      var currentLine = lines[i];
-      var lineNum = i + 1;
-      var lineErrorFound = false;
-
-      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
-      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
-      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
-      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
-      if (/([^\\])\\$/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      if (lineErrorFound) {
-        hasError = true;
-      }
-
-      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
-      var fixedLine = currentLine;
-      if (returnFixed) {
-        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
-        fixedLine = fixedLine
-          .replace(/\r/g, "")
-          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
-      }
-
-      fixedLines.push(fixedLine);
-    }
-
-    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
-    try {
-      new Function(scriptStr);
-    } catch (syntaxErr) {
-      hasError = true;
-      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
-    }
-
-    if (!hasError) {
-      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
-    }
-
-    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
-    return returnFixed ? fixedLines.join('\n') : scriptStr;
-
-  } catch (e) {
-    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
-    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
-  }
-}
 
 
 function parseDetailResponse(html, url) {
@@ -557,7 +487,7 @@ function parseDetailResponse(html, url) {
     var $doc = _$(html);
     var script = $doc.find("script:content('subtitles')").html()
     var match = script.match(/subtitles:\s*(\[\s*\{.*?\}\s*\])/s);
-    var domain = window.location.origin;
+    var domain = url.replace(/^(https?:\/\/[^\/]+).*/, "$1");
     var subs = [];
     if(match && match[1]){
         var subtitle = JSON.parse(match[1]);
@@ -590,29 +520,6 @@ function parseDetailResponse(html, url) {
       subtitles: [],
     });
   }
-}
-
-
-function sortEpisodesByName(data) {
-    try {
-        if (data && Array.isArray(data)) {
-            data.forEach(function(server) {
-                if (server.episodes && Array.isArray(server.episodes)) {
-                    server.episodes.sort(function(a, b) {
-                        var matchA = a.name.match(/Tập\s*(\d+)/i);
-                        var matchB = b.name.match(/Tập\s*(\d+)/i);
-                        var numA = matchA ? parseInt(matchA[1], 10) : 0;
-                        var numB = matchB ? parseInt(matchB[1], 10) : 0;
-                        return numA - numB;
-                    });
-                }
-            });
-        }
-        return data;
-    } catch (e) {
-        log("sortEpisodesByName[err]:\n " + e);
-        return data;
-    }
 }
 
 function parseCategoriesResponse(apiResponseJson) {
