@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov.",
-    "version": "1.1",
+    "version": "1.2",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -235,22 +235,13 @@ function getUrlYears() {
 // =============================================================================
 // PARSERS
 // =============================================================================
-
 function parseListResponse(html, $url) {
     try {
-        log("parseListResponse[url]: \n" + $url);
-        if ($url.indexOf("/?q=") > -1) {
-            var script = _$(html).find("script:content('const allData')").html()
-
-            var $obj = script.match(/\[\s*\{[\s\S]*?\}\s*\]/i);
-            if ($obj) {
-                $data = JSON.parse($obj[0]);
-                return domfetch($data, $url);
-            }
+        if ($url.indexOf("/api") > -1) {
+            log("api parse")
+            return parseAPI(html, $url)
         } else {
-            var $allData = JSON.parse(html)
-
-            return domfetch($allData.data, $url);
+            return parseRAW(html, $url)
         }
     } catch (e) {
         log("parseListResponse[err]:\n " + e);
@@ -269,6 +260,58 @@ function parseListResponse(html, $url) {
     }
 }
 
+//html = sourceHTML;
+// https://vicdn.cc/api/type/hoat-hinh/1
+// https://vicdn.cc/?q=ta
+function parseAPI(html, $url) {
+    var $data = JSON.parse(html);
+    var $items = $data.items;
+    var items = [];
+    for (var $j = 0; $j < $items.length; $j++) {
+        var item = $items[$j];
+        items.push({
+            "id": BASEAPI + "/phim/" + item.slug,
+            "title": item.name,
+            "posterUrl": item.poster_url,
+            "backdropUrl": item.thumb_url,
+            "year": item.year
+        });
+    }
+    return JSON.stringify({
+        "items": items,
+        "pagination": {
+            "currentPage": 1,
+            "totalPages": 9999
+        }
+    });
+}
+
+function parseRAW(html, $url) {
+    var $html = _$(html);
+    var items = [];
+    $html.find("tbody tr[class*='group/tr']").each(function(){
+        var slug = this.find("a").attr("href");
+        slug = slug.replace(BASEURL,BASEAPI);
+        var name = this.find("h4").text();
+        var poster = this.find("img").attr("data-original");
+        var year = this.find("img.object-cover").closest("td").next().text();
+        year = Number(year.trim());
+        items.push({
+            "id": slug,
+            "title": name,
+            "posterUrl": poster,
+            "backdropUrl": poster,
+            "year": year
+        });
+    })
+    return JSON.stringify({
+        "items": items,
+        "pagination": {
+            "currentPage": 1,
+            "totalPages": 9999
+        }
+    });
+}
 
 //html = sourceHTML;
 // https://vicdn.cc/api/type/hoat-hinh/1
