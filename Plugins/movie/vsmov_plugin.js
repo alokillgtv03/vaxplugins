@@ -483,6 +483,7 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
   try {
+    console.log("parseDetailResponse dang xu ly: " url);
     var m3u8 = url.replace("/video/","/stream/") + "/master.m3u8";
     var $doc = _$(html);
     var script = $doc.find("script:content('subtitles')").html()
@@ -499,7 +500,8 @@ function parseDetailResponse(html, url) {
             subs.push(item)
         })
     }
-
+    console.log("Stream: " + m3u8);
+    console.log("subtitle: " + subs);
     return JSON.stringify({
       url: m3u8,
       isEmbed: false,
