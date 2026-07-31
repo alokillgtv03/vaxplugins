@@ -1,6 +1,10 @@
 // Hàm khởi tạo chính _$
-// "version": "2.4" - Fixed Nested Tags Parsing
-window.BASEURL = window.location.origin;
+// "version": "2.4.2" - Fixed QuickJS compatibility & each context
+if (typeof window === 'undefined') {
+    var window = this;
+}
+
+window.BASEURL = typeof window.location !== 'undefined' ? window.location.origin : '';
 window.log = function(msg) {
     if (typeof nativeLog !== 'undefined') {
         nativeLog("[motchille] " + msg);
@@ -11,8 +15,7 @@ window.log = function(msg) {
 
 // --- 1. PARSER HTML ĐƠN GIẢN THÀNH OBJECT TREE ---
 function parseHTML(htmlString) {
-    // Làm sạch cơ bản
-    let html = htmlString.trim();
+    let html = (htmlString || "").trim();
     let root = { tag: "ROOT", attrs: {}, children: [], text: "" };
     let stack = [root];
     
@@ -20,7 +23,6 @@ function parseHTML(htmlString) {
     while (i < html.length) {
         let tagStart = html.indexOf("<", i);
         if (tagStart === -1) {
-            // Chỉ còn text cuối
             let text = html.slice(i).trim();
             if (text && stack.length > 0) {
                 stack[stack.length - 1].children.push({ tag: "#text", text: text, attrs: {}, children: [] });
@@ -28,7 +30,6 @@ function parseHTML(htmlString) {
             break;
         }
 
-        // Thêm text trước thẻ (nếu có)
         if (tagStart > i) {
             let text = html.slice(i, tagStart).trim();
             if (text && stack.length > 0) {
@@ -43,13 +44,10 @@ function parseHTML(htmlString) {
         i = tagEnd + 1;
 
         if (tagContent.startsWith("/")) {
-            // Thẻ đóng
             if (stack.length > 1) stack.pop();
         } else if (tagContent.startsWith("!")) {
-            // Comment hoặc Doctype, bỏ qua
             continue;
         } else {
-            // Thẻ mở hoặc tự đóng
             let isSelfClosing = tagContent.endsWith("/");
             if (isSelfClosing) tagContent = tagContent.slice(0, -1).trim();
 
@@ -58,7 +56,6 @@ function parseHTML(htmlString) {
             let attrStr = spaceIndex === -1 ? "" : tagContent.slice(spaceIndex + 1);
 
             let attrs = {};
-            // Parse attributes đơn giản
             let attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
             let match;
             while ((match = attrRegex.exec(attrStr)) !== null) {
@@ -70,7 +67,7 @@ function parseHTML(htmlString) {
                 attrs: attrs,
                 children: [],
                 text: "",
-                parent: stack[stack.length - 1] // Gắn con trỏ parent để phục vụ hàm parent()
+                parent: stack[stack.length - 1]
             };
 
             stack[stack.length - 1].children.push(node);
@@ -86,15 +83,13 @@ function parseHTML(htmlString) {
 
 // --- 2. HỆ THỐNG SELECTOR & QUERY ENGINE ---
 function querySelectorAll(node, selector) {
+    if (!selector) return [];
     let results = [];
-    
-    // Tách các selector ngăn cách bởi dấu phẩy (vd: 'div, a')
     let selectors = selector.split(',').map(s => s.trim());
 
     function matchSelector(el, sel) {
-        if (el.tag === "#text") return false;
+        if (!el || el.tag === "#text") return false;
 
-        // Xử lý các pseudo-class mở rộng (:content, :first, :last, :eq)
         let pseudoMatch = sel.match(/:([a-zA-Z]+)(?:\((['"]?)(.*?)\2\))?/);
         let cleanSel = sel;
         let pseudoType = null;
@@ -106,9 +101,7 @@ function querySelectorAll(node, selector) {
             cleanSel = sel.slice(0, pseudoMatch.index).trim();
         }
 
-        // Kiểm tra cơ bản tag, class, id, attr
         if (cleanSel && cleanSel !== "*") {
-            // Phân tích cú pháp selector đơn giản: tag, .class, #id, [attr=val]
             let tag = cleanSel.match(/^[a-zA-Z0-9_-]+/);
             let id = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
             let cls = cleanSel.match(/\.([a-zA-Z0-9_-]+)/);
@@ -125,12 +118,10 @@ function querySelectorAll(node, selector) {
             }
         }
 
-        // Xử lý Pseudo match
         if (pseudoType) {
             let fullText = getElementText(el);
             if (pseudoType === "content") {
-                // Hỗ trợ multi-value dạng "abc|lop|mov"
-                let keywords = pseudoArg.split("|").map(k => k.trim());
+                let keywords = (pseudoArg || "").split("|").map(k => k.trim());
                 let found = keywords.some(kw => fullText.includes(kw));
                 if (!found) return false;
             }
@@ -140,6 +131,7 @@ function querySelectorAll(node, selector) {
     }
 
     function traverse(current) {
+        if (!current) return;
         if (current.tag !== "ROOT") {
             for (let sel of selectors) {
                 if (matchSelector(current, sel)) {
@@ -148,14 +140,15 @@ function querySelectorAll(node, selector) {
                 }
             }
         }
-        for (let child of current.children) {
-            traverse(child);
+        if (current.children) {
+            for (let child of current.children) {
+                traverse(child);
+            }
         }
     }
 
     traverse(node);
 
-    // Xử lý các pseudo như :first, :last, :eq() trên tập kết quả
     for (let sel of selectors) {
         let m = sel.match(/:([a-z]+)(?:\(([0-9]+)\))?/);
         if (m) {
@@ -170,12 +163,14 @@ function querySelectorAll(node, selector) {
     return results;
 }
 
-// Lấy toàn bộ text bên trong element
 function getElementText(el) {
-    if (el.tag === "#text") return el.text;
+    if (!el) return "";
+    if (el.tag === "#text") return el.text || "";
     let text = "";
-    for (let child of el.children) {
-        text += getElementText(child) + " ";
+    if (el.children) {
+        for (let child of el.children) {
+            text += getElementText(child) + " ";
+        }
     }
     return text.trim();
 }
@@ -184,7 +179,16 @@ function getElementText(el) {
 // --- 3. WRAPPER MINI-JQ CLASS ---
 class MiniJQ {
     constructor(elements) {
-        this.elements = Array.isArray(elements) ? elements : [elements];
+        if (!elements) {
+            this.elements = [];
+        } else if (elements instanceof MiniJQ) {
+            this.elements = elements.elements;
+        } else if (Array.isArray(elements)) {
+            this.elements = elements;
+        } else {
+            this.elements = [elements];
+        }
+        this.length = this.elements.length;
     }
 
     find(selector) {
@@ -202,32 +206,37 @@ class MiniJQ {
     }
 
     html() {
-        // Trả về chuỗi HTML tượng trưng của phần tử đầu tiên
         if (this.elements.length === 0) return "";
         let el = this.elements[0];
         let serialize = (node) => {
-            if (node.tag === "#text") return node.text;
-            let attrs = Object.entries(node.attrs).map(([k, v]) => ` ${k}="${v}"`).join("");
-            let childrenHTML = node.children.map(serialize).join("");
+            if (!node) return "";
+            if (node.tag === "#text") return node.text || "";
+            let attrs = Object.entries(node.attrs || {}).map(([k, v]) => ` ${k}="${v}"`).join("");
+            let childrenHTML = (node.children || []).map(serialize).join("");
             return `<${node.tag}${attrs}>${childrenHTML}</${node.tag}>`;
         };
-        return el.children.map(serialize).join("");
+        return (el.children || []).map(serialize).join("");
     }
 
     attr(name, value) {
         if (value !== undefined) {
             for (let el of this.elements) {
-                if (el.tag !== "#text") el.attrs[name] = value;
+                if (el && el.tag !== "#text") {
+                    if (!el.attrs) el.attrs = {};
+                    el.attrs[name] = value;
+                }
             }
             return this;
         }
-        if (this.elements.length === 0) return undefined;
+        if (this.elements.length === 0 || !this.elements[0].attrs) return undefined;
         return this.elements[0].attrs[name];
     }
 
     each(callback) {
+        if (typeof callback !== 'function') return this;
         this.elements.forEach((el, index) => {
-            callback.call(new MiniJQ(el), index, el);
+            let jqEl = new MiniJQ(el);
+            callback.call(jqEl, index, jqEl);
         });
         return this;
     }
@@ -240,7 +249,6 @@ class MiniJQ {
         return texts.join(delimiter);
     }
 
-    // --- CÁC HÀM BỔ SUNG THEO YÊU CẦU ---
     first() {
         return new MiniJQ(this.elements.length > 0 ? [this.elements[0]] : []);
     }
@@ -256,7 +264,7 @@ class MiniJQ {
     parent() {
         let parents = [];
         for (let el of this.elements) {
-            if (el.parent && el.parent.tag !== "ROOT") {
+            if (el && el.parent && el.parent.tag !== "ROOT") {
                 parents.push(el.parent);
             }
         }
@@ -266,8 +274,8 @@ class MiniJQ {
     next() {
         let nexts = [];
         for (let el of this.elements) {
-            if (!el.parent) continue;
-            let siblings = el.parent.children;
+            if (!el || !el.parent) continue;
+            let siblings = el.parent.children || [];
             let idx = siblings.indexOf(el);
             if (idx !== -1 && idx + 1 < siblings.length) {
                 nexts.push(siblings[idx + 1]);
@@ -279,8 +287,8 @@ class MiniJQ {
     before() {
         let befores = [];
         for (let el of this.elements) {
-            if (!el.parent) continue;
-            let siblings = el.parent.children;
+            if (!el || !el.parent) continue;
+            let siblings = el.parent.children || [];
             let idx = siblings.indexOf(el);
             if (idx > 0) {
                 befores.push(siblings[idx - 1]);
@@ -290,13 +298,13 @@ class MiniJQ {
     }
 
     after() {
-        // Alias cho next() trong ngữ cảnh In-Memory Tree
         return this.next();
     }
 
     closest(selector) {
         let matched = [];
         for (let el of this.elements) {
+            if (!el) continue;
             let curr = el.parent;
             while (curr && curr.tag !== "ROOT") {
                 let tempJQ = new MiniJQ([curr]);
@@ -312,11 +320,12 @@ class MiniJQ {
     }
 }
 
-
-window._$ = function (htmlStringOrObject) {
-    if (typeof htmlStringOrObject === "string") {
-        let rootObj = parseHTML(htmlStringOrObject);
+window._$ = function (param) {
+    if (!param) return new MiniJQ([]);
+    if (param instanceof MiniJQ) return param;
+    if (typeof param === "string") {
+        let rootObj = parseHTML(param);
         return new MiniJQ(rootObj);
     }
-    return new MiniJQ(htmlStringOrObject);
-}
+    return new MiniJQ(param);
+};
