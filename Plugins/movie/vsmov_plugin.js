@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov..",
-    "version": "1.2.7",
+    "version": "1.2.8",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
@@ -483,7 +483,7 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
   try {
-    console.log("parseDetailResponse dang xu ly: " url);
+    console.log("parseDetailResponse dang xu ly: " + url);
     var m3u8 = url.replace("/video/","/stream/") + "/master.m3u8";
     var $doc = _$(html);
     var script = $doc.find("script:content('subtitles')").html()
