@@ -6,7 +6,7 @@ function getManifest() {
     id: "vsmov",
     name: "Nguồn Vsmov",
     description: "Nguồn phim Vsmov...",
-    "version": "1.0",
+    "version": "1.1",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vsmov.com",
     iconUrl: "https://vsmov.com/favicon-vsm.png",
