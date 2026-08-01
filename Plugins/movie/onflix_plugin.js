@@ -6,12 +6,13 @@ function getManifest() {
 		"id": "onflix",
 		"name": "Onflix",
 		"description": "Trang xem phim siêu hay.",
-		"version": "1.7.9",
+		"version": "1.8",
 		"baseUrl": "https://onflix.lat",
     "info": "Nguồn phim Onflix, nhanh mượt và dễ tìm phim là ưu điểm.",
 		"iconUrl": "https://onflix.lat/app/asset/logo.png",
 		"isEnabled": true,
-		"type": "VIDEO",
+		"type": "MOVIE",
+    "layoutType": "HORIZONTAL",
 		"playerType": "auto"
 	});
 }
@@ -26,9 +27,14 @@ function log(msg) {
 
 // https://onflix.lat/kham-pha?page=2
 // https://onflix.lat/kham-pha?page=2
+// https://k8s.onflixcdn.com/api/movies?type=phim-le&sort=newest&page=2&limit=24
 function getHomeSections() {
     try {
+// /movies?type=chieu_rap&sort=newest&page=2&limit=24
         var listurl = `
+/movies?type=chieu_rap&sort=newest&limit=24@@Phim Chiêú Rạp@@false
+/movies?type=phim-bo&sort=newest&limit=24@@Phim Bộ@@false
+/movies?type=phim-le&sort=newest&limit=24@@Phim Lẻ@@false
 /movies?sort=newest&limit=24@@Phim Mới@@true
 `;
         var menulist = buildMenu(listurl);

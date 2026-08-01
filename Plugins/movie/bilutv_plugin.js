@@ -6,11 +6,12 @@ function getManifest() {
         "id": "bilutv",
         "name": "Nguồn Bilutv",
         "description": "Trang xem phim siêu hay.",
-        "version": "1.5.1",
+        "version": "1.5.2",
         "baseUrl": "https://bilutv.asia",
       	"info":"Nguồn phim Bilutv. Nguồn phim dồi dào khá chất lượng.",
         "iconUrl": "https://bilutv.asia/img/bilutvlogo-ngang.jpg",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "type": "MOVIE",
         "playerType": "auto"
     });
@@ -30,6 +31,7 @@ function getHomeSections() {
 /the-loai/phim-18@@Phim 18+@@false
 /danh-sach/phim-bo@@Phim Bộ@@false
 /danh-sach/phim-le@@Phim Lẻ@@false
+/danh-sach/phim-chieu-rap@@Phim Chiếu Rạp@@false
 /danh-sach/phim-moi@@Phim Mới@@true
 `;
         var menulist = buildMenu(listurl);
@@ -218,8 +220,8 @@ function parseListResponse(html, $url) {
     log("parseListResponse[url]: \n" + $url);
     try {
         var items = [];
-
-        _$(html).find(".bs").find("a").each(function () {
+        var $doc = _$(html);
+        $doc.find(".bs").find("a").each(function () {
             var year = "";
             var lang = "";
             var current = this.find(".epx").text();
@@ -296,6 +298,7 @@ function formatEpisode(numStr) {
 
 function parseMovieDetail(html, url) {
     log("parseMovieDetail[url]: \n" + url);
+    var $doc = _$(html);
     var lurl = "";
     var limg = "";
     var lname = "Đang cập nhật...";
@@ -313,35 +316,35 @@ function parseMovieDetail(html, url) {
     var lang = "";
     var streamUrl = "";
     try {
-        limg = _$(html).find('meta[property="og:image"]').attr("content");
+        limg = $doc.find('meta[property="og:image"]').attr("content");
         if (limg.indexOf("http") == -1) {
             limg = BASEURL + limg;
         }
-        lname = _$(html).find('meta[property="og:title"]').attr("content");
-        ldes = _$(html).find('div[itemprop="description"]').find("p").text();
-        year = _$(html).find('b:content("Năm phát hành")').parent().text().replace("Năm phát hành:",
+        lname = $doc.find('meta[property="og:title"]').attr("content");
+        ldes = $doc.find('div[itemprop="description"]').find("p").text();
+        year = $doc.find('b:content("Năm phát hành")').parent().text().replace("Năm phát hành:",
             "").replace(/\s+/g, "");
         year = Number(year);
-        status = _$(html).find('b:content("Status:")').parent().text().replace("Status:", "")
+        status = $doc.find('b:content("Status:")').parent().text().replace("Status:", "")
             .replace(/\s\s/g, "");
-        duration = _$(html).find('b:content("Thời lượng:")').parent().text().replace("Thời lượng:",
+        duration = $doc.find('b:content("Thời lượng:")').parent().text().replace("Thời lượng:",
             "").replace(/\s\s/g, "");
-        cast = _$(html).find('b:content("Diễn viên:")').parent().text().replace("Diễn viên:", "")
+        cast = $doc.find('b:content("Diễn viên:")').parent().text().replace("Diễn viên:", "")
             .replace(/\s\s/g, "");
-        direc = _$(html).find('b:content("Đạo diễn:")').parent().text().replace("Đạo diễn:", "")
+        direc = $doc.find('b:content("Đạo diễn:")').parent().text().replace("Đạo diễn:", "")
             .replace(/\s\s/g, "");
-        country = _$(html).find('b:content("Quốc gia:")').parent().text().replace("Quốc gia:", "")
+        country = $doc.find('b:content("Quốc gia:")').parent().text().replace("Quốc gia:", "")
             .replace(/\s\s/g, "");
-        category = _$(html).find('b:content("Định dạng:")').parent().text().replace("Định dạng:",
+        category = $doc.find('b:content("Định dạng:")').parent().text().replace("Định dạng:",
             "").replace(/\s\s/g, "");
-        lang = _$(html).find('b:content("Chất lượng:")').parent().text().replace(
+        lang = $doc.find('b:content("Chất lượng:")').parent().text().replace(
             /Chất lượng:|\s\s|^\s/g, "");
         servers = [];
-        var epiOne = _$(html).find('span:content("Tập đầu")').parent().attr("href");
+        var epiOne = $doc.find('span:content("Tập đầu")').parent().attr("href");
         var servers = [];
         var epiM3U8 = [];
         var epiEMBED = [];
-        var epiEnd = _$(html).find('.epcurlast').text().match(/(\d+)/i);
+        var epiEnd = $doc.find('.epcurlast').text().match(/(\d+)/i);
         var EndNumber = 1;
         if (epiOne) {
             if (epiEnd && epiEnd[1]) {
@@ -373,7 +376,7 @@ function parseMovieDetail(html, url) {
                 episodes: epiEMBED
             });
         } else {
-            var epiOne = _$(html).find(".bookmark").attr("href");
+            var epiOne = $doc.find(".bookmark").attr("href");
             var urlM3U8 = epiOne + "?tapplay=full&type=m3u8";
             var urlEMBED = epiOne + "?tapplay=full&type=embed";
             epiM3U8.push({
@@ -434,6 +437,7 @@ function parseMovieDetail(html, url) {
 function parseDetailResponse(html, url) {
     log("parseDetailResponse[url]: \n" + url);
     try {
+        var $doc = _$(html);
         var activePage = "";
         var matchType = url.match(/type=(\w+)/);
         var typeVD = matchType ? matchType[1] : "m3u8";
@@ -445,9 +449,9 @@ function parseDetailResponse(html, url) {
         if (url.indexOf("full") === -1) {
             var foundActive = false;
 
-            _$(html).find(".episodelist").find("li").each(function (index, el) {
-                var link = _$(el).find("a").attr("href");
-                var text = _$(el).attr("data-name") || _$(el).text() || "";
+            $doc.find(".episodelist").find("li").each(function () {
+                var link = this.find("a").attr("href");
+                var text = this.attr("data-name") || this.text() || "";
                 var matchText = text.match(/([0-9]+)/);
                 var numberRaw = matchText ? matchText[1] : "1";
                 var number = formatEpisode(numberRaw);
@@ -515,16 +519,16 @@ function parseEmbedResponse(html, url) {
         } else {
             var matchType = url.match(/type=(\w+)/i);
             var $type = matchType ? matchType[1] : "m3u8";
-
+            var $doc = _$(html);
             var streamUrl = "";
             if ($type === "m3u8") {
-                streamUrl = _$(html).find('a[data-type="m3u8"]').attr("data-link");
+                streamUrl = $doc.find('a[data-type="m3u8"]').attr("data-link");
             } else {
-                streamUrl = _$(html).find('a[data-type="embed"]').attr("data-link");
+                streamUrl = $doc.find('a[data-type="embed"]').attr("data-link");
             }
 
             if (!streamUrl) {
-                streamUrl = _$(html).find('iframe').attr("src") || _$(html).find('embed').attr(
+                streamUrl = $doc.find('iframe').attr("src") || $doc.find('embed').attr(
                     "src") || "";
             }
 
@@ -539,7 +543,7 @@ function parseEmbedResponse(html, url) {
                 var curentRaw = matchCurent ? matchCurent[1] : "1";
                 var curent = formatEpisode(curentRaw);
 
-                var titleText = _$(html).find("h2").text() || _$(html).find("h1").text() || "Phim";
+                var titleText = $doc.find("h2").text() || $doc.find("h1").text() || "Phim";
                 checkepi = titleText.trim() + " - Tập " + curent;
             }
             var customJs = textJS(typevideo, checkepi, url, streamUrl);
@@ -1557,4 +1561,403 @@ function getLISTmenu() {
 }
 
 function buildMenu(listurl){let menulist=[];if (!listurl)return menulist;let lines=listurl.split('\n');for (let i=0;i < lines.length;i++){let line=lines[i].trim();if (!line||line.indexOf('@@')===-1)continue;let parts=line.split('@@');let link=parts[0]?parts[0].trim():"";let name=parts[1]?parts[1].trim():"";let check=parts[2]?parts[2].trim():undefined;if (!link||!name)continue;let item={};if (check==="false"){item={"slug":link,"title":name,"type":"Horizontal"};}else if (check==="true"){item={"slug":link,"title":name,"type":"Grid"};}else{item={"slug":link,"name":name};}menulist.push(item);}return menulist;}
-function _$(htmlOrBlock){if (htmlOrBlock&&typeof htmlOrBlock==='object'&&htmlOrBlock.elements){return htmlOrBlock;}var instance={sourceHtml:typeof htmlOrBlock==='string'?htmlOrBlock:'',elements:Array.isArray(htmlOrBlock)?htmlOrBlock:(htmlOrBlock?[htmlOrBlock]:[]),find:function(selector){var results=[];var contentFilter="";if (selector.indexOf(":content(")!==-1){var contentMatch=selector.match(/:content\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/);if (contentMatch){contentFilter=contentMatch[1]||contentMatch[2]||contentMatch[3]||"";selector=selector.replace(/:content\((?:"[^"]*"|'[^']*'|[^)]*)\)/,"");}}var attrNameFilter="";var attrValueFilter="";var hasAttrFilter=false;var attrMatch=selector.match(/\[([a-zA-Z0-9_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\]"']*))\]/);if (attrMatch){hasAttrFilter=true;attrNameFilter=attrMatch[1];attrValueFilter=attrMatch[2]||attrMatch[3]||attrMatch[4]||"";selector=selector.replace(/\[.*?\]/,"");}var notSelector="";if (selector.indexOf(":not(")!==-1){var notMatch=selector.match(/:not\(([^)]+)\)/);if (notMatch){notSelector=notMatch[1];selector=selector.replace(/:not\([^)]+\)/,"");}}var isFirstFilter=selector.indexOf(":first")!==-1;var isLastFilter=selector.indexOf(":last")!==-1;selector=selector.replace(/:first|:last/g,"");var isClass=selector.indexOf('.')===0;var isId=selector.indexOf('#')===0;var isAttrOnly=(selector===""&&hasAttrFilter);var targetClasses=[];var targetId="";var targetTagName="";if (isClass){targetClasses=selector.split('.').filter(function(c){return c.length > 0;});}else if (isId){targetId=selector.substring(1);}else if (!isAttrOnly){targetTagName=selector.toLowerCase();}for (var i=0;i < this.elements.length;i++){var currentHtml=this.elements[i];var pos=0;var subResults=[];while ((pos=currentHtml.indexOf('<',pos))!==-1){if (currentHtml.charAt(pos+1)==='/'||currentHtml.charAt(pos+1)==='!'){pos++;continue;}var endOpenTag=currentHtml.indexOf('>',pos);if (endOpenTag===-1)break;var fullOpenTag=currentHtml.substring(pos,endOpenTag+1);var spacePos=fullOpenTag.indexOf(' ');var currentTagName="";if (spacePos===-1){currentTagName=fullOpenTag.substring(1,fullOpenTag.length-1).toLowerCase();}else{currentTagName=fullOpenTag.substring(1,spacePos).toLowerCase();}var isMatched=false;if (isClass){var classMatchStr="";var classPos=fullOpenTag.indexOf('class="');if (classPos!==-1){var startQuote=classPos+7;classMatchStr=fullOpenTag.substring(startQuote,fullOpenTag.indexOf('"',startQuote));}else{classPos=fullOpenTag.indexOf("class='");if (classPos!==-1){var startQuote=classPos+7;classMatchStr=fullOpenTag.substring(startQuote,fullOpenTag.indexOf("'",startQuote));}}if (classMatchStr){var currentClasses=classMatchStr.split(/\s+/);var matchCount=0;for (var c=0;c < targetClasses.length;c++){if (currentClasses.indexOf(targetClasses[c])!==-1)matchCount++;}if (matchCount===targetClasses.length)isMatched=true;}}else if (isId){var idMatchStr="";var idPos=fullOpenTag.indexOf('id="');if (idPos!==-1){var startQuote=idPos+4;idMatchStr=fullOpenTag.substring(startQuote,fullOpenTag.indexOf('"',startQuote));}else{idPos=fullOpenTag.indexOf("id='");if (idPos!==-1){var startQuote=idPos+4;idMatchStr=fullOpenTag.substring(startQuote,fullOpenTag.indexOf("'",startQuote));}}if (idMatchStr===targetId)isMatched=true;}else if (isAttrOnly){isMatched=true;}else{if (currentTagName===targetTagName)isMatched=true;}if (isMatched&&hasAttrFilter){var searchStr1=attrNameFilter+'="'+attrValueFilter+'"';var searchStr2=attrNameFilter+"='"+attrValueFilter+"'";if (fullOpenTag.indexOf(searchStr1)===-1&&fullOpenTag.indexOf(searchStr2)===-1){isMatched=false;}}if (isMatched){var startTagPos=pos;var endTagPos=endOpenTag+1;var selfClosingTags=['img','source','input','br','hr','link','meta'];if (selfClosingTags.indexOf(currentTagName)===-1&&fullOpenTag.indexOf('/>')===-1){var depth=1;var scanPos=endOpenTag+1;var openStr='<'+currentTagName;var closeStr='</'+currentTagName+'>';while (depth > 0&&scanPos < currentHtml.length){var nextOpen=currentHtml.indexOf(openStr,scanPos);var nextClose=currentHtml.indexOf(closeStr,scanPos);if (nextClose===-1){scanPos=currentHtml.length;break;}if (nextOpen!==-1&&nextOpen < nextClose){depth++;scanPos=nextOpen+openStr.length;}else{depth--;scanPos=nextClose+closeStr.length;if (depth===0)endTagPos=nextClose+closeStr.length;}}}var foundBlock=currentHtml.substring(startTagPos,endTagPos);if (contentFilter){var pureText=foundBlock.replace(/<[^>]+>/g,"").trim();if (pureText.indexOf(contentFilter)===-1){pos=endTagPos;continue;}}if (notSelector){var isNotClass=notSelector.indexOf('.')===0;var isNotId=notSelector.indexOf('#')===0;var notValue=notSelector.substring(1);var hasNot=false;if (isNotClass&&fullOpenTag.indexOf('class="')!==-1&&fullOpenTag.indexOf(notValue)!==-1)hasNot=true;if (isNotId&&fullOpenTag.indexOf('id="')!==-1&&fullOpenTag.indexOf(notValue)!==-1)hasNot=true;if (!hasNot)subResults.push(foundBlock);}else{subResults.push(foundBlock);}pos=endTagPos;}else{pos++;}}if (isFirstFilter&&subResults.length > 0)subResults=[subResults[0]];if (isLastFilter&&subResults.length > 0)subResults=[subResults[subResults.length-1]];results=results.concat(subResults);}var newInstance=_$(results);newInstance.sourceHtml=this.sourceHtml||currentHtml;return newInstance;},each:function(callback){for (var i=0;i < this.elements.length;i++){var childInstance=_$(this.elements[i]);childInstance.sourceHtml=this.sourceHtml;callback.call(childInstance,i,this.elements[i]);}return this;},eq:function(index){if (index < 0)index=this.elements.length+index;var matchedElement=this.elements[index];this.elements=matchedElement?[matchedElement]:[];return this;},attr:function(attrName){if (this.elements.length===0)return "";var elem=this.elements[0];var searchStr=attrName+'="';var pos=elem.indexOf(searchStr);if (pos===-1){searchStr=attrName+"='";pos=elem.indexOf(searchStr);}if (pos===-1)return "";var start=pos+searchStr.length;var quoteType=elem.charAt(start-1);var end=elem.indexOf(quoteType,start);return end===-1?"":elem.substring(start,end);},html:function(){if (this.elements.length===0)return "";var elem=this.elements[0];var start=elem.indexOf('>')+1;var end=elem.lastIndexOf('</');if (start > 0&&end > start)return elem.substring(start,end);return "";},text:function(){if (this.elements.length===0)return "";var elem=this.elements[0];var start=elem.indexOf('>')+1;var end=elem.lastIndexOf('</');if (start > 0&&end > start){var content=elem.substring(start,end);return content.replace(/<\/?[^>]+(>|$)/g,"").trim();}return "";},next:function(){var results=[];if (!this.sourceHtml)return this;for (var i=0;i < this.elements.length;i++){var elem=this.elements[i];var idx=this.sourceHtml.indexOf(elem);if (idx===-1)continue;var scanPos=idx+elem.length;var nextOpen=this.sourceHtml.indexOf('<',scanPos);if (nextOpen!==-1){if (this.sourceHtml.charAt(nextOpen+1)==='/') continue;var endOpenTag=this.sourceHtml.indexOf('>',nextOpen);if (endOpenTag===-1)continue;var fullOpenTag=this.sourceHtml.substring(nextOpen,endOpenTag+1);var spacePos=fullOpenTag.indexOf(' ');var currentTagName=(spacePos===-1)?fullOpenTag.substring(1,fullOpenTag.length-1).toLowerCase():fullOpenTag.substring(1,spacePos).toLowerCase();var startTagPos=nextOpen;var endTagPos=endOpenTag+1;var selfClosingTags=['img','source','input','br','hr','link','meta'];if (selfClosingTags.indexOf(currentTagName)===-1&&fullOpenTag.indexOf('/>')===-1){var depth=1;var sPos=endOpenTag+1;var openStr='<'+currentTagName;var closeStr='</'+currentTagName+'>';while (depth > 0&&sPos < this.sourceHtml.length){var nOpen=this.sourceHtml.indexOf(openStr,sPos);var nClose=this.sourceHtml.indexOf(closeStr,sPos);if (nClose===-1)break;if (nOpen!==-1&&nOpen < nClose){depth++;sPos=nOpen+openStr.length;}else{depth--;sPos=nClose+closeStr.length;if (depth===0)endTagPos=nClose+closeStr.length;}}}results.push(this.sourceHtml.substring(startTagPos,endTagPos));}}var nextInstance=_$(results);nextInstance.sourceHtml=this.sourceHtml;this.elements=results;return this;},parent:function(){var results=[];if (!this.sourceHtml)return this;for (var i=0;i < this.elements.length;i++){var elem=this.elements[i];var idx=this.sourceHtml.indexOf(elem);if (idx <=0)continue;var scanPos=idx-1;while (scanPos >=0){var openTagPos=this.sourceHtml.lastIndexOf('<',scanPos);if (openTagPos===-1)break;if (this.sourceHtml.charAt(openTagPos+1)!=='/'&&this.sourceHtml.charAt(openTagPos+1)!=='!'){var endOpenTag=this.sourceHtml.indexOf('>',openTagPos);if (endOpenTag!==-1&&endOpenTag > openTagPos){var fullOpenTag=this.sourceHtml.substring(openTagPos,endOpenTag+1);var spacePos=fullOpenTag.indexOf(' ');var currentTagName=(spacePos===-1)?fullOpenTag.substring(1,fullOpenTag.length-1).toLowerCase():fullOpenTag.substring(1,spacePos).toLowerCase();var endTagPos=endOpenTag+1;var selfClosingTags=['img','source','input','br','hr','link','meta'];if (selfClosingTags.indexOf(currentTagName)===-1&&fullOpenTag.indexOf('/>')===-1){var depth=1;var sPos=endOpenTag+1;var openStr='<'+currentTagName;var closeStr='</'+currentTagName+'>';while (depth > 0&&sPos < this.sourceHtml.length){var nOpen=this.sourceHtml.indexOf(openStr,sPos);var nClose=this.sourceHtml.indexOf(closeStr,sPos);if (nClose===-1)break;if (nOpen!==-1&&nOpen < nClose){depth++;sPos=nOpen+openStr.length;}else{depth--;sPos=nClose+closeStr.length;if (depth===0)endTagPos=nClose+closeStr.length;}}}if (endTagPos >=idx+elem.length){var parentBlock=this.sourceHtml.substring(openTagPos,endTagPos);if (results.indexOf(parentBlock)===-1)results.push(parentBlock);break;}}}scanPos=openTagPos-1;}}var parentInstance=_$(results);parentInstance.sourceHtml=this.sourceHtml;this.elements=results;return this;}};return instance;};
+
+
+function _$(param) {
+    // -------------------------------------------------------------
+    // 1. HELPER PARSER & UTILS
+    // -------------------------------------------------------------
+    function parseHTML(htmlString) {
+        let nodes = [];
+        let root = { id: 0, tag: "ROOT", attrs: {}, childrenIds: [], parentId: null };
+        nodes.push(root);
+
+        try {
+            let html = (htmlString || "").trim();
+            if (!html) return { root, nodes };
+
+            const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+            let stack = [0];
+            let tagRegex = /<(?:\/([a-zA-Z0-9_-]+)|([a-zA-Z0-9_-]+)([^>]*?)(\/)?)\s*>/g;
+            
+            let lastIndex = 0;
+            let match;
+            let maxIter = 50000;
+            let iter = 0;
+
+            while ((match = tagRegex.exec(html)) !== null && iter++ < maxIter) {
+                let textBefore = html.slice(lastIndex, match.index).trim();
+                let parentId = stack[stack.length - 1];
+
+                if (textBefore) {
+                    let textId = nodes.length;
+                    nodes.push({ id: textId, tag: "#text", text: textBefore, attrs: {}, childrenIds: [], parentId: parentId });
+                    nodes[parentId].childrenIds.push(textId);
+                }
+
+                lastIndex = tagRegex.lastIndex;
+                let isCloseTag = !!match[1];
+                let tagName = (match[1] || match[2] || "").toLowerCase();
+                let attrStr = match[3] || "";
+                let isSelfClosing = !!match[4] || VOID_TAGS.has(tagName);
+
+                if (isCloseTag) {
+                    for (let i = stack.length - 1; i > 0; i--) {
+                        if (nodes[stack[i]].tag === tagName) {
+                            stack.splice(i);
+                            break;
+                        }
+                    }
+                } else {
+                    let attrs = {};
+                    let attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+                    let attrMatch;
+                    while ((attrMatch = attrRegex.exec(attrStr)) !== null) {
+                        attrs[attrMatch[1].toLowerCase()] = attrMatch[2] || attrMatch[3] || attrMatch[4] || "";
+                    }
+
+                    let nodeId = nodes.length;
+                    let node = { id: nodeId, tag: tagName, attrs: attrs, childrenIds: [], parentId: parentId };
+                    nodes.push(node);
+                    nodes[parentId].childrenIds.push(nodeId);
+
+                    if (!isSelfClosing) {
+                        stack.push(nodeId);
+                    }
+                }
+            }
+
+            let remainingText = html.slice(lastIndex).trim();
+            if (remainingText && stack.length > 0) {
+                let parentId = stack[stack.length - 1];
+                let textId = nodes.length;
+                nodes.push({ id: textId, tag: "#text", text: remainingText, attrs: {}, childrenIds: [], parentId: parentId });
+                nodes[parentId].childrenIds.push(textId);
+            }
+        } catch (err) {
+            if (typeof window !== "undefined" && window.log) window.log("parseHTML error: " + err.message);
+        }
+        return { root, nodes };
+    }
+
+    function getNodeText(node, nodes, depth) {
+        if (!node || (depth || 0) > 20) return "";
+        if (node.tag === "#text") return node.text || "";
+        let text = "";
+        if (node.childrenIds) {
+            for (let cid of node.childrenIds) {
+                text += getNodeText(nodes[cid], nodes, (depth || 0) + 1) + " ";
+            }
+        }
+        return text.trim();
+    }
+
+    // -------------------------------------------------------------
+    // 2. QUERY ENGINE & SELECTOR MATCHING
+    // -------------------------------------------------------------
+    function matchSingleSelector(node, sel, nodes) {
+        if (!node || node.tag === "#text" || node.tag === "ROOT") return false;
+
+        let cleanSel = sel;
+        
+        // 1. Tách pseudo positional (:first, :last, :eq)
+        cleanSel = cleanSel.replace(/:first|:last|:eq\([0-9]+\)/gi, "").trim();
+
+        // 2. Tách pseudo :content(...)
+        let pseudoContentArg = null;
+        let contentMatch = cleanSel.match(/:content\((['"]?)(.*?)\1\)/i);
+        if (contentMatch) {
+            pseudoContentArg = contentMatch[2];
+            cleanSel = cleanSel.replace(contentMatch[0], "").trim();
+        }
+
+        // 3. Khớp Selector gốc
+        if (cleanSel && cleanSel !== "*") {
+            let tagMatch = cleanSel.match(/^[a-zA-Z0-9_-]+/);
+            if (tagMatch && node.tag !== tagMatch[0].toLowerCase()) return false;
+
+            let idMatch = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
+            if (idMatch && (!node.attrs || node.attrs.id !== idMatch[1])) return false;
+
+            // Class matching (hỗ trợ Tailwind)
+            let classMatches = cleanSel.match(/\.([a-zA-Z0-9_\-\/\\:]+)/g);
+            if (classMatches) {
+                if (!node.attrs || !node.attrs.class) return false;
+                let elClasses = node.attrs.class.split(/\s+/);
+                for (let c of classMatches) {
+                    let targetClass = c.substring(1);
+                    if (!elClasses.includes(targetClass)) return false;
+                }
+            }
+
+            let attrMatch = cleanSel.match(/\[([a-zA-Z0-9_-]+)(?:=['"]?(.*?)['"]?)?\]/);
+            if (attrMatch) {
+                let attrName = attrMatch[1].toLowerCase();
+                let attrVal = attrMatch[2];
+                if (!node.attrs || !(attrName in node.attrs)) return false;
+                if (attrVal !== undefined && node.attrs[attrName] !== attrVal) return false;
+            }
+        }
+
+        if (pseudoContentArg !== null) {
+            let fullText = getNodeText(node, nodes, 0);
+            let keywords = pseudoContentArg.split("|").map(k => k.trim().toLowerCase());
+            let found = keywords.some(kw => fullText.toLowerCase().includes(kw));
+            if (!found) return false;
+        }
+
+        return true;
+    }
+
+    function querySelectorAllSingleLevel(startNode, selector, nodes) {
+        let results = [];
+        function search(currentId, depth) {
+            if (depth > 50) return;
+            let current = nodes[currentId];
+            if (!current) return;
+
+            if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
+                if (matchSingleSelector(current, selector, nodes)) {
+                    results.push(current);
+                }
+            }
+            if (current.childrenIds) {
+                for (let cid of current.childrenIds) {
+                    search(cid, depth + 1);
+                }
+            }
+        }
+        search(startNode.id, 0);
+
+        if (selector.indexOf(":first") !== -1) return results.slice(0, 1);
+        if (selector.indexOf(":last") !== -1) return results.slice(-1);
+        
+        let eqMatch = selector.match(/:eq\(([0-9]+)\)/i);
+        if (eqMatch) {
+            let idx = parseInt(eqMatch[1], 10);
+            return results[idx] ? [results[idx]] : [];
+        }
+
+        return results;
+    }
+
+    function querySelectorAll(startNode, selector, nodes) {
+        try {
+            if (!startNode || !selector) return [];
+
+            if (selector.indexOf(',') !== -1) {
+                let groupSelectors = selector.split(',').map(s => s.trim());
+                let resMap = new Map();
+                for (let gSel of groupSelectors) {
+                    let subRes = querySelectorAll(startNode, gSel, nodes);
+                    for (let r of subRes) resMap.set(r.id, r);
+                }
+                return Array.from(resMap.values());
+            }
+
+            let spaceParts = selector.trim().split(/\s+/);
+            if (spaceParts.length > 1) {
+                let currentNodes = [startNode];
+                for (let part of spaceParts) {
+                    let nextLevelNodes = [];
+                    let addedIds = new Set();
+                    for (let cNode of currentNodes) {
+                        let subResults = querySelectorAllSingleLevel(cNode, part, nodes);
+                        for (let r of subResults) {
+                            if (!addedIds.has(r.id)) {
+                                addedIds.add(r.id);
+                                nextLevelNodes.push(r);
+                            }
+                        }
+                    }
+                    currentNodes = nextLevelNodes;
+                    if (currentNodes.length === 0) break;
+                }
+                return currentNodes;
+            }
+
+            return querySelectorAllSingleLevel(startNode, selector, nodes);
+        } catch (err) {
+            return [];
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 3. MINIJQ CLASS CONSTRUCTOR & PROTOTYPE
+    // -------------------------------------------------------------
+    function MiniJQ(elements, nodesStore) {
+        this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
+        this.nodes = nodesStore || [];
+        this.length = this.elements.length;
+    }
+
+    MiniJQ.prototype = {
+        find: function(selector) {
+            if (this.elements.length === 0) return new MiniJQ([], this.nodes);
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let res = querySelectorAll(el, selector, this.nodes);
+                for (let r of res) {
+                    if (!addedIds.has(r.id)) {
+                        addedIds.add(r.id);
+                        matched.push(r);
+                    }
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        },
+
+        text: function() {
+            if (this.elements.length === 0) return "";
+            return getNodeText(this.elements[0], this.nodes, 0);
+        },
+
+        html: function() {
+            if (this.elements.length === 0) return "";
+            let self = this;
+            let serialize = function(nodeId, depth) {
+                if (depth > 20) return "";
+                let node = self.nodes[nodeId];
+                if (!node) return "";
+                if (node.tag === "#text") return node.text || "";
+                let attrs = Object.entries(node.attrs || {}).map(([k, v]) => ` ${k}="${v}"`).join("");
+                let childrenHTML = (node.childrenIds || []).map(cid => serialize(cid, depth + 1)).join("");
+                return `<${node.tag}${attrs}>${childrenHTML}</${node.tag}>`;
+            };
+            return (this.elements[0].childrenIds || []).map(cid => serialize(cid, 0)).join("");
+        },
+
+        attr: function(name, value) {
+            if (value !== undefined) {
+                for (let el of this.elements) {
+                    if (el && el.tag !== "#text") {
+                        if (!el.attrs) el.attrs = {};
+                        el.attrs[name] = value;
+                    }
+                }
+                return this;
+            }
+            if (this.elements.length === 0 || !this.elements[0].attrs) return "";
+            return this.elements[0].attrs[name] || "";
+        },
+
+        each: function(callback) {
+            if (typeof callback !== 'function') return this;
+            this.elements.forEach((el, index) => {
+                let jqEl = new MiniJQ([el], this.nodes);
+                callback.call(jqEl, index, jqEl);
+            });
+            return this;
+        },
+
+        textAll: function(delimiter) {
+            if (delimiter === undefined) delimiter = " ";
+            let texts = [];
+            for (let el of this.elements) {
+                texts.push(getNodeText(el, this.nodes, 0));
+            }
+            return texts.join(delimiter);
+        },
+
+        first: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[0]] : [], this.nodes);
+        },
+
+        last: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[this.elements.length - 1]] : [], this.nodes);
+        },
+
+        eq: function(index) {
+            return new MiniJQ(this.elements[index] ? [this.elements[index]] : [], this.nodes);
+        },
+
+        parent: function() {
+            let parents = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                if (el && el.parentId !== null && el.parentId !== 0) {
+                    let pNode = this.nodes[el.parentId];
+                    if (pNode && !addedIds.has(pNode.id)) {
+                        addedIds.add(pNode.id);
+                        parents.push(pNode);
+                    }
+                }
+            }
+            return new MiniJQ(parents, this.nodes);
+        },
+
+        next: function() {
+            let nexts = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx !== -1 && idx + 1 < siblings.length) {
+                    nexts.push(siblings[idx + 1]);
+                }
+            }
+            return new MiniJQ(nexts, this.nodes);
+        },
+
+        before: function() {
+            let befores = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx > 0) {
+                    befores.push(siblings[idx - 1]);
+                }
+            }
+            return new MiniJQ(befores, this.nodes);
+        },
+
+        after: function() {
+            return this.next();
+        },
+
+        closest: function(selector) {
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let currParentId = el.parentId;
+                let depth = 0;
+                while (currParentId !== null && currParentId !== 0 && depth++ < 30) {
+                    let curr = this.nodes[currParentId];
+                    if (!curr) break;
+                    if (matchSingleSelector(curr, selector, this.nodes)) {
+                        if (!addedIds.has(curr.id)) {
+                            addedIds.add(curr.id);
+                            matched.push(curr);
+                        }
+                        break;
+                    }
+                    currParentId = curr.parentId;
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        }
+    };
+
+    // -------------------------------------------------------------
+    // 4. MAIN ENTRY POINT LOGIC FOR _$
+    // -------------------------------------------------------------
+    try {
+        if (!param) return new MiniJQ([], []);
+        if (param instanceof MiniJQ) return param;
+        if (typeof param === "string") {
+            let parsed = parseHTML(param);
+            return new MiniJQ(parsed.root, parsed.nodes);
+        }
+        return new MiniJQ(param, []);
+    } catch (err) {
+        return new MiniJQ([], []);
+    }
+}

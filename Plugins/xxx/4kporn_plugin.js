@@ -5,11 +5,12 @@ function getManifest() {
         "id": "4kporn",
         "name": "Phim XXX 4K",
         "description": "XXX siêu nét.",
-        "version": "1.5.9",
+        "version": "1.6",
         "baseUrl": "https://www.freepornvideos.xxx",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
@@ -34,6 +35,8 @@ function log(msg) {
 function getHomeSections() {
     try {
         var listurl = `
+/most-popular/@@Xem Nhiều@@false
+/top-rated/@@Top Tháng@@false
 /latest-updates/@@Phim Mới@@true
 `;
         var menulist = buildMenu(listurl);

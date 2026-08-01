@@ -6,11 +6,13 @@ function getManifest() {
       "id": "hhpanda",
       "name": "Nguồn HHPanda",
       "description": "Anime siêu hay.",
-      "version": "1.1.9",
+      "version": "1.2.1",
       "info": "Nguồn phim hoạt hình chất lượng cao, tuy nhiên cơ chế chiếu phát của nó rất khó chịu. Chỉ phát được trên máy chủ của họ còn phát qua app sẽ bị mất góc không tràn viền.\r\nVì thế đã tích hợp bộ chỉnh kích cỡ video vào bên trong video. Bạn có thể chỉnh sao cho vừa màn hình. Chỉ cần chỉnh 1 lần là các lần sau sẽ dùng như vậy.",
       "baseUrl": "https://hhpanda.st",
       "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp",
       "isEnabled": true,
+      "layoutType": "HORIZONTAL",
+      "adblock": false,
       "type": "MOVIE",
       "playerTpye": "embedtoexoplay"
     })
@@ -25,14 +27,33 @@ function log(msg) {
 }
 
 function getHomeSections() {
-    try {
-        var listurl = '[{\"link\":\"/moi-cap-nhat/\",\"name\":\"Phim Mới\"}]';
-        var menulist = buildMenu(listurl, true);
-        return JSON.stringify(menulist);
-    } catch (e) {
-        log("getHomeSections[err]:\n " + e);
-        return JSON.stringify([]);
-    }
+    return JSON.stringify([
+       {
+            "slug": "/hoan-thanh",
+            "title": "Phim Hoàn Thành",
+            "type": "Horizontal"
+        },
+       {
+            "slug": "/most-viewed",
+            "title": "Phim Xem Nhiều",
+            "type": "Horizontal"
+        },
+        {
+            "slug": "/the-loai/tu-tien",
+            "title": "Tu Tiên",
+            "type": "Horizontal"
+        },
+        {
+            "slug": "/the-loai/do-thi",
+            "title": "Đô thị",
+            "type": "Horizontal"
+        },
+        {
+            "slug": "/moi-cap-nhat/",
+            "title": "Phim Mới",
+            "type": "Grid"
+        }
+    ]);
 }
 
 function getPrimaryCategories() {
@@ -251,7 +272,8 @@ function isValidMediaUrl(url) {
 function parseListResponse(html, $url) {
     try {
         var items = [];
-        _$(html).find("article").each(function() {
+        var $doc = _$(html);
+        $doc.find("article").each(function() {
             var href = this.find("a").attr("href");
             href = fixHref(href);
             var title = this.find("a").attr("title");
@@ -323,7 +345,7 @@ function parseMovieDetail(html, url) {
         var idMatch = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html) ||
             /<meta\s+property="og:url"\s+content="([^"]+)"/i.exec(html);
         var id = idMatch ? idMatch[1] : (url || "");
-
+        var $doc = _$(html);
         var slug = "";
         if (id) {
             var slugMatch = /\/phim\/([^/_.]+)/.exec(id);
@@ -360,14 +382,14 @@ function parseMovieDetail(html, url) {
         rmatch = html.match(/meta\s+property="og:title"\s+content="([^"]+)"/i);
         if (rmatch && rmatch[1]) lname = rmatch[1];
 
-        var ldes = _$(html).find(".video-item").find("article").text();
+        var ldes = $doc.find(".video-item").find("article").text();
         var year = 2026;
         var extra = "";
 
-        status = _$(html).find(".hh3d-info").find("span").parent().text(" - ");
+        status = $doc.find(".hh3d-info").find("span").parent().text(" - ");
 
         var categoryResult = [];
-        _$(html).find(".list_cate").find("a").each(function() {
+        $doc.find(".list_cate").find("a").each(function() {
             var link = this.attr("href") || this.find("a").attr("href");
             var name = this.text().replace(/\s+/g, ' ').trim();
 
@@ -379,11 +401,11 @@ function parseMovieDetail(html, url) {
         });
 
         category = categoryResult.join(", ");
-        episode_current = _$(html).find("span.new-ep").text();
+        episode_current = $doc.find("span.new-ep").text();
 
         var servers = [];
 
-        _$(html).find("#halim-list-server").find(".halim-server").each(function() {
+        $doc.find("#halim-list-server").find(".halim-server").each(function() {
             var $namesv = this.find(".halim-server-name").text();
             var items = [];
             this.find(".halim-list-eps").each(function() {
@@ -474,10 +496,82 @@ function sortEpisodesByName(data) {
         return data;
     }
 }
+function checkRaw(scriptStr, returnFixed) {
+  try {
+    if (!scriptStr || typeof scriptStr !== 'string') {
+      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
+      return scriptStr || "";
+    }
+
+    var lines = scriptStr.split('\n');
+    var fixedLines = [];
+    var hasError = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var currentLine = lines[i];
+      var lineNum = i + 1;
+      var lineErrorFound = false;
+
+      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
+      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
+      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
+      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
+      if (/([^\\])\\$/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      if (lineErrorFound) {
+        hasError = true;
+      }
+
+      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
+      var fixedLine = currentLine;
+      if (returnFixed) {
+        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
+        fixedLine = fixedLine
+          .replace(/\r/g, "")
+          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
+      }
+
+      fixedLines.push(fixedLine);
+    }
+
+    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
+    try {
+      new Function(scriptStr);
+    } catch (syntaxErr) {
+      hasError = true;
+      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
+    }
+
+    if (!hasError) {
+      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
+    }
+
+    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
+    return returnFixed ? fixedLines.join('\n') : scriptStr;
+
+  } catch (e) {
+    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
+    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
+  }
+}
 
 function parseDetailResponse(html, pageUrl) {
     try {
-        var currentlink = _$(html).find("meta[property='og:url']").attr("content");
+        var $doc = _$(html);
+        var currentlink = $doc.find("meta[property='og:url']").attr("content");
         var matchC = currentlink.match(/sv(\d+)/i);
         var currentserver = 1;
         var currenttap = 1;
@@ -488,8 +582,8 @@ function parseDetailResponse(html, pageUrl) {
         if (matchA && matchA[1]) {
             currenttap = matchA[1];
         }
-        var currentid = _$(html).find("#main-contents").attr("data-id");
-        var typecurrent = _$(html).find("#halim-ajax-list-server").find("span:first").attr("data-type");
+        var currentid = $doc.find("#main-contents").attr("data-id");
+        var typecurrent = $doc.find("#halim-ajax-list-server").find("span:first").attr("data-type");
         var framelink = `https://hhpanda.st/player/player.php?action=dox_ajax_player&post_id=${currentid}&chapter_st=${currenttap}&type=${typecurrent}&sv=${currentserver}`;
         var $dataSv = {};
         $dataSv.movieid = currentid;
@@ -498,7 +592,7 @@ function parseDetailResponse(html, pageUrl) {
         $dataSv.taphientai = currenttap;
 
         var servers = [];
-        _$(html).find(".halim-server").each(function() {
+        $doc.find(".halim-server").each(function() {
             var $namesv = this.find(".halim-server-name").text();
             var items = [];
             var type = 1;
@@ -518,7 +612,7 @@ function parseDetailResponse(html, pageUrl) {
         $dataSv.servers = servers;
 
         var serverHQ = [];
-        _$(html).find("#halim-ajax-list-server").find("span").each(function() {
+        $doc.find("#halim-ajax-list-server").find("span").each(function() {
             var name = this.text();
             var type = this.attr("data-type");
             serverHQ.push({
@@ -528,7 +622,7 @@ function parseDetailResponse(html, pageUrl) {
         });
         $dataSv.HQ = serverHQ;
 
-        var bypassJs = customJS($dataSv);
+        var bypassJs = checkRaw(customJS($dataSv),true);
         log("parseDetailResponse[url]: \n" + framelink);
         return JSON.stringify({
             url: framelink,
@@ -536,6 +630,7 @@ function parseDetailResponse(html, pageUrl) {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Referer": pageUrl,
+                "Block-Ads": false,
                 "Custom-Js": bypassJs
             },
             subtitles: []
@@ -560,929 +655,111 @@ JSON.parse(parseEmbedResponse(sourceHTML, BASEURL))
 // 'AHS': 'https://ahay.stream/embed-jw/75913'
 
 */
+
 function customJS(config) {
+    const configStr = JSON.stringify(config);
+
     return `
 (function() {
+    // 1. CLEAR DỮ LIỆU CŨ LỖI
+    console.log('[PhimHDCS] SCRIPT RELOADED SUCCESSFULLY!');
+
+    const CONFIG = ${configStr};
     
-    // =========================================================
-    // CẤU HÌNH TOÀN CỤC (GLOBAL CONFIG)
-    // =========================================================
-    const ENABLE_TOAST = false;         // true: Bật Toast URL | false: Tắt
-    const TOAST_DURATION = 4000;       // Thời gian hiện Toast URL (ms)
-    const INITIAL_SHOW_TIME = 10000;   // Thời gian hiện rõ thanh điều khiển (ms)
-
-    const CONFIG = ${JSON.stringify(config)};
-
-    // --- HELPER: BỌC LƯU BỘ NHỚ AN TOÀN CHỐNG SECURITY ERROR ---
-    const memoryStore = {};
-    function bridgeLog(msg) {
-      try {
-        if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
-          window.SnifferBridge.log(String(msg));
-        } else if (typeof console !== 'undefined' && console.log) {
-          console.log('[SNIFFER LOG]', msg);
-        }
-      } catch (e) {}
-    }
-    
-    function safeGetStorage(key) {
-        try {
-            if (window.localStorage) {
-            		//bridgeLog("Đã đọc dược Localstore")
-                return localStorage.getItem(key);
-            }
-            return memoryStore[key] !== undefined ? memoryStore[key] : null;
-        } catch (e) {
-        		//bridgeLog("Lỗi Localstore: " + e)
-            return memoryStore[key] !== undefined ? memoryStore[key] : null;
-        }
+    // Đọc số tập chính xác từ CONFIG truyền vào
+    let currentTapNum = 1;
+    if (CONFIG.taphientai) {
+        let extracted = String(CONFIG.taphientai).replace(/[^0-9]/g, '');
+        if (extracted) currentTapNum = parseInt(extracted, 10);
     }
 
-    function safeSetStorage(key, value) {
-        try {
-            if (window.localStorage) {
-            		//bridgeLog("Đã lưu dược Localstore")
-                localStorage.setItem(key, value);
-            } else {
-            		//bridgeLog("Đã lưu dược memoryStore")
-                memoryStore[key] = String(value);
-            }
-        } catch (e) {
-        		//bridgeLog("Đã xảy ra lỗi localStorage: " + e)
-            memoryStore[key] = String(value);
-        }
+    // Đọc Scale và làm tròn chính xác 1 chữ số thập phân
+    function getCleanScale() {
+        let raw = localStorage.getItem("anime_player_iframe_scale") || "1.0";
+        let parsed = parseFloat(raw);
+        if (isNaN(parsed)) return 1.0;
+        return Math.round(parsed * 10) / 10; // Đảm bảo luôn ra 1.8, 1.9, 2.0 chuẩn 100%
     }
 
-    // --- 0. INJECT CSS STYLES ---
-    let styleTag = document.getElementById('custom-player-styles');
-    if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.id = 'custom-player-styles';
-        styleTag.textContent = \`
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            
-            html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                height: 100dvh !important;
-                overflow: hidden !important;
-                background: #000 !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-            }
-
-            #custom-main-player-iframe {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform-origin: center center !important;
-                border: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                z-index: 1 !important;
-                display: block !important;
-                box-sizing: border-box !important;
-                transition: width 0.15s ease, height 0.15s ease, transform 0.15s ease !important;
-            }
-
-            .floating-control-ui {
-                opacity: 0 !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-
-                transition:
-                    opacity 0.5s ease,
-                    visibility 0.5s ease,
-                    transform 0.2s ease,
-                    background-color 0.2s ease !important;
-            }
-
-            .floating-control-ui.show-ui,
-            .floating-control-ui:hover,
-            .floating-control-ui:focus-within,
-            .floating-control-ui:active,
-            .floating-control-ui.initial-show {
-                opacity: 1 !important;
-                visibility: visible !important;
-                pointer-events: auto !important;
-            }
-
-            .floating-nav-item:hover {
-                background-color: #e50914 !important;
-                border-color: #e50914 !important;
-                transform: translate(-50%, -50%) scale(1.15) !important;
-            }
-
-            .dim-btn {
-                background: #333;
-                color: #fff;
-                border: none;
-                border-radius: 4px;
-                width: 22px;
-                height: 22px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: bold;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                user-select: none;
-                transition: background 0.2s;
-            }
-            .dim-btn:hover {
-                background: #e50914 !important;
-            }
-            .dim-input {
-                width: 48px !important;
-                background: transparent !important;
-                border: none !important;
-                color: #fff !important;
-                text-align: center !important;
-                font-size: 12px !important;
-                font-weight: bold !important;
-                outline: none !important;
-            }
-            .dim-input::-webkit-outer-spin-button,
-            .dim-input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-            .dim-input[type=number] {
-                -moz-appearance: textfield;
-            }
-        \`;
-        (document.head || document.documentElement).appendChild(styleTag);
-    }
-
-    // --- 1. OVERLAY LOADING ---
-    let overlay = document.createElement('div');
-    overlay.id = 'loading-overlay';
-    Object.assign(overlay.style, {
-        position: 'fixed',
-        top: '0', left: '0',
-        width: '100vw', height: '100vh',
-        backgroundColor: '#000',
-        zIndex: '999998',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        fontFamily: 'Arial, sans-serif'
-    });
-    
-    function showLoading(msg = 'Đang tải tập phim...') {
-        overlay.innerHTML = \`
-            <div style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #e50914; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite;"></div>
-            <div style="margin-top: 15px; font-size: 14px; color: #aaa;">\${msg}</div>
-        \`;
-        overlay.style.opacity = '1';
-        overlay.style.display = 'flex';
-        if (!document.getElementById('loading-overlay')) {
-            document.body.appendChild(overlay);
-        }
-    }
-
-    function hideLoading() {
-        overlay.style.transition = 'opacity 0.3s ease';
-        overlay.style.opacity = '0';
-        setTimeout(() => { overlay.style.display = 'none'; }, 300);
-    }
-
-    // CHỐNG QUẢNG CÁO & MỞ TAB MỚI
-    window.addEventListener('click', function(e) {
-        if (!e.target.closest('#floating-select-box') && !e.target.closest('#episode-grid-popup') && !e.target.closest('#scale-grid-popup') && !e.target.closest('#url-toast-notice') && !e.target.closest('#resume-history-toast') && !e.target.closest('.floating-nav-item')) {
-            let aTag = e.target.closest('a');
-            if (aTag && (aTag.target === '_blank' || aTag.href)) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
-        }
-    }, true);
-    window.open = function() { return null; };
-
-    // --- 2. BIẾN QUẢN LÝ TRẠNG THÁI & KÍCH THƯỚC / SCALE ---
-    const storageKey = "anime_history_" + CONFIG.movieid;
-    const widthStorageKey = "anime_player_iframe_width";
-    const heightStorageKey = "anime_player_iframe_height";
-    const scaleStorageKey = "anime_player_iframe_scale";
-
-    let currentServer = CONFIG.serverhientai;
-    let currentHQ = CONFIG.hqhientai;
-    let currentTapStr = CONFIG.taphientai;
-    let currentTapNum = parseInt(currentTapStr.replace('tap-', ''), 10) || 1;
-
-    // Lấy thông số từ Storage (Sử dụng safeGetStorage)
-    function getSavedWidth() {
-        const saved = safeGetStorage(widthStorageKey);
-        return saved ? parseInt(saved, 10) : 700;
-    }
-
-    function getSavedHeight() {
-        const saved = safeGetStorage(heightStorageKey);
-        return saved ? parseInt(saved, 10) : 400;
-    }
-
-    function getSavedScale() {
-        const saved = safeGetStorage(scaleStorageKey);
-        return saved ? parseFloat(saved) : 1.0;
-    }
-
-    // Áp dụng kích thước Width / Height & Scale
-    function applyIframeDimensions(w, h, s) {
-        w = Math.max(150, parseInt(w, 10) || 700);
-        h = Math.max(100, parseInt(h, 10) || 400);
-        s = parseFloat(s) || 1.0;
-
-        let iframe = document.getElementById("custom-main-player-iframe");
-        if (iframe) {
-            iframe.style.setProperty('width', w + 'px', 'important');
-            iframe.style.setProperty('height', h + 'px', 'important');
-            iframe.style.setProperty('transform', \`translate(-50%, -50%) scale(\${s})\`, 'important');
-        }
-
-        safeSetStorage(widthStorageKey, w);
-        safeSetStorage(heightStorageKey, h);
-        safeSetStorage(scaleStorageKey, s);
-
-        const wInput = document.getElementById("iframe-w-input");
-        const hInput = document.getElementById("iframe-h-input");
-        const scaleTrigger = document.getElementById("scale-select-trigger");
-
-        if (wInput && document.activeElement !== wInput) wInput.value = w;
-        if (hInput && document.activeElement !== hInput) hInput.value = h;
-        if (scaleTrigger) scaleTrigger.textContent = "Scale " + s.toFixed(1) + "x ▼";
-
-        renderScaleGrid();
-    }
-
-    function triggerInitialShow() {
-        const elements = document.querySelectorAll('.floating-control-ui');
-
-        elements.forEach(el => {
-            el.classList.add('show-ui');
-        });
-
-        clearTimeout(window.fadeTimer);
-
-        window.fadeTimer = setTimeout(() => {
-            elements.forEach(el => {
-                el.classList.remove('show-ui');
-                el.classList.remove('initial-show');
-            });
-        }, INITIAL_SHOW_TIME);
-    }
-
-    function addTouchSupport(el) {
-        if (!el) return;
-        el.addEventListener('touchstart', function() {
-            triggerInitialShow();
-        }, { passive: true });
-    }
-
-    // --- 3. TOAST THÔNG BÁO URL ---
-    function showToast(url) {
-        if (!ENABLE_TOAST) return;
-
-        let toast = document.getElementById('url-toast-notice');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'url-toast-notice';
-            Object.assign(toast.style, {
-                position: 'fixed',
-                bottom: '20px', left: '20px',
-                zIndex: '1000010',
-                backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(229, 9, 20, 0.6)',
-                color: '#fff', padding: '10px 14px', borderRadius: '10px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.9)',
-                fontFamily: 'Arial, sans-serif', fontSize: '12px',
-                maxWidth: '85vw', wordBreak: 'break-all',
-                display: 'flex', alignItems: 'center', gap: '10px',
-                transition: 'opacity 0.3s ease, transform 0.3s ease',
-                opacity: '0', transform: 'translateY(20px)'
-            });
-            document.body.appendChild(toast);
-        }
-
-        toast.innerHTML = \`
-            <span style="color: #e50914; font-weight: bold; white-space: nowrap;">🔗 Link:</span>
-            <span style="color: #ddd; flex: 1; font-family: monospace; font-size: 11px;">\${url}</span>
-            <span id="toast-copy-act" style="background: #e50914; color: #fff; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; white-space: nowrap; user-select: none; display: inline-block;">Sao chép</span>
-        \`;
-
-        requestAnimationFrame(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        });
-
-        const copyAct = document.getElementById('toast-copy-act');
-        if (copyAct) {
-            copyAct.onclick = (e) => {
-                e.stopPropagation();
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(url).then(() => {
-                        copyAct.textContent = 'Đã chép! ✓';
-                        copyAct.style.background = '#22c55e';
-                        setTimeout(() => {
-                            copyAct.textContent = 'Sao chép';
-                            copyAct.style.background = '#e50914';
-                        }, 1500);
-                    });
-                }
-            };
-        }
-
-        if (window.toastTimer) clearTimeout(window.toastTimer);
-        window.toastTimer = setTimeout(() => {
-            if (toast) {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(20px)';
-            }
-        }, TOAST_DURATION);
-    }
-
-    function buildIframeUrl() {
-        return \`https://hhpanda.st/player/player.php?action=dox_ajax_player&post_id=\${CONFIG.movieid}&chapter_st=tap-\${currentTapNum}&type=\${currentHQ}&sv=\${currentServer}\`;
-    }
-
-    function saveCurrentState() {
-        const state = {
-            server: currentServer,
-            hq: currentHQ,
-            tap: "tap-" + currentTapNum
-        };
-        safeSetStorage(storageKey, JSON.stringify(state));
-    }
-
-    // --- 4. TẠO KHUNG GIAO DIỆN CƠ BẢN ---
-    function initBaseLayout() {
-        document.documentElement.style.cssText = 'margin:0 !important; padding:0 !important; width:100vw !important; height:100vh !important; height:100dvh !important; overflow:hidden !important; background:#000 !important;';
+    // 2. HÀM RENDER ĐIỀU KHIỂN SCALE & TẬP
+    window.forceUpdateUI = function() {
+        const activeScale = getCleanScale();
         
-        document.body.innerHTML = "";
-        document.body.style.cssText = 'margin:0 !important; padding:0 !important; width:100vw !important; height:100vh !important; height:100dvh !important; overflow:hidden !important; background:#000 !important; position:fixed !important; top:0 !important; left:0 !important; z-index:0 !important;';
-
-        showLoading("Đang khởi tạo trình phát...");
-
-        // 1. Iframe
-        let iframe = document.createElement("iframe");
-        iframe.id = "custom-main-player-iframe";
-        iframe.scrolling = "no";
-        iframe.setAttribute("allowfullscreen", "true");
-        iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
-        iframe.onload = () => {
-            hideLoading();
-            applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
-        };
-        document.body.appendChild(iframe);
-
-        // 2. Control Container (Thanh công cụ chính)
-        let container = document.createElement("div");
-        container.id = "floating-select-box";
-        container.className = "floating-control-ui initial-show";
-        Object.assign(container.style, {
-            position: "fixed", top: "20px", right: "20px",
-            zIndex: "999999",
-            backgroundColor: "rgba(15, 15, 15, 0.9)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 12px", borderRadius: "12px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.8)",
-            color: "#fff", fontFamily: "Arial, sans-serif", fontSize: "13px",
-            display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap"
-        });
-
-        // Cụm điều chỉnh Width / Height
-        function createDimensionControl(type) {
-            let isW = (type === 'W');
-            let group = document.createElement("div");
-            Object.assign(group.style, {
-                display: "flex", alignItems: "center", gap: "2px",
-                backgroundColor: "#1f1f1f", padding: "3px 6px",
-                borderRadius: "6px", border: "1px solid #444"
-            });
-
-            let lbl = document.createElement("span");
-            lbl.textContent = isW ? "W:" : "H:";
-            lbl.style.cssText = "font-size: 11px; color: #aaa; font-weight: bold; margin-right: 2px;";
-
-            let btnMinus = document.createElement("button");
-            btnMinus.className = "dim-btn";
-            btnMinus.textContent = "-";
-            btnMinus.title = "Giảm 20px";
-            btnMinus.onclick = (e) => {
-                e.stopPropagation();
-                let curW = getSavedWidth();
-                let curH = getSavedHeight();
-                let curS = getSavedScale();
-                if (isW) applyIframeDimensions(curW - 20, curH, curS);
-                else applyIframeDimensions(curW, curH - 20, curS);
-            };
-
-            let input = document.createElement("input");
-            input.id = isW ? "iframe-w-input" : "iframe-h-input";
-            input.type = "number";
-            input.className = "dim-input";
-            input.value = isW ? getSavedWidth() : getSavedHeight();
-
-            input.onchange = (e) => {
-                let val = parseInt(e.target.value, 10);
-                if (!isNaN(val)) {
-                    let curW = getSavedWidth();
-                    let curH = getSavedHeight();
-                    let curS = getSavedScale();
-                    if (isW) applyIframeDimensions(val, curH, curS);
-                    else applyIframeDimensions(curW, val, curS);
-                }
-            };
-            input.onkeydown = (e) => e.stopPropagation();
-
-            let btnPlus = document.createElement("button");
-            btnPlus.className = "dim-btn";
-            btnPlus.textContent = "+";
-            btnPlus.title = "Tăng 20px";
-            btnPlus.onclick = (e) => {
-                e.stopPropagation();
-                let curW = getSavedWidth();
-                let curH = getSavedHeight();
-                let curS = getSavedScale();
-                if (isW) applyIframeDimensions(curW + 20, curH, curS);
-                else applyIframeDimensions(curW, curH + 20, curS);
-            };
-
-            group.appendChild(lbl);
-            group.appendChild(btnMinus);
-            group.appendChild(input);
-            group.appendChild(btnPlus);
-            return group;
-        }
-
-        let widthCtrl = createDimensionControl('W');
-        let heightCtrl = createDimensionControl('H');
-
-        // --- NÚT TẢI VÀ POPUP CHỌN SCALE (GIỐNG TẬP PHIM) ---
-        let scaleTrigger = document.createElement("span");
-        scaleTrigger.id = "scale-select-trigger";
-        scaleTrigger.textContent = "Scale " + getSavedScale().toFixed(1) + "x ▼";
-        styleClickable(scaleTrigger, "#333");
-
-        let scalePopupGrid = document.createElement("div");
-        scalePopupGrid.id = "scale-grid-popup";
-        Object.assign(scalePopupGrid.style, {
-            position: "fixed", top: "65px", right: "20px",
-            zIndex: "1000000",
-            backgroundColor: "rgba(20, 20, 20, 0.95)",
-            backdropFilter: "blur(10px)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            padding: "12px", borderRadius: "12px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.9)",
-            width: "280px", maxHeight: "220px", overflowY: "auto",
-            display: "none", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px"
-        });
-
-        scaleTrigger.onclick = (e) => {
-            e.stopPropagation();
-            let epPopup = document.getElementById("episode-grid-popup");
-            if (epPopup) epPopup.style.display = "none";
-            scalePopupGrid.style.display = (scalePopupGrid.style.display === "grid") ? "none" : "grid";
-        };
-
-        // Server Select
-        let serverSelect = document.createElement("select");
-        serverSelect.id = "server-select-box";
-        styleSelect(serverSelect);
-        CONFIG.servers.forEach(srv => {
-            let opt = document.createElement("option");
-            opt.value = srv.type;
-            opt.textContent = srv.name;
-            if (srv.type === currentServer) opt.selected = true;
-            serverSelect.appendChild(opt);
-        });
-        serverSelect.onchange = (e) => {
-            currentServer = e.target.value;
-            const selSrv = CONFIG.servers.find(s => s.type === currentServer);
-            if (selSrv && currentTapNum > selSrv.maxEpi) currentTapNum = 1;
-            onSelectionChanged(true);
-        };
-
-        // HQ Select
-        let hqSelect = document.createElement("select");
-        hqSelect.id = "hq-select-box";
-        styleSelect(hqSelect);
-        CONFIG.HQ.forEach(hq => {
-            let opt = document.createElement("option");
-            opt.value = hq.type;
-            opt.textContent = hq.nname;
-            if (hq.type === currentHQ) opt.selected = true;
-            hqSelect.appendChild(opt);
-        });
-        hqSelect.onchange = (e) => {
-            currentHQ = e.target.value;
-            onSelectionChanged(false);
-        };
-
-        // Nút mở Danh Sách Tập
-        let epTrigger = document.createElement("span");
-        epTrigger.id = "ep-select-trigger";
-        epTrigger.textContent = "Tập " + currentTapNum + " ▼";
-        styleClickable(epTrigger, "#e50914");
-
-        let popupGrid = document.createElement("div");
-        popupGrid.id = "episode-grid-popup";
-        Object.assign(popupGrid.style, {
-            position: "fixed", top: "65px", right: "20px",
-            zIndex: "1000000",
-            backgroundColor: "rgba(20, 20, 20, 0.95)",
-            backdropFilter: "blur(10px)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            padding: "12px", borderRadius: "12px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.9)",
-            width: "320px", maxHeight: "250px", overflowY: "auto",
-            display: "none", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px"
-        });
-
-        epTrigger.onclick = (e) => {
-            e.stopPropagation();
-            scalePopupGrid.style.display = "none";
-            popupGrid.style.display = (popupGrid.style.display === "grid") ? "none" : "grid";
-        };
-
-        // Click ngoài lề tự đóng các popup
-        document.addEventListener("click", (e) => {
-            if (!container.contains(e.target) && !popupGrid.contains(e.target) && !scalePopupGrid.contains(e.target)) {
-                popupGrid.style.display = "none";
-                scalePopupGrid.style.display = "none";
-            }
-        });
-
-        // Đưa tất cả công cụ vào Container
-        container.appendChild(widthCtrl);
-        container.appendChild(heightCtrl);
-        container.appendChild(scaleTrigger);
-        container.appendChild(serverSelect);
-        container.appendChild(hqSelect);
-        container.appendChild(epTrigger);
-
-        // Nút Prev
-        let navPrev = document.createElement("span");
-        navPrev.id = "nav-prev-item";
-        navPrev.className = "floating-control-ui floating-nav-item initial-show";
-        navPrev.innerHTML = "&#10094;";
-        navPrev.title = "Tập trước";
-        Object.assign(navPrev.style, {
-            position: "fixed", top: "50%", left: "4%",
-            transform: "translate(-50%, -50%)", zIndex: "999999",
-            width: "48px", height: "48px", borderRadius: "50%",
-            backgroundColor: "rgba(15, 15, 15, 0.85)", backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            color: "#fff", fontSize: "20px", fontWeight: "bold",
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 6px 20px rgba(0,0,0,0.8)", userSelect: "none"
-        });
-        navPrev.onclick = (e) => {
-            e.stopPropagation();
-            if (currentTapNum > 1) {
-                currentTapNum--;
-                onSelectionChanged(false);
-            }
-        };
-
-        // Nút Next
-        let navNext = document.createElement("span");
-        navNext.id = "nav-next-item";
-        navNext.className = "floating-control-ui floating-nav-item initial-show";
-        navNext.innerHTML = "&#10095;";
-        navNext.title = "Tập tiếp theo";
-        Object.assign(navNext.style, {
-            position: "fixed", top: "50%", left: "96%",
-            transform: "translate(-50%, -50%)", zIndex: "999999",
-            width: "48px", height: "48px", borderRadius: "50%",
-            backgroundColor: "rgba(15, 15, 15, 0.85)", backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            color: "#fff", fontSize: "20px", fontWeight: "bold",
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 6px 20px rgba(0,0,0,0.8)", userSelect: "none"
-        });
-        navNext.onclick = (e) => {
-            e.stopPropagation();
-            const activeServerObj = CONFIG.servers.find(s => s.type === currentServer) || CONFIG.servers[0];
-            const maxEpi = activeServerObj ? activeServerObj.maxEpi : 40;
-            if (currentTapNum < maxEpi) {
-                currentTapNum++;
-                onSelectionChanged(false);
-            }
-        };
-
-        addTouchSupport(container);
-        addTouchSupport(navPrev);
-        addTouchSupport(navNext);
-
-        document.body.appendChild(container);
-        document.body.appendChild(popupGrid);
-        document.body.appendChild(scalePopupGrid);
-        document.body.appendChild(navPrev);
-        document.body.appendChild(navNext);
-
-        triggerInitialShow();
-        renderEpisodeGrid();
-        renderScaleGrid();
-        applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
-    }
-
-    // --- RENDER POPUP SCALE GRID ---
-    function renderScaleGrid() {
-        let scalePopupGrid = document.getElementById("scale-grid-popup");
-        if (!scalePopupGrid) return;
-        scalePopupGrid.innerHTML = "";
-
-        const curSavedScale = getSavedScale();
-
-        for (let sVal = 0.5; sVal <= 2.05; sVal += 0.1) {
-            let formattedVal = Math.round(sVal * 10) / 10;
-            let valStr = formattedVal.toFixed(1) + "x";
-            let item = document.createElement("span");
-            item.textContent = valStr;
-            let isCurrent = Math.abs(formattedVal - curSavedScale) < 0.05;
-            
-            styleClickable(item, isCurrent ? "#e50914" : "#2a2a2a");
-            
-            item.onclick = (e) => {
-                e.stopPropagation();
-                scalePopupGrid.style.display = "none";
-                applyIframeDimensions(getSavedWidth(), getSavedHeight(), formattedVal);
-            };
-            scalePopupGrid.appendChild(item);
-        }
-
-        let scaleTrigger = document.getElementById("scale-select-trigger");
-        if (scaleTrigger) scaleTrigger.textContent = "Scale " + curSavedScale.toFixed(1) + "x ▼";
-    }
-
-    // --- 5. TOAST LỊCH SỬ XEM ---
-    function showResumeToast(savedState, savedTapNum) {
-        let toast = document.getElementById('resume-history-toast');
-        if (toast) toast.remove();
-
-        toast = document.createElement('div');
-        toast.id = 'resume-history-toast';
-        Object.assign(toast.style, {
-            position: 'fixed',
-            bottom: '25px', right: '20px',
-            zIndex: '2147483647',
-            backgroundColor: 'rgba(20, 20, 20, 0.95)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(229, 9, 20, 0.8)',
-            color: '#fff', padding: '12px 18px', borderRadius: '12px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.9)',
-            fontFamily: 'Arial, sans-serif', fontSize: '13px',
-            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px',
-            transition: 'opacity 0.4s ease, transform 0.4s ease',
-            opacity: '0', transform: 'translateY(-10px)',
-            maxWidth: '380px'
-        });
-
-        const activeServerObj = CONFIG.servers.find(s => s.type === currentServer) || CONFIG.servers[0];
-        const maxEpi = activeServerObj ? activeServerObj.maxEpi : 40;
-        const hasNextEp = (savedTapNum + 1) <= maxEpi;
-
-        toast.innerHTML = \`
-            <div style="color: #eee; font-size: 13px; font-weight: 500;">
-                📌 Bạn đang mở <b>Tập \${currentTapNum}</b>, nhưng lịch sử đã xem đến <b>Tập \${savedTapNum}</b>.
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <span id="act-resume-saved" style="background: #e50914; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; user-select: none;">💾 Tập \${savedTapNum}</span>
-                \${hasNextEp ? \`<span id="act-resume-next" style="background: #2563eb; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; user-select: none;">▶️ Tập \${savedTapNum + 1}</span>\` : ''}
-                <span id="act-resume-cancel" style="background: #3f3f46; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; user-select: none;">❌ Không</span>
-            </div>
-        \`;
-
-        document.body.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        });
-
-        const closeHistoryToast = () => {
-            if (toast) {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => { if (toast) toast.remove(); }, 400);
-            }
-            if (window.historyToastTimer) clearTimeout(window.historyToastTimer);
-        };
-
-        document.getElementById('act-resume-saved').onclick = (e) => {
-            e.stopPropagation();
-            currentTapNum = savedTapNum;
-            if (savedState.server) currentServer = savedState.server;
-            if (savedState.hq) currentHQ = savedState.hq;
-            onSelectionChanged(false);
-            closeHistoryToast();
-        };
-
-        if (document.getElementById('act-resume-next')) {
-            document.getElementById('act-resume-next').onclick = (e) => {
-                e.stopPropagation();
-                currentTapNum = savedTapNum + 1;
-                if (savedState.server) currentServer = savedState.server;
-                if (savedState.hq) currentHQ = savedState.hq;
-                onSelectionChanged(false);
-                closeHistoryToast();
-            };
-        }
-
-        document.getElementById('act-resume-cancel').onclick = (e) => {
-            e.stopPropagation();
-            closeHistoryToast();
-        };
-
-        if (window.historyToastTimer) clearTimeout(window.historyToastTimer);
-        window.historyToastTimer = setTimeout(() => {
-            closeHistoryToast();
-        }, 30000);
-    }
-
-    // --- 6. KIỂM TRA LỊCH SỬ VÀ CHẠY TRÌNH PHÁT ---
-    function checkHistoryAndStart() {
-        initBaseLayout();
-
-        const savedDataRaw = safeGetStorage(storageKey);
-        let savedState = null;
-        let savedTapNum = null;
-
-        if (savedDataRaw) {
-            try {
-                savedState = JSON.parse(savedDataRaw);
-                savedTapNum = parseInt(savedState.tap.replace('tap-', ''), 10) || null;
-            } catch(e) {}
-        }
-
-        loadPlayer();
-
-        if (savedTapNum !== null && currentTapNum !== savedTapNum && currentTapNum !== (savedTapNum + 1)) {
-            showResumeToast(savedState, savedTapNum);
-        }
-    }
-
-    // --- 7. NẠP IFRAME VÀ CẬP NHẬT TRẠNG THÁI ---
-    function loadPlayer() {
-        saveCurrentState();
-        showLoading("Đang tải tập " + currentTapNum + "...");
-
-        const currentUrl = buildIframeUrl();
-        let iframe = document.getElementById("custom-main-player-iframe");
-        if (iframe) {
-            iframe.src = currentUrl;
-        }
-
-        const sSelect = document.getElementById("server-select-box");
-        if (sSelect) sSelect.value = currentServer;
-        const hSelect = document.getElementById("hq-select-box");
-        if (hSelect) hSelect.value = currentHQ;
-
-        renderEpisodeGrid();
-        renderScaleGrid();
-        updateNavState();
-        showToast(currentUrl);
-
-        applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
-    }
-
-    function onSelectionChanged(rebuildGrid = false) {
-        saveCurrentState();
-        showLoading("Đang chuyển kênh phát...");
-        triggerInitialShow();
-
-        let popupGrid = document.getElementById("episode-grid-popup");
-        if (popupGrid) popupGrid.style.display = "none";
-        let scalePopupGrid = document.getElementById("scale-grid-popup");
-        if (scalePopupGrid) scalePopupGrid.style.display = "none";
-
-        const newUrl = buildIframeUrl();
-        let iframe = document.getElementById("custom-main-player-iframe");
-        if (iframe) iframe.src = newUrl;
-
-        const sSelect = document.getElementById("server-select-box");
-        if (sSelect) sSelect.value = currentServer;
-        const hSelect = document.getElementById("hq-select-box");
-        if (hSelect) hSelect.value = currentHQ;
-
-        if (rebuildGrid) {
-            renderEpisodeGrid();
-        } else {
-            updateEpisodeGridState();
-        }
-
-        updateNavState();
-        showToast(newUrl);
-
-        applyIframeDimensions(getSavedWidth(), getSavedHeight(), getSavedScale());
-    }
-
-    function renderEpisodeGrid() {
-        let popupGrid = document.getElementById("episode-grid-popup");
-        if (!popupGrid) return;
-        popupGrid.innerHTML = "";
-
-        const activeServerObj = CONFIG.servers.find(s => s.type === currentServer) || CONFIG.servers[0];
-        const maxEpi = activeServerObj ? activeServerObj.maxEpi : 40;
-
-        for (let i = 1; i <= maxEpi; i++) {
-            let epItem = document.createElement("span");
-            epItem.textContent = i;
-            let isCurrent = (i === currentTapNum);
-            styleClickable(epItem, isCurrent ? "#e50914" : "#2a2a2a");
-            epItem.onclick = () => {
-                currentTapNum = i;
-                popupGrid.style.display = "none";
-                onSelectionChanged(false);
-            };
-            popupGrid.appendChild(epItem);
-        }
-
-        let epTrigger = document.getElementById("ep-select-trigger");
-        if (epTrigger) epTrigger.textContent = "Tập " + currentTapNum + " ▼";
-    }
-
-    function updateNavState() {
-        const navPrev = document.getElementById("nav-prev-item");
-        const navNext = document.getElementById("nav-next-item");
-        const activeServerObj = CONFIG.servers.find(s => s.type === currentServer) || CONFIG.servers[0];
-        const maxEpi = activeServerObj ? activeServerObj.maxEpi : 40;
-
-        if (navPrev) {
-            if (currentTapNum <= 1) {
-                navPrev.style.pointerEvents = "none";
-                navPrev.style.filter = "grayscale(100%) opacity(0.2)";
-            } else {
-                navPrev.style.pointerEvents = "auto";
-                navPrev.style.filter = "none";
+        // Cập nhật Nút Scale trên Control Bar
+        const scaleBtn = document.getElementById("v-scale-trigger");
+        if (scaleBtn) scaleBtn.textContent = "Scale " + activeScale.toFixed(1) + "x ▼";
+
+        // Cập nhật Nút Tập trên Control Bar
+        const epBtn = document.getElementById("v-ep-trigger");
+        if (epBtn) epBtn.textContent = "Tập " + currentTapNum + " ▼";
+
+        // Cập nhật Grid Modal Scale
+        const scaleGrid = document.getElementById("v-scale-grid");
+        if (scaleGrid) {
+            scaleGrid.innerHTML = "";
+            for (let i = 5; i <= 40; i++) {
+                let val = Math.round(i) / 10; // 0.5, 0.6 ... 1.8, 1.9
+                let btn = document.createElement("span");
+                btn.textContent = val.toFixed(1) + "x";
+                
+                // SO SÁNH CHÍNH XÁC NGUYÊN THỂ NUMERIC
+                let isSelect = (val === activeScale);
+                
+                btn.style.cssText = "padding:6px; border-radius:4px; text-align:center; font-weight:bold; cursor:pointer; background:" + (isSelect ? "#e50914" : "#2a2a2a") + "; color:#fff;";
+                
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    localStorage.setItem("anime_player_iframe_scale", val.toString());
+                    
+                    // Apply style scale lên iframe
+                    let iframe = document.getElementById("v-main-frame");
+                    if(iframe) {
+                        iframe.style.transform = "translate(-50%, -50%) scale(" + val + ")";
+                    }
+                    
+                    // Đóng modal & render lại
+                    document.getElementById("v-modal-overlay").style.display = "none";
+                    document.getElementById("v-scale-dialog").style.display = "none";
+                    window.forceUpdateUI();
+                };
+                scaleGrid.appendChild(btn);
             }
         }
-        if (navNext) {
-            if (currentTapNum >= maxEpi) {
-                navNext.style.pointerEvents = "none";
-                navNext.style.filter = "grayscale(100%) opacity(0.2)";
-            } else {
-                navNext.style.pointerEvents = "auto";
-                navNext.style.filter = "none";
+
+        // Cập nhật Grid Modal Tập
+        const epGrid = document.getElementById("v-ep-grid");
+        if (epGrid) {
+            epGrid.innerHTML = "";
+            let maxEpi = 40;
+            if (CONFIG.servers && CONFIG.servers[0] && CONFIG.servers[0].maxEpi) {
+                maxEpi = CONFIG.servers[0].maxEpi;
+            }
+            for (let i = 1; i <= maxEpi; i++) {
+                let btn = document.createElement("span");
+                btn.textContent = i;
+                let isSelect = (i === currentTapNum);
+                btn.style.cssText = "padding:6px; border-radius:4px; text-align:center; font-weight:bold; cursor:pointer; background:" + (isSelect ? "#e50914" : "#2a2a2a") + "; color:#fff;";
+                
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    currentTapNum = i;
+                    document.getElementById("v-modal-overlay").style.display = "none";
+                    document.getElementById("v-ep-dialog").style.display = "none";
+                    
+                    // Reload Iframe
+                    let iframe = document.getElementById("v-main-frame");
+                    if(iframe) {
+                        iframe.src = "https://hhpanda.st/player/player.php?action=dox_ajax_player&post_id=" + CONFIG.movieid + "&chapter_st=tap-" + i + "&type=" + (CONFIG.hqhientai||"1080p") + "&sv=" + (CONFIG.serverhientai||"Vietsub");
+                    }
+                    window.forceUpdateUI();
+                };
+                epGrid.appendChild(btn);
             }
         }
-    }
+    };
 
-    function updateEpisodeGridState() {
-        let popupGrid = document.getElementById("episode-grid-popup");
-        if (popupGrid) {
-            const items = popupGrid.querySelectorAll("span");
-            items.forEach(item => {
-                const num = parseInt(item.textContent, 10);
-                if (num === currentTapNum) {
-                    styleClickable(item, "#e50914");
-                } else {
-                    styleClickable(item, "#2a2a2a");
-                }
-            });
-        }
-        let epTrigger = document.getElementById("ep-select-trigger");
-        if (epTrigger) epTrigger.textContent = "Tập " + currentTapNum + " ▼";
-    }
-
-    function styleSelect(el) {
-        Object.assign(el.style, {
-            padding: "5px 8px", borderRadius: "6px",
-            border: "1px solid #444", backgroundColor: "#1f1f1f",
-            color: "#fff", cursor: "pointer", fontSize: "12px", outline: "none"
-        });
-    }
-
-    function styleClickable(el, bgColor) {
-        Object.assign(el.style, {
-            padding: "5px 8px", borderRadius: "6px",
-            border: "none", backgroundColor: bgColor,
-            color: "#fff", cursor: "pointer", fontSize: "12px",
-            fontWeight: "bold", textAlign: "center", transition: "background 0.2s",
-            display: "inline-block", userSelect: "none"
-        });
-    }
-
-    // EVENT LISTENERS & KHỞI CHẠY DUY NHẤT
-    document.addEventListener('touchstart', function() {
-        triggerInitialShow();
-    }, { passive: true });
-
-    document.addEventListener('mousedown', function() {
-        triggerInitialShow();
-    });
-
-    document.addEventListener('mousemove', function() {
-        triggerInitialShow();
-    });
-
-    checkHistoryAndStart();
+    // Chạy ngay khi khởi tạo
+    setTimeout(window.forceUpdateUI, 200);
 })();
     `;
 }
@@ -1535,4 +812,401 @@ function buildMenu(menuStr, type) {
 
 
 
-function _$(htmlOrBlock){ if (htmlOrBlock && typeof htmlOrBlock === 'object' && htmlOrBlock.elements) { return htmlOrBlock; } var instance = { sourceHtml: typeof htmlOrBlock === 'string' ? htmlOrBlock : '', elements: Array.isArray(htmlOrBlock) ? htmlOrBlock : (htmlOrBlock ? [htmlOrBlock] : []), length: 0, find: function (selector) { if (selector.indexOf(',') !== -1) { var results = []; var selectors = selector.split(',').map(function (s) { return s.trim(); }); for (var s = 0; s < selectors.length; s++) { if (selectors[s] === "") continue; var subInstance = this.find(selectors[s]); for (var r = 0; r < subInstance.elements.length; r++) { var element = subInstance.elements[r]; if (results.indexOf(element) === -1) { results.push(element); } } } var multiInstance = _$(results); multiInstance.sourceHtml = this.sourceHtml; return multiInstance; } var results = []; var contentFilter = ""; if (selector.indexOf(":content(") !== -1) { var contentMatch = selector.match(/:content\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/); if (contentMatch) { contentFilter = contentMatch[1] || contentMatch[2] || contentMatch[3] || ""; selector = selector.replace(/:content\((?:"[^"]*"|'[^']*'|[^)]*)\)/, ""); } } var attrNameFilter = ""; var attrValueFilter = ""; var attrOperator = "="; var hasAttrFilter = false; var attrMatch = selector.match(/\[([a-zA-Z0-9_-]+)\s*([*^$]?=)\s*(?:"([^"]*)"|'([^']*)'|([^\]"']*))\]/); if (attrMatch) { hasAttrFilter = true; attrNameFilter = attrMatch[1]; attrOperator = attrMatch[2]; attrValueFilter = attrMatch[3] || attrMatch[4] || attrMatch[5] || ""; selector = selector.replace(/\[.*?\]/, ""); } var notSelector = ""; if (selector.indexOf(":not(") !== -1) { var notMatch = selector.match(/:not\(([^)]+)\)/); if (notMatch) { notSelector = notMatch[1]; selector = selector.replace(/:not\([^)]+\)/, ""); } } var isFirstFilter = selector.indexOf(":first") !== -1; var isLastFilter = selector.indexOf(":last") !== -1; selector = selector.replace(/:first|:last/g, ""); var targetTagName = ""; var targetId = ""; var targetClasses = []; var selectorToParse = selector.trim(); if (selectorToParse !== "") { var idIndex = selectorToParse.indexOf('#'); if (idIndex !== -1) { var afterId = selectorToParse.substring(idIndex + 1); var nextDot = afterId.indexOf('.'); targetId = nextDot === -1 ? afterId : afterId.substring(0, nextDot); selectorToParse = selectorToParse.substring(0, idIndex) + (nextDot === -1 ? "" : "." + afterId.substring(nextDot + 1)); } var classParts = selectorToParse.split('.'); var possibleTag = classParts.shift(); if (possibleTag) { targetTagName = possibleTag.toLowerCase(); } targetClasses = classParts.filter(function (c) { return c.length > 0; }); } for (var i = 0; i < this.elements.length; i++) { var currentHtml = this.elements[i]; var pos = 0; var subResults = []; while ((pos = currentHtml.indexOf('<', pos)) !== -1) { if (currentHtml.charAt(pos + 1) === '/' || currentHtml.charAt(pos + 1) === '!') { pos++; continue; } var endOpenTag = -1; var insideQuote = false; var quoteChar = ''; for (var j = pos + 1; j < currentHtml.length; j++) { var char = currentHtml.charAt(j); if ((char === '"' || char === "'") && currentHtml.charAt(j - 1) !== '\\') { if (!insideQuote) { insideQuote = true; quoteChar = char; } else if (char === quoteChar) { insideQuote = false; } } if (char === '>' && !insideQuote) { endOpenTag = j; break; } } if (endOpenTag === -1) break; var fullOpenTag = currentHtml.substring(pos, endOpenTag + 1); var tagMatch = fullOpenTag.match(/^<([a-zA-Z0-9_-]+)/); var currentTagName = tagMatch ? tagMatch[1].toLowerCase() : ""; var isMatched = true; if (targetTagName && targetTagName !== currentTagName) { isMatched = false; } var getClassAttr = fullOpenTag.match(/class\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i); var classMatchStr = getClassAttr ? (getClassAttr[1] || getClassAttr[2] || getClassAttr[3] || "") : ""; var getIdAttr = fullOpenTag.match(/id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i); var idMatchStr = getIdAttr ? (getIdAttr[1] || getIdAttr[2] || getIdAttr[3] || "") : ""; if (isMatched && targetId && idMatchStr !== targetId) { isMatched = false; } if (isMatched && targetClasses.length > 0) { if (classMatchStr) { var currentClasses = classMatchStr.trim().split(/\s+/); for (var c = 0; c < targetClasses.length; c++) { if (currentClasses.indexOf(targetClasses[c]) === -1) { isMatched = false; break; } } } else { isMatched = false; } } if (isMatched && hasAttrFilter) { var actualValue = ""; if (attrNameFilter === "class") { actualValue = classMatchStr; } else if (attrNameFilter === "id") { actualValue = idMatchStr; } else { var getAnyAttr = fullOpenTag.match(new RegExp(attrNameFilter + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i')); actualValue = getAnyAttr ? (getAnyAttr[1] || getAnyAttr[2] || getAnyAttr[3] || "") : ""; } var attrExists = fullOpenTag.search(new RegExp(attrNameFilter + '\\s*=', 'i')) !== -1; if (!attrExists) { isMatched = false; } else { if (attrOperator === "=") { if (attrNameFilter === "class") { var classes = actualValue.trim().split(/\s+/); if (classes.indexOf(attrValueFilter) === -1) isMatched = false; } else if (actualValue !== attrValueFilter) { isMatched = false; } } else if (attrOperator === "*=") { if (actualValue.indexOf(attrValueFilter) === -1) isMatched = false; } else if (attrOperator === "^=") { if (actualValue.indexOf(attrValueFilter) !== 0) isMatched = false; } else if (attrOperator === "$=") { if (actualValue.slice(-attrValueFilter.length) !== attrValueFilter) isMatched = false; } } } if (isMatched) { var startTagPos = pos; var endTagPos = endOpenTag + 1; var selfClosingTags = ['img', 'source', 'input', 'br', 'hr', 'link', 'meta']; if (selfClosingTags.indexOf(currentTagName) === -1 && fullOpenTag.indexOf('/>') === -1) { var depth = 1; var tagRegex = new RegExp('<(/?)' + currentTagName + '(?:\\s+[^>]*|\\s*>)', 'gi'); tagRegex.lastIndex = endOpenTag + 1; var match; while ((match = tagRegex.exec(currentHtml)) !== null) { var isClose = match[1] === '/'; var fullMatched = match[0]; if (isClose) { depth--; } else if (fullMatched.indexOf('/>') === -1) { depth++; } if (depth === 0) { endTagPos = tagRegex.lastIndex; break; } } if (depth > 0) { endTagPos = currentHtml.length; } } var foundBlock = currentHtml.substring(startTagPos, endTagPos); if (contentFilter) { var pureText = ""; if (currentTagName === "script" || currentTagName === "style") { var innerStart = foundBlock.indexOf('>') + 1; var innerEnd = foundBlock.search(/<\/(?:script|style)/i); pureText = innerEnd !== -1 ? foundBlock.substring(innerStart, innerEnd) : foundBlock.substring(innerStart); } else { pureText = foundBlock.replace(/<[^>]+>/g, "").trim(); } var keywords = contentFilter.split('|'); var isContentMatched = false; for (var k = 0; k < keywords.length; k++) { if (pureText.indexOf(keywords[k].trim()) !== -1) { isContentMatched = true; break; } } if (!isContentMatched) { pos = endTagPos; continue; } } if (notSelector) { var isNotClass = notSelector.indexOf('.') === 0; var isNotId = notSelector.indexOf('#') === 0; var notValue = notSelector.substring(1); var hasNot = false; if (isNotClass && classMatchStr.indexOf(notValue) !== -1) hasNot = true; if (isNotId && idMatchStr.indexOf(notValue) !== -1) hasNot = true; if (!hasNot) subResults.push(foundBlock); } else { subResults.push(foundBlock); } pos = endTagPos; } else { pos++; } } if (isFirstFilter && subResults.length > 0) subResults = [subResults[0]]; if (isLastFilter && subResults.length > 0) subResults = [subResults[subResults.length - 1]]; results = results.concat(subResults); } var newInstance = _$(results); newInstance.sourceHtml = this.sourceHtml || currentHtml; return newInstance; }, each: function (callback) { for (var i = 0; i < this.elements.length; i++) { var childInstance = _$(this.elements[i]); childInstance.sourceHtml = this.sourceHtml; callback.call(childInstance, i, this.elements[i]); } return this; }, eq: function (index) { if (index < 0) index = this.elements.length + index; var matchedElement = this.elements[index]; this.elements = matchedElement ? [matchedElement] : []; this.length = this.elements.length; return this; }, attr: function (attrName) { if (this.elements.length === 0) return ""; var elem = this.elements[0]; var getAttr = elem.match(new RegExp(attrName + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i')); return getAttr ? (getAttr[1] || getAttr[2] || getAttr[3] || "") : ""; }, html: function () { if (this.elements.length === 0) return ""; var elem = this.elements[0]; var start = elem.indexOf('>') + 1; var matchClose = elem.match(/<\/([a-zA-Z0-9_-]+)\s*>\s*$/i); if (matchClose) { var end = elem.lastIndexOf(matchClose[0]); if (start > 0 && end >= start) return elem.substring(start, end); } return start > 0 ? elem.substring(start) : ""; }, text: function (separator) { if (this.elements.length === 0) return ""; var elem = this.elements[0]; var start = elem.indexOf('>') + 1; var end = elem.lastIndexOf('</'); if (start > 0 && end > start) { var content = elem.substring(start, end); var pureText = content.replace(/<\/?[^>]+(>|$)/g, "\n"); if (typeof separator === 'string') { return pureText .split('\n') .map(function (item) { return item.trim(); }) .filter(function (item) { return item !== ''; }) .join(separator); } return pureText .split('\n') .map(function (item) { return item.trim(); }) .filter(function (item) { return item !== ''; }) .join(' '); } return ""; }, textAll: function (separator) { if (this.elements.length === 0) return ""; var sep = typeof separator === 'string' ? separator : " "; var allTexts = []; for (var i = 0; i < this.elements.length; i++) { var elem = this.elements[i]; var start = elem.indexOf('>') + 1; var end = elem.lastIndexOf('</'); if (start > 0 && end > start) { var content = elem.substring(start, end); var pureText = content.replace(/<\/?[^>]+(>|$)/g, "\n"); var cleanText = pureText .split('\n') .map(function (item) { return item.trim(); }) .filter(function (item) { return item !== ''; }) .join(' '); if (cleanText !== '') { allTexts.push(cleanText); } } } return allTexts.join(sep); }, next: function () { var results = []; if (!this.sourceHtml) return this; for (var i = 0; i < this.elements.length; i++) { var elem = this.elements[i]; var idx = this.sourceHtml.indexOf(elem); if (idx === -1) continue; var scanPos = idx + elem.length; var nextOpen = this.sourceHtml.indexOf('<', scanPos); if (nextOpen !== -1) { if (this.sourceHtml.charAt(nextOpen + 1) === '/') continue; var endOpenTag = this.sourceHtml.indexOf('>', nextOpen); if (endOpenTag === -1) continue; var fullOpenTag = this.sourceHtml.substring(nextOpen, endOpenTag + 1); var spacePos = fullOpenTag.indexOf(' '); var currentTagName = (spacePos === -1) ? fullOpenTag.substring(1, fullOpenTag.length - 1).toLowerCase() : fullOpenTag.substring(1, spacePos).toLowerCase(); var startTagPos = nextOpen; var endTagPos = endOpenTag + 1; var selfClosingTags = ['img', 'source', 'input', 'br', 'hr', 'link', 'meta']; if (selfClosingTags.indexOf(currentTagName) === -1 && fullOpenTag.indexOf('/>') === -1) { var depth = 1; var tagRegex = new RegExp('<(/?)' + currentTagName + '(?:\\s+[^>]*|\\s*>)', 'gi'); tagRegex.lastIndex = endOpenTag + 1; var match; while ((match = tagRegex.exec(this.sourceHtml)) !== null) { if (match[1] === '/') depth--; else if (match[0].indexOf('/>') === -1) depth++; if (depth === 0) { endTagPos = tagRegex.lastIndex; break; } } } results.push(this.sourceHtml.substring(startTagPos, endTagPos)); } } var nextInstance = _$(results); nextInstance.sourceHtml = this.sourceHtml; this.elements = results; this.length = results.length; return this; }, parent: function () { var results = []; if (!this.sourceHtml) return this; for (var i = 0; i < this.elements.length; i++) { var elem = this.elements[i]; var idx = this.sourceHtml.indexOf(elem); if (idx <= 0) continue; var scanPos = idx - 1; while (scanPos >= 0) { var openTagPos = this.sourceHtml.lastIndexOf('<', scanPos); if (openTagPos === -1) break; if (this.sourceHtml.charAt(openTagPos + 1) !== '/' && this.sourceHtml.charAt(openTagPos + 1) !== '!') { var endOpenTag = this.sourceHtml.indexOf('>', openTagPos); if (endOpenTag !== -1 && endOpenTag > openTagPos) { var fullOpenTag = this.sourceHtml.substring(openTagPos, endOpenTag + 1); var spacePos = fullOpenTag.indexOf(' '); var currentTagName = (spacePos === -1) ? fullOpenTag.substring(1, fullOpenTag.length - 1).toLowerCase() : fullOpenTag.substring(1, spacePos).toLowerCase(); var endTagPos = endOpenTag + 1; var selfClosingTags = ['img', 'source', 'input', 'br', 'hr', 'link', 'meta']; if (selfClosingTags.indexOf(currentTagName) === -1 && fullOpenTag.indexOf('/>') === -1) { var depth = 1; var tagRegex = new RegExp('<(/?)' + currentTagName + '(?:\\s+[^>]*|\\s*>)', 'gi'); tagRegex.lastIndex = endOpenTag + 1; var match; while ((match = tagRegex.exec(this.sourceHtml)) !== null) { if (match[1] === '/') depth--; else if (match[0].indexOf('/>') === -1) depth++; if (depth === 0) { endTagPos = tagRegex.lastIndex; break; } } } if (endTagPos >= idx + elem.length) { var parentBlock = this.sourceHtml.substring(openTagPos, endTagPos); if (results.indexOf(parentBlock) === -1) results.push(parentBlock); break; } } } scanPos = openTagPos - 1; } } var parentInstance = _$(results); parentInstance.sourceHtml = this.sourceHtml; this.elements = results; this.length = results.length; return this; }, closest: function (selector) { var results = []; if (!this.sourceHtml || this.elements.length === 0) return _$([]); for (var i = 0; i < this.elements.length; i++) { var currentElem = this.elements[i]; var currentObj = _$(currentElem); currentObj.sourceHtml = this.sourceHtml; var selfCheck = _$(this.sourceHtml).find(selector); var isSelfMatched = false; for (var s = 0; s < selfCheck.elements.length; s++) { if (selfCheck.elements[s] === currentElem) { isSelfMatched = true; break; } } if (isSelfMatched) { if (results.indexOf(currentElem) === -1) results.push(currentElem); continue; } var parentObj = currentObj.parent(); while (parentObj.elements.length > 0) { var parentElem = parentObj.elements[0]; var checkMatch = _$(this.sourceHtml).find(selector); var isMatched = false; for (var j = 0; j < checkMatch.elements.length; j++) { if (checkMatch.elements[j] === parentElem) { isMatched = true; break; } } if (isMatched) { if (results.indexOf(parentElem) === -1) results.push(parentElem); break; } parentObj = parentObj.parent(); } } var closestInstance = _$(results); closestInstance.sourceHtml = this.sourceHtml; return closestInstance; } }; instance.length = instance.elements.length; return instance; };
+function _$(param) {
+    // -------------------------------------------------------------
+    // 1. HELPER PARSER & UTILS
+    // -------------------------------------------------------------
+    function parseHTML(htmlString) {
+        let nodes = [];
+        let root = { id: 0, tag: "ROOT", attrs: {}, childrenIds: [], parentId: null };
+        nodes.push(root);
+
+        try {
+            let html = (htmlString || "").trim();
+            if (!html) return { root, nodes };
+
+            const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+            let stack = [0];
+            let tagRegex = /<(?:\/([a-zA-Z0-9_-]+)|([a-zA-Z0-9_-]+)([^>]*?)(\/)?)\s*>/g;
+            
+            let lastIndex = 0;
+            let match;
+            let maxIter = 50000;
+            let iter = 0;
+
+            while ((match = tagRegex.exec(html)) !== null && iter++ < maxIter) {
+                let textBefore = html.slice(lastIndex, match.index).trim();
+                let parentId = stack[stack.length - 1];
+
+                if (textBefore) {
+                    let textId = nodes.length;
+                    nodes.push({ id: textId, tag: "#text", text: textBefore, attrs: {}, childrenIds: [], parentId: parentId });
+                    nodes[parentId].childrenIds.push(textId);
+                }
+
+                lastIndex = tagRegex.lastIndex;
+                let isCloseTag = !!match[1];
+                let tagName = (match[1] || match[2] || "").toLowerCase();
+                let attrStr = match[3] || "";
+                let isSelfClosing = !!match[4] || VOID_TAGS.has(tagName);
+
+                if (isCloseTag) {
+                    for (let i = stack.length - 1; i > 0; i--) {
+                        if (nodes[stack[i]].tag === tagName) {
+                            stack.splice(i);
+                            break;
+                        }
+                    }
+                } else {
+                    let attrs = {};
+                    let attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+                    let attrMatch;
+                    while ((attrMatch = attrRegex.exec(attrStr)) !== null) {
+                        attrs[attrMatch[1].toLowerCase()] = attrMatch[2] || attrMatch[3] || attrMatch[4] || "";
+                    }
+
+                    let nodeId = nodes.length;
+                    let node = { id: nodeId, tag: tagName, attrs: attrs, childrenIds: [], parentId: parentId };
+                    nodes.push(node);
+                    nodes[parentId].childrenIds.push(nodeId);
+
+                    if (!isSelfClosing) {
+                        stack.push(nodeId);
+                    }
+                }
+            }
+
+            let remainingText = html.slice(lastIndex).trim();
+            if (remainingText && stack.length > 0) {
+                let parentId = stack[stack.length - 1];
+                let textId = nodes.length;
+                nodes.push({ id: textId, tag: "#text", text: remainingText, attrs: {}, childrenIds: [], parentId: parentId });
+                nodes[parentId].childrenIds.push(textId);
+            }
+        } catch (err) {
+            if (typeof window !== "undefined" && window.log) window.log("parseHTML error: " + err.message);
+        }
+        return { root, nodes };
+    }
+
+    function getNodeText(node, nodes, depth) {
+        if (!node || (depth || 0) > 20) return "";
+        if (node.tag === "#text") return node.text || "";
+        let text = "";
+        if (node.childrenIds) {
+            for (let cid of node.childrenIds) {
+                text += getNodeText(nodes[cid], nodes, (depth || 0) + 1) + " ";
+            }
+        }
+        return text.trim();
+    }
+
+    // -------------------------------------------------------------
+    // 2. QUERY ENGINE & SELECTOR MATCHING
+    // -------------------------------------------------------------
+    function matchSingleSelector(node, sel, nodes) {
+        if (!node || node.tag === "#text" || node.tag === "ROOT") return false;
+
+        let cleanSel = sel;
+        
+        // 1. Tách pseudo positional (:first, :last, :eq)
+        cleanSel = cleanSel.replace(/:first|:last|:eq\([0-9]+\)/gi, "").trim();
+
+        // 2. Tách pseudo :content(...)
+        let pseudoContentArg = null;
+        let contentMatch = cleanSel.match(/:content\((['"]?)(.*?)\1\)/i);
+        if (contentMatch) {
+            pseudoContentArg = contentMatch[2];
+            cleanSel = cleanSel.replace(contentMatch[0], "").trim();
+        }
+
+        // 3. Khớp Selector gốc
+        if (cleanSel && cleanSel !== "*") {
+            let tagMatch = cleanSel.match(/^[a-zA-Z0-9_-]+/);
+            if (tagMatch && node.tag !== tagMatch[0].toLowerCase()) return false;
+
+            let idMatch = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
+            if (idMatch && (!node.attrs || node.attrs.id !== idMatch[1])) return false;
+
+            // Class matching (hỗ trợ Tailwind)
+            let classMatches = cleanSel.match(/\.([a-zA-Z0-9_\-\/\\:]+)/g);
+            if (classMatches) {
+                if (!node.attrs || !node.attrs.class) return false;
+                let elClasses = node.attrs.class.split(/\s+/);
+                for (let c of classMatches) {
+                    let targetClass = c.substring(1);
+                    if (!elClasses.includes(targetClass)) return false;
+                }
+            }
+
+            let attrMatch = cleanSel.match(/\[([a-zA-Z0-9_-]+)(?:=['"]?(.*?)['"]?)?\]/);
+            if (attrMatch) {
+                let attrName = attrMatch[1].toLowerCase();
+                let attrVal = attrMatch[2];
+                if (!node.attrs || !(attrName in node.attrs)) return false;
+                if (attrVal !== undefined && node.attrs[attrName] !== attrVal) return false;
+            }
+        }
+
+        if (pseudoContentArg !== null) {
+            let fullText = getNodeText(node, nodes, 0);
+            let keywords = pseudoContentArg.split("|").map(k => k.trim().toLowerCase());
+            let found = keywords.some(kw => fullText.toLowerCase().includes(kw));
+            if (!found) return false;
+        }
+
+        return true;
+    }
+
+    function querySelectorAllSingleLevel(startNode, selector, nodes) {
+        let results = [];
+        function search(currentId, depth) {
+            if (depth > 50) return;
+            let current = nodes[currentId];
+            if (!current) return;
+
+            if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
+                if (matchSingleSelector(current, selector, nodes)) {
+                    results.push(current);
+                }
+            }
+            if (current.childrenIds) {
+                for (let cid of current.childrenIds) {
+                    search(cid, depth + 1);
+                }
+            }
+        }
+        search(startNode.id, 0);
+
+        if (selector.indexOf(":first") !== -1) return results.slice(0, 1);
+        if (selector.indexOf(":last") !== -1) return results.slice(-1);
+        
+        let eqMatch = selector.match(/:eq\(([0-9]+)\)/i);
+        if (eqMatch) {
+            let idx = parseInt(eqMatch[1], 10);
+            return results[idx] ? [results[idx]] : [];
+        }
+
+        return results;
+    }
+
+    function querySelectorAll(startNode, selector, nodes) {
+        try {
+            if (!startNode || !selector) return [];
+
+            if (selector.indexOf(',') !== -1) {
+                let groupSelectors = selector.split(',').map(s => s.trim());
+                let resMap = new Map();
+                for (let gSel of groupSelectors) {
+                    let subRes = querySelectorAll(startNode, gSel, nodes);
+                    for (let r of subRes) resMap.set(r.id, r);
+                }
+                return Array.from(resMap.values());
+            }
+
+            let spaceParts = selector.trim().split(/\s+/);
+            if (spaceParts.length > 1) {
+                let currentNodes = [startNode];
+                for (let part of spaceParts) {
+                    let nextLevelNodes = [];
+                    let addedIds = new Set();
+                    for (let cNode of currentNodes) {
+                        let subResults = querySelectorAllSingleLevel(cNode, part, nodes);
+                        for (let r of subResults) {
+                            if (!addedIds.has(r.id)) {
+                                addedIds.add(r.id);
+                                nextLevelNodes.push(r);
+                            }
+                        }
+                    }
+                    currentNodes = nextLevelNodes;
+                    if (currentNodes.length === 0) break;
+                }
+                return currentNodes;
+            }
+
+            return querySelectorAllSingleLevel(startNode, selector, nodes);
+        } catch (err) {
+            return [];
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 3. MINIJQ CLASS CONSTRUCTOR & PROTOTYPE
+    // -------------------------------------------------------------
+    function MiniJQ(elements, nodesStore) {
+        this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
+        this.nodes = nodesStore || [];
+        this.length = this.elements.length;
+    }
+
+    MiniJQ.prototype = {
+        find: function(selector) {
+            if (this.elements.length === 0) return new MiniJQ([], this.nodes);
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let res = querySelectorAll(el, selector, this.nodes);
+                for (let r of res) {
+                    if (!addedIds.has(r.id)) {
+                        addedIds.add(r.id);
+                        matched.push(r);
+                    }
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        },
+
+        text: function() {
+            if (this.elements.length === 0) return "";
+            return getNodeText(this.elements[0], this.nodes, 0);
+        },
+
+        html: function() {
+            if (this.elements.length === 0) return "";
+            let self = this;
+            let serialize = function(nodeId, depth) {
+                if (depth > 20) return "";
+                let node = self.nodes[nodeId];
+                if (!node) return "";
+                if (node.tag === "#text") return node.text || "";
+                let attrs = Object.entries(node.attrs || {}).map(([k, v]) => ` ${k}="${v}"`).join("");
+                let childrenHTML = (node.childrenIds || []).map(cid => serialize(cid, depth + 1)).join("");
+                return `<${node.tag}${attrs}>${childrenHTML}</${node.tag}>`;
+            };
+            return (this.elements[0].childrenIds || []).map(cid => serialize(cid, 0)).join("");
+        },
+
+        attr: function(name, value) {
+            if (value !== undefined) {
+                for (let el of this.elements) {
+                    if (el && el.tag !== "#text") {
+                        if (!el.attrs) el.attrs = {};
+                        el.attrs[name] = value;
+                    }
+                }
+                return this;
+            }
+            if (this.elements.length === 0 || !this.elements[0].attrs) return "";
+            return this.elements[0].attrs[name] || "";
+        },
+
+        each: function(callback) {
+            if (typeof callback !== 'function') return this;
+            this.elements.forEach((el, index) => {
+                let jqEl = new MiniJQ([el], this.nodes);
+                callback.call(jqEl, index, jqEl);
+            });
+            return this;
+        },
+
+        textAll: function(delimiter) {
+            if (delimiter === undefined) delimiter = " ";
+            let texts = [];
+            for (let el of this.elements) {
+                texts.push(getNodeText(el, this.nodes, 0));
+            }
+            return texts.join(delimiter);
+        },
+
+        first: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[0]] : [], this.nodes);
+        },
+
+        last: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[this.elements.length - 1]] : [], this.nodes);
+        },
+
+        eq: function(index) {
+            return new MiniJQ(this.elements[index] ? [this.elements[index]] : [], this.nodes);
+        },
+
+        parent: function() {
+            let parents = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                if (el && el.parentId !== null && el.parentId !== 0) {
+                    let pNode = this.nodes[el.parentId];
+                    if (pNode && !addedIds.has(pNode.id)) {
+                        addedIds.add(pNode.id);
+                        parents.push(pNode);
+                    }
+                }
+            }
+            return new MiniJQ(parents, this.nodes);
+        },
+
+        next: function() {
+            let nexts = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx !== -1 && idx + 1 < siblings.length) {
+                    nexts.push(siblings[idx + 1]);
+                }
+            }
+            return new MiniJQ(nexts, this.nodes);
+        },
+
+        before: function() {
+            let befores = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx > 0) {
+                    befores.push(siblings[idx - 1]);
+                }
+            }
+            return new MiniJQ(befores, this.nodes);
+        },
+
+        after: function() {
+            return this.next();
+        },
+
+        closest: function(selector) {
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let currParentId = el.parentId;
+                let depth = 0;
+                while (currParentId !== null && currParentId !== 0 && depth++ < 30) {
+                    let curr = this.nodes[currParentId];
+                    if (!curr) break;
+                    if (matchSingleSelector(curr, selector, this.nodes)) {
+                        if (!addedIds.has(curr.id)) {
+                            addedIds.add(curr.id);
+                            matched.push(curr);
+                        }
+                        break;
+                    }
+                    currParentId = curr.parentId;
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        }
+    };
+
+    // -------------------------------------------------------------
+    // 4. MAIN ENTRY POINT LOGIC FOR _$
+    // -------------------------------------------------------------
+    try {
+        if (!param) return new MiniJQ([], []);
+        if (param instanceof MiniJQ) return param;
+        if (typeof param === "string") {
+            let parsed = parseHTML(param);
+            return new MiniJQ(parsed.root, parsed.nodes);
+        }
+        return new MiniJQ(param, []);
+    } catch (err) {
+        return new MiniJQ([], []);
+    }
+}

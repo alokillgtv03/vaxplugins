@@ -1,5 +1,5 @@
 // https://bilutv.asia
-BASEURL = "https://motchille.cx";
+BASEURL = "https://motchillw.blue";
 
 function getManifest() {
     return JSON.stringify({
@@ -7,9 +7,10 @@ function getManifest() {
         "name": "Nguồn Phim Motchill",
         "description": "Mochill Trang Xem Phim.",
       	"info": "Nguồn phim xịn của Motchill.",
-        "version": "1.0.9",
-        "baseUrl": "https://motchille.cx",
+        "version": "1.1",
+        "baseUrl": BASEURL,
         "iconUrl": "https://motchille.cx/motchill.png",
+        "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "type": "MOVIE",
         "playerType": "exoplayer"
@@ -29,6 +30,11 @@ function log(msg) {
 function getHomeSections() {
     try {
         var listurl = `
+/danh-sach/phim-le@@Phim Lẻ@@false
+/danh-sach/phim-bo@@Phim Bộ@@false
+/danh-sach/phim-long-tieng@@Phim Lồng Tiếng@@false
+/danh-sach/phim-thuyet-minh@@Phim Thuyết Minh@@false
+/danh-sach/phim-chieu-rap@@Phim Chiêú Rạp @@false
 /danh-sach@@Phim Mới@@true
 `;
         var menulist = buildMenu(listurl);
@@ -39,6 +45,7 @@ function getHomeSections() {
         return JSON.stringify([]);
     }
 }
+
 
 function getPrimaryCategories() {
     try {
@@ -426,7 +433,7 @@ function parseMovieDetail(html, url) {
             }
             
             if (idVideo) {
-                extra = "https://motchille.cx/baseapi/episodes?movie_id=" + idVideo;
+                extra = BASEURL + "/baseapi/episodes?movie_id=" + idVideo;
                 log("parseMovieDetail[url]: \n" + extra);
             }
             

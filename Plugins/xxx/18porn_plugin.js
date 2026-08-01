@@ -2,15 +2,16 @@ BaseURL = "https://www.18porn.sex";
 
 function getManifest() {
     return JSON.stringify({
-        "id": "newporn",          
+        "id": "18porn",          
         "name": "18porn",
         "description": "Nguồn xem phim XXX ổn định",
-        "version": "1.3.9",             
+        "version": "1.4",             
         "baseUrl": "https://www.18porn.sex",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/18porn.jpg", 
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
         "isEnabled": true,
         "isAdult": true,
+        "layoutType": "HORIZONTAL",
         "type": "VIDEO",
         "playerType": "exoplayer"
     });
@@ -18,6 +19,8 @@ function getManifest() {
 
 function getHomeSections() {
  return JSON.stringify([
+  { slug: 'top-rated/', title: 'Top Tháng', type: 'HORIZONTAL' },
+  { slug: 'best/', title: 'Xem Nhiều', type: 'HORIZONTAL' },
   { slug: 'new/', title: 'Hàng Mới', type: 'Grid' }
  ]);
 }

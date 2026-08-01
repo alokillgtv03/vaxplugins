@@ -5,10 +5,11 @@ function getManifest() {
         "id": "bemyhole",
         "name": "Bemyhole XXX",
         "description": "XXX Độc Lạ.",
-        "version": "1.7.6",
+        "version": "1.7.7",
         "baseUrl": "https://www.bemyhole.com",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
+        "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
@@ -38,6 +39,9 @@ function log(msg) {
 function getHomeSections() {
     try {
         var listurl = `
+/tags/japanese-shemale/@@ Nhật @@false
+/tags/3d-porn/@@3D@@false
+/popular/@@Xu Hướng @@false
 /latest-shemale-porn/@@Hàng Mới@@true
 `;
         var menulist = buildMenu(listurl);

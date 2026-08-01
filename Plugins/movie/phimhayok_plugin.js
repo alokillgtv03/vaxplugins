@@ -2,16 +2,17 @@
 // VAAPP Plugin-Crophim Pro (Đồng bộ cấu trúc 100% theo chuẩn RophimFake)
 // Tên file bắt buộc khi lưu:s crophim_plugin.js
 // =============================================================================
-BASEURL = "https://clink.media";
+BASEURL = "https://ayam.ws";
 function getManifest() {
     return JSON.stringify({
         "id": "phimhayok",          
         "name": "phimhayok",
         "description": "Nguồn xem phim Online ổn định",
-        "version": "1.1.2",             
-        "baseUrl": "https://clink.media",
+        "version": "1.1.3",             
+        "baseUrl": "https://ayam.ws",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/phimhayok.jpg",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "type": "MOVIE",
         "playerType": "auto"
     });
@@ -19,6 +20,9 @@ function getManifest() {
 
 function getHomeSections() {
     return JSON.stringify([
+        { "slug": "chuyen-muc/phim-le", "title": "Phim Lẻ", "type": "Horizontal"},
+        { "slug": "chuyen-muc/phim-bo", "title": "Phim Bộ", "type": "Horizontal"},
+        { "slug": "chuyen-muc/phim-ngan", "title": "Phim Ngắn", "type": "Horizontal"}, 
         { "slug": "chuyen-muc/motphim", "title": "Phim Mới", "type": "Grid"}
     ]);
 }

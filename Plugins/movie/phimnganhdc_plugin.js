@@ -5,12 +5,12 @@ function getManifest() {
         "id": "phimnganhdc",
         "name": "Phim Ngắn HDC",
         "description": "Phim ngắn trung quốc.",
-        "version": "1.3",
+        "version": "1.4",
         "baseUrl": "https://phimnganhdc.com",
       	"info":"Nguồn phim ngắn, hãy xem màn hình dọc cho thuận mắt hơn nhé.",
         "iconUrl": "https://phimnganhdc.com/storage/files/logo-phimnganhdc.png",
         "isEnabled": true,
-        "type": "VIDEO",
+        "type": "MOVIE",
         "playerType": "embed"
     });
 }

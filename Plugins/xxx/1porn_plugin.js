@@ -4,11 +4,12 @@ function getManifest() {
         "id": "1porn",
         "name": "1Porn",
         "description": "XXX 4K",
-        "version": "1.2.9",
+        "version": "1.3",
         "baseUrl": "https://www.1porn.tv",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
       "info":"Nguồn phim chất lượng 4K nên load hơi lâu, bạn chịu khó đợi tí nha.",
         "isEnabled": true,
+    "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"
@@ -22,11 +23,13 @@ function log(msg) {
         console.log("[gamomephim] " + msg);
     }
 }
-
+// https://www.1porn.tv/vi/categories/4k/
 function getHomeSections() {
-    var listurl = "[{\"link\":\"/vi/categories/4k/\",\"name\":\"4K\"}]";
-    var menulist = buildMenu(listurl, true);
-    return JSON.stringify(menulist);
+    return JSON.stringify([
+       {"slug": "/vi/most-popular/","title": "Phổ Biến","type": "Horizontal"},
+        {"slug": "/vi/top-rated/","title": "Top Trong Tháng","type": "Horizontal"},
+        {"slug": "/vi/categories/4k/","title": "Phim 4K Mới","type": "Grid"}
+    ]);
 }
 
 function getPrimaryCategories() {
@@ -182,7 +185,7 @@ function parseListResponse(html, $url) {
 			if (src.indexOf("data:image") > -1) {
 				src = this.find("img").attr("data-src");
 			}
-			if (href && href.indexOf("http") > -1) {
+			if (href && href.indexOf("http") > -1 && title.length > 5) {
 				var cleanThumb = src.replace(/&amp;/g, '&');
 				
 				items.push({

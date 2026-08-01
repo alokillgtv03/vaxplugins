@@ -5,8 +5,8 @@
 BaseURL = "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec";
 BaseJSON = "";
 LISTURL = `
-https://hentaivietsub.com/hentai/enjo-kouhai-tap-11
-https://zabitcdn.name/videos/6a506ca0bb75cfcab80552a2/play?event_id=player-wrapper&adTag=https%3A%2F%2Fvast.flimora.top%2Fhentaivietsub.com
+https://hhpanda.st/watch-dai-vuong-tha-mang-phan-1/tap-12-sv1.html
+https://streamfree.vip/embed/v/WiBGTNMTwrapper&adTag=https%3A%2F%2Fva
 `
 
 
@@ -430,7 +430,7 @@ function runjS() {
     var activeWorkerIndex = 0;
     var PLAYER_MODE = "CUSTOM"; 
     var PROXY_ENABLED = false; 
-    var HTMLRAW = 1;
+    var HTMLRAW = 1; 
     var STARTRUN = 0;
     var USE_CUSTOM_DECODER = false; 
     var SET_VIDEO_WAIT_MS = 2000; 
@@ -789,7 +789,12 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
           STARTRUN = 1;
 
           var domHTML = document.getElementsByTagName("html");
+          
           if (domHTML && domHTML[0]) {
+            if(HTMLRAW == 1){
+              bridgeLog(domHTML[0].outerHTML);
+            }
+          
             var VDeo = document.querySelector(".art-video");
             var VDeo2 = document.querySelector(".art-video source");
             var linkVD = "";
