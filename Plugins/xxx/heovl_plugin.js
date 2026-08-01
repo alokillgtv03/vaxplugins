@@ -4,7 +4,7 @@ function getManifest() {
         "id": "heovl",
         "name": "Heovl",
         "description": "XXX Hay",
-        "version": "1.7.3",
+        "version": "1.7.4",
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://heovl.im",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
@@ -73,11 +73,15 @@ while ((match = regex.exec(listurl)) !== null) {
 
 function getHomeSections() {
     var listurl = `
-    categories/viet-nam@@Việt Nam@@true
+categories/trung-quoc@@Trung Quốc@@false
+categories/nhat-ban@@Nhật Bản@@false
+categories/vietsub@@Vietsub@@false
+categories/viet-nam@@Việt Nam@@true
     `
     var  menulist = buildMenu(listurl);
     return JSON.stringify(menulist);
 }
+
 
 // https://pornone.com/anal/
 /*

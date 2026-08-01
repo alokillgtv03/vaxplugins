@@ -5,11 +5,12 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "description": "Nguồn XXX hàn quốc Hay", 
-        "version": "1.1.6",
+        "version": "1.1.8",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
         "isAdult": true,
+        debug: true,
         "type": "MOVIE",
         "playerType": "embed"
     });

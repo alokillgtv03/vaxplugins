@@ -23,7 +23,9 @@ function log(msg) {
 }
 
 function getHomeSections() {
-    var listurl = "[{\"link\":\"/category/4k_c15/\",\"name\":\"4K\"}]";
+    var listurl = `[
+      {\"link\":\"/category/4k_c15/\",\"name\":\"4K\"}
+    ]`;
     var menulist = buildMenu(listurl, true);
     return JSON.stringify(menulist);
 }

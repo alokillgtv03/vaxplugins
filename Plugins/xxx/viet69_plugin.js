@@ -5,11 +5,13 @@ function getManifest() {
         "id": "viet69",          
         "name": "Viet69",
         "description": "XXX Hay",
-        "version": "1.5.1",             
+        "version": "1.5.3",             
         "baseUrl": "https://viet69z.me",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/viet69.png", 
         "isEnabled": true,
         "isAdult": true,
+        "adblock": true,
+        "layoutType": "HORIZONTAL",
         "type": "VIDEO",
         "playerType": "embed"
     });
@@ -17,6 +19,9 @@ function getManifest() {
 
 function getHomeSections() {
     return JSON.stringify([
+        { "slug": "?s=Vi%E1%BB%87t+nam", "title": "Việt Nam", "type": "Tập Thể" },
+        { "slug": "?s=T%E1%BA%ADp+th%E1%BB%83", "title": "Sex Mới", "type": "Tập Thể" },
+        { "slug": "?s=Hi%E1%BA%BFp+d%C3%A2m", "title": "Hiếp Dâm", "type": "HORIZONTAL" },
         { "slug": "", "title": "Sex Mới", "type": "Grid" }
     ]);
 }
@@ -250,6 +255,7 @@ function parseDetailResponse(html, url) {
             "headers": {
                 "Referer": BASEURL,
                 "Origin": BASEURL,
+                "Block-Css": "#vl-top-adx, .banner-preload, .catfish-top",
                 "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
                 // Đánh lừa thuật toán Client Hints của tường lửa
                 "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',

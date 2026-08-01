@@ -1,6 +1,3 @@
-// =============================================================================
-// VAAPP Plugin - Xhamster (Bản vá chuẩn hóa theo cấu trúc Core mới nhất)
-// =============================================================================
 var BASEURL = "https://xhwide.com";
 var DEV = "true";
 
@@ -15,10 +12,11 @@ function getManifest() {
         "id": "xhamster",          
         "name": "Xhamster",
         "description": "XXX Hay",
-        "version": "1.4",             
+        "version": "1.4.1",             
         "baseUrl": "https://xhwide.com",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico", 
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "exoplayer"

@@ -5,8 +5,8 @@ function getManifest() {
     "id": "justporn",
     "name": "Just Porn",
     "description": "XXX Hay",
-    "version": "1.6.5",
-    "info": "Nguồn phim Hàn Quốc siêu hay.\n\nNếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
+    "version": "1.6.6",
+    "info": "Nguồn phim XXX siêu hay.\n\nNếu bị chặn các bạn hãy dùng App 1.1.1.1 hoặc thử bật DNS và DPI ở mục cài đặt APP nha.",
     "baseUrl": "https://www.justporn.com",
     "iconUrl": "https://c847a9a666.mjedge.net/contents/pkehlvuovbaw/theme/logo.png",
     "isEnabled": true,
@@ -18,7 +18,23 @@ function getManifest() {
 }
 // https://www.justporn.com/latest-updates/1/
 function getHomeSections() {
-  return JSON.stringify([{
+  return JSON.stringify([
+  {
+    "slug": "/top-rated/",
+    "title": "Top tháng",
+    "type": "HORIZONTAL"
+  },
+  {
+    "slug": "/most-popular/",
+    "title": "Xem Nhiều",
+    "type": "HORIZONTAL"
+  },
+  {
+    "slug": "/categories/4k/",
+    "title": "4K",
+    "type": "HORIZONTAL"
+  },
+    {
     "slug": "/latest-updates/",
     "title": "Hàng Mới",
     "type": "Grid"

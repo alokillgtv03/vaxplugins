@@ -4,10 +4,11 @@ function getManifest() {
         "id": "trannymovs",          
         "name": "Trannymovs",
         "description": "XXX dành cho người có sở thích đặc biệt",
-        "version": "1.7",             
+        "version": "1.8",             
         "baseUrl": "https://www.trannymovs.com",
         "info": "Nguồn phim siêu độc lạ. Dành cho những người có đam mê thôi nghe. 4K nét căng.",
         "iconUrl": "https://cdn1.tranny.one/trannystatic/v30/common/lib-tr/img/logo-2x.png", 
+       "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
@@ -17,6 +18,8 @@ function getManifest() {
 // https://www.trannymovs.com/latest-updates/2/
 function getHomeSections() {
     return JSON.stringify([
+        { "slug": "/most-popular/", "title": "Xu Hướng", "type": "HORIZONTAL" },
+        { "slug": "/top-rated/", "title": "Xem Nhiều", "type": "HORIZONTAL" },
         { "slug": "/latest-updates/", "title": "Hàng Mới", "type": "Grid" }
     ]);
 }

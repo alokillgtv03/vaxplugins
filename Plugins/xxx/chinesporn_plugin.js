@@ -6,7 +6,7 @@ function getManifest() {
         "id": "chinesporn",          
         "name": "Sex Trung",
         "description": "Nguồn XXX trung quốc Hay",
-        "version": "1.6.1",             
+        "version": "1.6.3",             
         "baseUrl": "https://ppp.porn",
         "info": "Nguồn XXX trung quốc khá hay.",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/chinesporn.jpg", 
@@ -29,6 +29,8 @@ function log(msg) {
 function getHomeSections() {
     try {
         return JSON.stringify([
+            { "slug": "/categories/china-av/", "title": "AV Trung Quốc", "type": "HORIZONTAL" },
+            { "slug": "/pp1/hot/", "title": "Hot Trending", "type": "HORIZONTAL" },
             { "slug": "/new/", "title": "Hàng Mới", "type": "Grid" }
         ]);
     } catch (e) {

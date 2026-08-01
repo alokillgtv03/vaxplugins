@@ -5,7 +5,7 @@ function getManifest() {
         "id": "haysex",          
         "name": "HaySex",
         "description": "XXX Hay",
-        "version": "1.2.4",    
+        "version": "1.2.5",    
         "info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://phimsexsuong3x.net",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico", 
@@ -251,7 +251,7 @@ function runjS() {
     var activeWorkerIndex = 0;
 
     var PLAYER_MODE = "CUSTOM"; // "EXO": Phát qua Native App | "CUSTOM": Nhúng ArtPlayer
-    var PROXY_ENABLED = true; 
+    var PROXY_ENABLED = false; 
 
     // 👉 BẬT CUSTOM DECODER (SETVIDEO QUYỀN ƯU TIÊN HÀNG ĐẦU)
     var USE_CUSTOM_DECODER = false; 
@@ -275,7 +275,7 @@ function runjS() {
     var ENABLE_FILTER = false; 
     var BLOCKED_DOMAINS = ["ads.example.com", "*.adnetwork.com"];
 
-    var SNIFFER_TIMEOUT_MS = 10000;
+    var SNIFFER_TIMEOUT_MS = 60000;
     var HTMLRAW = false;
     var ENDEMBED = true; 
     
@@ -432,7 +432,15 @@ function runjS() {
 function renderArtPlayer(playUrl, rawStreamUrl) {
   try {
     bridgeLog('🚀 [renderArtPlayer]: Khởi tạo ArtPlayer (Xóa sạch Loading xấu của web gốc)...');
+    // 🟢 THÊM LỆNH NÀY ĐỂ TẮT MÀN HÌNH LOADING OVERLAY
+    if (typeof window.hideLoadingScreen === 'function') {
+      window.hideLoadingScreen();
+    }
 
+    // Tắt các element loading dư thừa nếu có
+    var oldScreen = document.getElementById('custom-loading-screen');
+    if (oldScreen) oldScreen.remove();
+    
     // 1. ÉP TẤT CẢ NỀN WEB GỐC VỀ MÀU ĐEN SẠCH (Xóa sạch hình Play mờ phía sau)
     document.documentElement.style.cssText = 'background: #000 !important; background-image: none !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important;';
     document.body.innerHTML = '';
@@ -846,43 +854,56 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
       }
     }
 
-    function loadAndRenderArtPlayer(initialPlayUrl, rawStreamUrl) {
-      try {
-        if (!document.getElementById('artplayer-css')) {
-          var linkCss = document.createElement('link');
-          linkCss.id = 'artplayer-css';
-          linkCss.rel = 'stylesheet';
-          linkCss.href = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css';
-          document.head.appendChild(linkCss);
-        }
+function loadAndRenderArtPlayer(initialPlayUrl, rawStreamUrl) {
+  try {
+    if (!document.getElementById('artplayer-css')) {
+      var linkCss = document.createElement('link');
+      linkCss.id = 'artplayer-css';
+      linkCss.rel = 'stylesheet';
+      linkCss.href = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css';
+      document.head.appendChild(linkCss);
+    }
 
-        var loadedCount = 0;
-        function checkLoaded() {
-          loadedCount++;
-          if (loadedCount >= 2) renderArtPlayer(initialPlayUrl, rawStreamUrl);
-        }
+    var loadedCount = 0;
+    var hasRendered = false;
 
-        if (typeof Hls === 'undefined') {
-          var scriptHls = document.createElement('script');
-          scriptHls.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-          scriptHls.onload = checkLoaded;
-          document.head.appendChild(scriptHls);
-        } else {
-          checkLoaded();
-        }
-
-        if (typeof Artplayer === 'undefined') {
-          var scriptArt = document.createElement('script');
-          scriptArt.src = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js';
-          scriptArt.onload = checkLoaded;
-          document.head.appendChild(scriptArt);
-        } else {
-          checkLoaded();
-        }
-      } catch (e) {
-        bridgeLog('❌ [loadAndRenderArtPlayer - Lỗi]: ' + e.message);
+    function checkLoaded() {
+      loadedCount++;
+      if (loadedCount >= 2 && !hasRendered) {
+        hasRendered = true;
+        renderArtPlayer(initialPlayUrl, rawStreamUrl);
       }
     }
+
+    function handleLoadError(scriptName) {
+      bridgeLog('❌ [CDN Error]: Không thể tải ' + scriptName + ' từ CDN!');
+      // Có thể fallback hoặc báo lỗi tại đây
+    }
+
+    if (typeof Hls === 'undefined') {
+      var scriptHls = document.createElement('script');
+      scriptHls.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+      scriptHls.onload = checkLoaded;
+      scriptHls.onerror = function() { handleLoadError('Hls.js'); };
+      document.head.appendChild(scriptHls);
+    } else {
+      checkLoaded();
+    }
+
+    if (typeof Artplayer === 'undefined') {
+      var scriptArt = document.createElement('script');
+      scriptArt.src = 'https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js';
+      scriptArt.onload = checkLoaded;
+      scriptArt.onerror = function() { handleLoadError('ArtPlayer.js'); };
+      document.head.appendChild(scriptArt);
+    } else {
+      checkLoaded();
+    }
+  } catch (e) {
+    bridgeLog('❌ [loadAndRenderArtPlayer - Lỗi]: ' + e.message);
+  }
+}
+
 
     // Build Artplayer
     ${artPlayer()}

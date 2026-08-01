@@ -6,11 +6,13 @@ function getManifest() {
         "id": "letsporn",
         "name": "Lets Porn",
         "info": "XXX Hay. Chất lượng 4K cao cấp. Nên đôi lúc sẽ load chậm một tí. Các bạn ráng chờ tí.",
-        "version": "1.7.4",
+        "version": "1.7.6",
         "baseUrl": "https://letsporn.com",
         "iconUrl": "https://static.letsporn.com/static/img/logo.png?v=1.2",
         "isEnabled": true,
         "isAdult": true,
+        "debug": true,
+        "layoutType": "HORIZONTAL",
         "type": "VIDEO",
         "playerType": "exoplayer"
     });
@@ -33,7 +35,12 @@ function log(msg) {
 // https://letsporn.com/newest/4
 function getHomeSections() {
     try {
-        var listurl = "/newest/@@Hàng Mới@@true";
+        var listurl = `
+        /best@@Hàng Tuyển@@false
+        /popular@@Thịnh Hành@@false
+        /categories/beauty@@Người Đẹp@@false
+        /newest/@@Hàng Mới@@true
+        `;
         var menulist = buildMenu(listurl);
         return JSON.stringify(menulist);
     } catch (e) {
@@ -276,15 +283,17 @@ function parseMovieDetail(html, $url) {
         
         var $split2 = html.match(/video_alt_url:\s+["']([^"']+)["'][^}]*video_alt_url_text:\s+["']([^"']+)["']/i);
         if ($split2 && $split2[1]) {
-            var $item = { id: $split2[1] + "#video.m3u8", "name": "Độ Phân Giải " + $split2[2], slug: "full" };
+            //var $item = { id: $url + "?streamVD=1", "name": "Độ Phân Giải " + $split2[2], slug: "full" };
+            var $item = { id: $split2[1], "name": "Độ Phân Giải " + $split2[2], slug: "full" };
             $stream = $split2[1];
             $link.push($item);
         }
         if ($split && $split[1]) {
-            var $item = { id: $split[1] + "#video.m3u8", "name": "Độ Phân Giải " + $split[2], slug: "full" };
+            //var $item = { id: $url + "?streamVD=2", "name": "Độ Phân Giải " + $split[2], slug: "full" };
+            var $item = { id: $split[1], "name": "Độ Phân Giải " + $split[2], slug: "full" };
             $link.push($item);
         }
-        
+        console.log(JSON.stringify($link))
         return JSON.stringify({
             id: $url,
             title: lname,
@@ -313,8 +322,23 @@ function parseMovieDetail(html, $url) {
 
 function parseDetailResponse(html, url) {
     try {
+      console.log("parseDetailResponse xử lý: " + url);
+      var match = url.split("?streamVD=");
+      var stream = "";
+      if(match && match[1]){
+        console.log("Chon video quality");
+        stream = decodeURIComponent(match[1]);
+        console.log(JSON.stringify(match));
+      }
+      else{
+        var $split2 = html.match(/video_alt_url:\s+["']([^"']+)["'][^}]*video_alt_url_text:\s+["']([^"']+)["']/i);  
+          if ($split2 && $split2[1]) {
+              stream = $split2[1];
+          }
+      }
+      console.log("Stream: " + stream);
         return JSON.stringify({
-            "url": "",
+            "url": stream,
             "isEmbed": false,
             "mimeType": "video/mp4",
             "headers": {

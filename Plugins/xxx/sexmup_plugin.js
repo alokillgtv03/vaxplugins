@@ -8,12 +8,13 @@ function getManifest() {
         "id": "sexmup",          
         "name": "sexmup",
         "description": "XXX Hay",
-        "version": "1.6",      
+        "version": "1.6.1",      
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://sexmupxinh.net",
         "iconUrl": "https://sexmupxinh.net/favicon.ico", 
         "isEnabled": true,
         "isAdult": true,
+        "layoutType": "HORIZONTAL",
         "type": "VIDEO",
         "playerType": "embedtoexoplay"
     });
@@ -37,6 +38,10 @@ function log(msg) {
 
 function getHomeSections() {
     return JSON.stringify([
+        { "slug": "/phim-sex-loan-luan/", "title": "Loạn Luân", "type": "HORIZONTAL" },
+        { "slug": "/phim-sex-hiep-dam/", "title": "Hiếp Dâm", "type": "HORIZONTAL" },
+        { "slug": "/phim-sex-chau-au/", "title": "Châu Âu", "type": "HORIZONTAL" },
+        { "slug": "/phim-sex-trung-quoc/", "title": "Trung Quốc", "type": "HORIZONTAL" },
         { "slug": "/", "title": "Clip Mới", "type": "Grid" }
     ]);
 }

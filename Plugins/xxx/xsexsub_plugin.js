@@ -4,10 +4,11 @@ function getManifest() {
         "id": "xsexsub",
         "name": "Phim XXX Vietsub",
         "info": "XXX Hay. Chất lượng 4K cao cấp. Nên đôi lúc sẽ load chậm một tí. Các bạn ráng chờ tí.",
-        "version": "1.3.4",
+        "version": "1.3.7",
         "baseUrl": "https://xsexsub.site",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "embed"
@@ -31,6 +32,10 @@ function log(msg) {
 function getHomeSections() {
     try {
         var listurl = `
+/loan-luan/@@Loạn Luân@@false
+/hiep-dam/@@Hiếp Dâm@@false
+/tap-the/@@Tập Thể@@false
+/phim-sex-thuyet-minh/@@Thuyết Minh@@false
 /sex-vietsub-moi/@@Phim Mới@@true
 `;
         var menulist = buildMenu(listurl);
@@ -295,7 +300,12 @@ function parseMovieDetail(html, url) {
 
 function parseDetailResponse(html, url) {
     try {
-        var embed = _$(html).find("#okplayer-frame").attr("data-base");
+      console.log("url: " + url);
+      var embed = _$(html).find("#okplayer-frame").attr("data-base");
+      if(!embed){
+        embed = _$(html).find("#okplayer-frame").attr("src");
+      }
+      console.log("embed: " + embed);
         var customjs = runjS();
         return JSON.stringify({
             "url": embed,
@@ -360,7 +370,7 @@ function runjS() {
     var PLAYER_MODE = "EXO"; 
 
     // 2. Bật/Tắt Proxy Worker
-    var PROXY_ENABLED = true; 
+    var PROXY_ENABLED = false; 
 
     // 3. Danh sách Cloudflare Workers (Cân bằng tải & Dự phòng Failover)
     var WORKER_POOL = [

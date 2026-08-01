@@ -7,11 +7,12 @@ function getManifest() {
         "id": "porn00",
         "name": "Porn00",
         "info": "Nguồn XXX Hay, chất lượng cao. Nên đôi khi load chậm tí, chịu khó chờ nhé.",
-        "version": "1.9",
+        "version": "2.0",
         "baseUrl": "https://www.porn00.tv",
         "iconUrl": "https://www.porn00.tv/static/images/logo.png",
         "isEnabled": true,
         "isAdult": true,
+        "layoutType": "HORIZONTAL",
         "type": "VIDEO",
         "playerType": "exoplayer"
     });
@@ -30,6 +31,9 @@ function log(msg) {
 function getHomeSections() {
     try {
         return JSON.stringify([
+            { "slug": "/category-name/4k/", "title": "4K", "type": "HORIZONTAL" },
+            { "slug": "/popular-vids/", "title": "Xu Hướng", "type": "HORIZONTAL" },
+            { "slug": "/top-vids/", "title": "Video Hàng Đầu", "type": "HORIZONTAL" },
             { "slug": "/latest-vids/", "title": "Phim Có Nội Dung", "type": "Grid" }
         ]);
     } catch (e) {

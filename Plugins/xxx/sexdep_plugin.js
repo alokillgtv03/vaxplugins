@@ -9,10 +9,11 @@ function getManifest() {
         "name": "sexdep",
         "description": "XXX Hay",
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
-        "version": "1.4.6",
+        "version": "1.4.7",
         "baseUrl": "https://sexdeplon.blog",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
+        "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
         "playerType": "embedtoexoplay"
@@ -23,7 +24,12 @@ function getManifest() {
 
 // https://sexdeplon.com/?view=hay-nhat&page=2
 function getHomeSections() {
-    var listurl = "the-loai/viet-nam@@Hàng Mới@@true";
+    var listurl = `
+    the-loai/loan-luan@@Loạn Luân@@false
+    the-loai/phimsexsub@@Vietsub@@false
+    the-loai/trung-quoc@@Trung Quốc@@false
+    the-loai/viet-nam@@Hàng Mới@@true
+    `;
     var menulist = buildMenu(listurl);
     return JSON.stringify(menulist);
 }

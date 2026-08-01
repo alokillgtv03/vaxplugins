@@ -4,10 +4,11 @@ function getManifest() {
         "id": "trannyone",          
         "name": "Tranny One",
         "description": "XXX dành cho người có sở thích đặc biệt",
-        "version": "2.3.6",    
+        "version": "2.3.8",    
         "info": "Nguồn phim siêu độc lạ. Dành cho những người có đam mê thôi nghe. 4K nét căng.",
         "baseUrl": "https://www.tranny.one",
         "iconUrl": "https://cdn1.tranny.one/trannystatic/v30/common/lib-tr/img/logo-2x.png", 
+        "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "isAdult": true,
         "type": "VIDEO",
@@ -18,6 +19,9 @@ function getManifest() {
 // https://www.tranny.one/c2096/shemale-anal/?mix=true&pageId=4&_=1783573037242
 function getHomeSections() {
     return JSON.stringify([
+        { "slug": "/c2372/vietnamese/", "title": "Việt Nam", "type": "HORIZONTAL" },
+        { "slug": "/viewed/", "title": "Xem Nhiều", "type": "HORIZONTAL" },
+        { "slug": "/rating/", "title": "Top Đánh Giá", "type": "HORIZONTAL" },
         { "slug": "/recent/", "title": "Hàng Mới", "type": "Grid" }
     ]);
 }
