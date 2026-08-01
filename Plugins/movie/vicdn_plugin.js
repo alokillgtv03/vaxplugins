@@ -11,7 +11,6 @@ function getManifest() {
     baseUrl: "https://vicdn.cc",
     iconUrl: "https://vicdn.cc/vicdn.png",
     "layoutType": "HORIZONTAL",
-    debug: true,
     isEnabled: true,
     "adblock": false,
     type: "MOVIE",
