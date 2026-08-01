@@ -226,21 +226,37 @@ function getUrlYears() {
 
 function parseListResponse(html, $url) {
     try {
-        log("parseListResponse[url]: \n" + $url);
-        if ($url.indexOf("/?q=") > -1) {
-            var $doc = _$(html);
-            var script = $doc.find("script:content('const|allData')").html()
-
-            var $obj = script.match(/\[\s*\{[\s\S]*?\}\s*\]/i);
-            if ($obj) {
-                $data = JSON.parse($obj[0]);
-                return domfetch($data, $url);
+        var $html = _$(html);
+        var items = [];
+        $html.find(".grid .group").each(function(){
+            var slug = this.find("a").attr("href");
+            var name = this.find("h4").text();
+            var poster = this.find("img").attr("src");
+            var quality = this.find(".tracking-wider").text();;
+            var current = this.find(".badge-system-primary").text();;
+            var year = this.find(".items-center span").eq(0).text();
+            year = Number(year.trim());
+            
+         // var img = typeof year === "number" ? year : 2026;
+            if(slug.length > 5 && poster.length > 5 && name.length > 5){
+                items.push({
+                    "id": slug,
+                    "title": name,
+                    "quality": quality,
+                    "episode_current": current,
+                    "posterUrl": typeof poster === "string" ? poster : "",
+                    "backdropUrl": typeof poster === "string" ? poster : "",
+                    "year": typeof year === "number" ? year : 2026
+                });
             }
-        } else {
-            var $allData = JSON.parse(html)
-
-            return domfetch($allData.data, $url);
-        }
+        })
+        return JSON.stringify({
+            "items": items,
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 9999
+            }
+        });
     } catch (e) {
         log("parseListResponse[err]:\n " + e);
         return JSON.stringify({
@@ -256,39 +272,6 @@ function parseListResponse(html, $url) {
             }
         });
     }
-}
-
-function parseJSDataIsolated(str) {
-    // Loại bỏ phần khai báo biến nếu có, chỉ giữ lại phần mảng/object
-    const code = str.replace(/^(const|let|var)\s+\w+\s*=\s*/, '');
-
-    // Trả về dữ liệu bằng cách bọc trong return
-    return new Function(`"use strict"; return (${code});`)();
-}
-
-function domfetch($data, $url) {
-
-    var items = [];
-    for (var $j = 0; $j < $data.length; $j++) {
-        var item = $data[$j];
-        items.push({
-            "id": BASEAPI + "/info/" + item.slug, // https://vicdn.cc/api/info/tv-278275-1
-            "title": item.vname,
-            "posterUrl": "https://image.tmdb.org/t/p/w130_and_h195_face/" + item.poster + ".jpg", // https://image.tmdb.org/t/p/w130_and_h195_face/qWx7w7Af5qvqmTmjwjxIWMIBHPB.jpg
-            "backdropUrl": "https://image.tmdb.org/t/p/w533_and_h300_face/" + item.banner + ".jpg", // https://image.tmdb.org/t/p/w533_and_h300_face/t5uqDBIYtxKtWeJjXAZd4l919hF.jpg
-            "quality": item.type.toUpperCase(),
-            "episode_current": "Tập " + item.stt + "/" + item.total
-        });
-
-    }
-    return JSON.stringify({
-        "items": items,
-        "pagination": {
-            "currentPage": 1,
-            "totalPages": 999
-        }
-    });
-
 }
 //html = sourceHTML;
 // https://vicdn.cc/api/type/hoat-hinh/1

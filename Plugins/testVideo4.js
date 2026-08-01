@@ -5,8 +5,8 @@
 BaseURL = "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec";
 BaseJSON = "";
 LISTURL = `
-https://hhpanda.st/watch-dai-vuong-tha-mang-phan-1/tap-12-sv1.html
-https://streamfree.vip/embed/v/WiBGTNMTwrapper&adTag=https%3A%2F%2Fva
+https://xem20.net/xem-phim/sat-thu/vietsub-1/1
+https://sv1.rophim.mom/player.php?id=358
 `
 
 
@@ -20,7 +20,7 @@ function getManifest() {
         "iconUrl": "https://crimescenesolutions.co.za/wp-content/uploads/2026/04/phimhayok-io-fav.jpg", 
         "isEnabled": true,
         "debug":true,
-        "type": "VIDEO",
+        "type": "MOVIE",
         "playerType": "embed"
     });
 }
@@ -428,7 +428,7 @@ function runjS() {
     var loggedDropReasons = {}; 
     var hasDispatchedAny = false;
     var activeWorkerIndex = 0;
-    var PLAYER_MODE = "CUSTOM"; 
+    var PLAYER_MODE = "EXO"; 
     var PROXY_ENABLED = false; 
     var HTMLRAW = 1; 
     var STARTRUN = 0;
@@ -844,7 +844,7 @@ function renderArtPlayer(playUrl, rawStreamUrl) {
 
         if (PLAYER_MODE === "EXO") {
           var playUrl = PROXY_ENABLED ? buildProxyUrl(mediaUrl, activeWorkerIndex) : mediaUrl;
-          if (window.SnifferBridge && typeof window.SnifferBridge.onMediaFound === 'function') window.SnifferBridge.onMediaFound(playUrl, CUSTOM_REFERER);
+          if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') window.SnifferBridge.play(playUrl, CUSTOM_REFERER);
           else window.location.href = "intent://" + playUrl.replace(/^https?:\\/\\/ freedom/, '') + "#Intent;scheme=https;type=video/*;end";
         } else {
           dispatchMediaStream(mediaUrl);
