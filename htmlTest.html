@@ -1,833 +1,1253 @@
+<html lang="vi" style="--sub-font-size: 24px; --sub-color: #ffffff; --sub-bg: rgba(0, 0, 0, 0.5); --sub-position: 18%;"><head><style class="vjs-styles-defaults">
+      .video-js {
+        width: 300px;
+        height: 150px;
+      }
 
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-Hans">
+      .vjs-fluid:not(.vjs-audio-only-mode) {
+        padding-top: 56.25%
+      }
+    </style><style class="vjs-styles-dimensions">
+      .my-video-dimensions {
+        width: 1920px;
+        height: 1080px;
+      }
 
-<head>
-            <!-- Google tag (gtag.js) -->
-  <base href="https://xchina.co" target="_blank">
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-F0JXM9DQXX"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
+      .my-video-dimensions.vjs-fluid:not(.vjs-audio-only-mode) {
+        padding-top: 56.25%;
+      }
+    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title></title>
+<!-- Self-host thư viện (CDN jsdelivr/cdnjs hay bị nhà mạng VN chặn → player chết trắng) -->
+<link href="/assets/player/video-js.min.css" rel="stylesheet" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/video.js/8.3.0/video-js.min.css'">
+<link rel="stylesheet" href="/assets/player/css/all.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'">
+<style>
+:root{--safe-area-inset-bottom:env(safe-area-inset-bottom)}
+body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+.player-container{width:100vw;height:100vh;background:#000;position:relative;overflow:hidden;display:block}
+.video-js{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important}
+.video-js video{object-fit:contain;transition:object-fit 0s}
+.video-js.vjs-zoom-fill video{object-fit:cover}
+.vjs-zoom-btn i{font-size:18px;color:#fff;transition:transform .2s}
+.vjs-zoom-btn:hover i{transform:scale(1.2)}
+.video-js.vjs-zoom-fill .vjs-zoom-btn i{color:#f44}
+.vjs-custom-settings-btn i{font-size:18px;color:#fff;transition:transform .2s}
+.vjs-custom-settings-btn:hover i{transform:scale(1.2) rotate(45deg)}
+.vjs-custom-settings-btn{position:relative;overflow:visible!important}
+.vjs-settings-badge{
+  position:absolute;
+  top:5px;
+  right:1px;
+  background:#fff;
+  color:#000;
+  font-size:8.5px;
+  font-weight:700;
+  padding:1px 4px;
+  border-radius:6px;
+  line-height:1.25;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.video-js .vjs-control-bar{height:55px!important;background:linear-gradient(to top,rgba(0,0,0,.9),rgba(0,0,0,.6),transparent)!important;bottom:0!important;display:flex!important;align-items:center!important;padding:0 10px;padding-bottom:var(--safe-area-inset-bottom)!important;z-index:100!important;flex-wrap:nowrap!important}
+.video-js .vjs-progress-control{position:absolute!important;top:-23px!important;left:0;right:0;width:100%!important;height:25px!important;display:flex;align-items:center;cursor:pointer;z-index:10!important;padding:0 12px;background:linear-gradient(to top, rgba(0,0,0,0.4), transparent)}
+.video-js .vjs-progress-holder{height:5px!important;margin:0!important;transition:height .1s ease;border-radius:4px}
+.video-js .vjs-progress-control:hover .vjs-progress-holder{height:8px!important}
+.video-js .vjs-play-progress{background-color:#f00!important;border-radius:4px}
+.video-js .vjs-volume-level{background-color:#fff!important}
+.video-js .vjs-slider-bar::before{color:#f00!important;top:-5px!important;font-size:14px!important}
+.video-js .vjs-load-progress{background:rgba(255,255,255,.2)!important}
+.video-js .vjs-load-progress div{background:rgba(255,255,255,.4)!important}
+.video-js .vjs-time-control{display:block!important;line-height:55px!important;padding:0 2px!important;font-size:13px;font-weight:500}
+.video-js .vjs-time-control.vjs-time-divider{min-width:10px!important;text-align:center}
+.video-js .vjs-remaining-time{display:none!important}
+.video-js:focus, .video-js *:focus { outline:none!important; box-shadow:none!important; }
+.vjs-custom-control-spacer{display:block!important;flex:1 1 auto!important;min-width:5px!important}
+.video-js .vjs-volume-panel{display:flex!important;align-items:center!important}
+.video-js .vjs-volume-panel:focus, .video-js .vjs-volume-panel *:focus{outline:none!important;box-shadow:none!important}
+.video-js .vjs-volume-panel .vjs-mute-control,.video-js .vjs-volume-panel .vjs-volume-control{display:flex!important;align-items:center!important;height:100%!important}
+.video-js .vjs-volume-bar.vjs-slider-horizontal{margin:auto 5px!important;width:60px!important;height:4px!important;display:block!important;position:relative!important;cursor:pointer!important}
+.video-js .vjs-volume-bar.vjs-slider-horizontal::after{content:'';position:absolute;top:-10px;bottom:-10px;left:0;right:0;background:transparent} /* Tạo vùng click (hit area) vô hình rộng hơn */
 
-            function gtag() {
-                dataLayer.push(arguments);
+
+.video-js .vjs-volume-level::before{top:50%!important;transform:translateY(-50%)!important}
+.video-js .vjs-menu-button-popup{z-index:99999!important}
+.video-js .vjs-playback-rate .vjs-playback-rate-value{display:none!important}
+.video-js .vjs-playback-rate .vjs-icon-placeholder:before{content:"\f013"!important;font-family:"Font Awesome 6 Free"!important;font-weight:900!important;font-size:18px!important;line-height:55px!important}
+.video-js .vjs-menu-button-popup .vjs-menu{display:none!important;width:120px!important;left:auto!important;right:-25px!important;bottom:calc(100% + 20px)!important;margin-bottom:0!important}
+.video-js .vjs-menu-button-popup.vjs-click-show .vjs-menu{display:block!important;animation:fadeIn .2s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content{background-color:rgba(33,33,33,.98)!important;border-radius:12px!important;padding:8px 0!important;box-shadow:0 8px 24px rgba(0,0,0,.6)!important;bottom:0!important;position:absolute!important;width:100%!important;max-height:250px!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overflow-x:hidden!important}
+.video-js .vjs-menu li{padding:12px 15px!important;font-size:13px!important;font-weight:500!important;text-transform:none!important;color:#eee!important;white-space:nowrap!important;text-align:center!important;transition:all .2s}
+.video-js .vjs-menu li.vjs-selected{background-color:rgba(255,255,255,.1)!important;color:#f00!important;font-weight:bold!important;text-shadow:none!important}
+.video-js .vjs-fullscreen-control{display:flex!important;cursor:pointer!important;margin-left:0!important;padding-right:4px!important}
+.video-js .vjs-playback-rate{margin-right:0!important}
+.video-js .vjs-control:focus,.video-js .vjs-control:active,.video-js .vjs-button:focus,.video-js .vjs-button:active{outline:none!important;text-shadow:none!important;box-shadow:none!important;background-color:transparent!important}
+.video-js .vjs-button{width:45px!important}
+.vjs-icon-placeholder:before{line-height:55px!important;font-size:20px!important}
+.vjs-skip-btn{cursor:pointer;display:flex!important;justify-content:center;align-items:center}
+.vjs-skip-btn i{font-size:18px;color:#fff;transition:transform .2s}
+.vjs-skip-btn:hover i{transform:scale(1.2)}
+.video-js .vjs-big-play-button{background-color:rgba(0,0,0,.6)!important;border:none!important;box-shadow:none!important;border-radius:50%!important;width:70px!important;height:70px!important;line-height:70px!important;margin-top:-35px!important;margin-left:-35px!important;transition:background-color .2s}
+.video-js:hover .vjs-big-play-button,.video-js .vjs-big-play-button:focus{background-color:rgba(255,0,0,.9)!important}
+.video-js .vjs-big-play-button .vjs-icon-placeholder:before{font-size:40px!important;line-height:70px!important}
+
+/* Custom Settings Panel — bottom 85px: nằm TRÊN vùng thanh tiến trình
+   (thanh kéo tua chiếm 53-78px từ đáy, đặt thấp hơn sẽ che vạch thời gian) */
+.custom-settings-panel {
+  position: absolute;
+  bottom: 85px;
+  right: 20px;
+  z-index: 1001;
+  background: rgba(20, 20, 22, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 280px;
+  max-height: calc(100% - 100px);
+  overflow-y: auto;
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  display: none;
+  font-family: inherit;
+  color: #fff;
+}
+
+/* Menu drill-down kiểu YouTube */
+.settings-header {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 10px 12px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 6px;
+}
+.settings-header.with-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.settings-header.with-back i { font-size: 12px; color: #9a9aa0; }
+.settings-header.with-back:hover i { color: #fff; }
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: #eee;
+  transition: background 0.15s;
+}
+.settings-row:hover { background: rgba(255,255,255,0.08); }
+.settings-row .row-value {
+  color: #9a9aa0;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-row .row-value i { font-size: 10px; }
+.settings-option.active { color: #fff; font-weight: 600; }
+.settings-option.active .row-value i { color: #f00; font-size: 13px; }
+.panel-btn-inline {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+.panel-btn-inline:hover {
+  background: rgba(255, 0, 0, 0.8);
+  border-color: #f00;
+}
+.custom-settings-panel::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-settings-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-settings-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.custom-settings-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+.custom-settings-panel.show {
+  display: block;
+  animation: slideUp 0.2s ease-out;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 600px) {
+  .custom-settings-panel {
+    width: 230px !important;
+    padding: 10px 10px 40px 10px !important;
+    bottom: 85px !important; /* trên vùng thanh tiến trình (53-78px) — 65px cũ đè trúng vạch kéo tua */
+    right: 10px !important;
+    max-height: calc(100% - 100px) !important;
+  }
+  .panel-section {
+    margin-bottom: 8px !important;
+  }
+  .panel-section-title {
+    font-size: 10px !important;
+    margin-bottom: 4px !important;
+  }
+  .panel-select {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+}
+.panel-section {
+  margin-bottom: 12px;
+}
+.panel-section:last-child {
+  margin-bottom: 0;
+}
+.panel-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8e8e93;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.panel-select {
+  width: 100%;
+  background: #1c1c1e;
+  border: 1px solid #3a3a3c;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Subtitle track cue dynamic styling */
+.video-js .vjs-text-track-cue {
+  background: transparent !important;
+  color: var(--sub-color, #ffffff) !important;
+  font-size: var(--sub-font-size, 24px) !important;
+  font-weight: bold !important;
+  bottom: var(--sub-position, 18%) !important;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  text-align: center !important;
+}
+.video-js .vjs-text-track-cue div {
+  color: var(--sub-color, #ffffff) !important;
+  font-size: var(--sub-font-size, 24px) !important;
+  font-weight: bold !important;
+  background-color: var(--sub-bg, rgba(0, 0, 0, 0.5)) !important;
+  display: inline-block !important;
+  padding: 4px 12px !important;
+  border-radius: 4px !important;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: auto !important;
+}
+video::cue {
+  color: var(--sub-color, #ffffff);
+  font-size: var(--sub-font-size, 24px);
+  font-weight: bold !important;
+  background: var(--sub-bg, rgba(0, 0, 0, 0.5));
+}
+
+#resume-toast{position:absolute;bottom:80px;left:20px;background:rgba(28,28,28,.95);border-left:4px solid #f00;padding:12px 18px;border-radius:8px;color:#fff;display:flex;align-items:center;gap:15px;box-shadow:0 4px 15px rgba(0,0,0,.5);z-index:1000;transform:translateX(-120%);transition:transform .4s cubic-bezier(.175,.885,.32,1.275);font-size:14px;max-width:90%}
+#resume-toast.show{transform:translateX(0)}
+.resume-btns{display:flex;gap:10px}
+.btn-resume{background:#f00;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-weight:bold;font-size:13px}
+.btn-skip{background:rgba(255,255,255,.1);color:#ccc;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:13px}
+
+@media(max-width:500px){.video-js .vjs-button{width:35px!important}.vjs-icon-placeholder:before{font-size:18px!important}.video-js .vjs-time-control{font-size:11px!important;padding:0 1px!important}#resume-toast{bottom:70px;left:10px;padding:10px;font-size:12px}}
+</style>
+<style type="text/css">
+            iframe[src*="ad-"], iframe[src*="popunder"], iframe[src*="banner"],
+            div[class*="popunder"], div[id*="popunder"],
+            div[class*="popup"], div[id*="popup"],
+            div[style*="z-index: 2147483647"]:not(.jw-controls):not(.plyr__controls),
+            div[style*="z-index: 999999"]:not(.jw-controls):not(.plyr__controls),
+            a[href*="betting"], a[href*="casino"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                height: 0 !important;
+                width: 0 !important;
+                z-index: -9999 !important;
             }
-            gtag('js', new Date());
-
-            gtag('config', 'G-F0JXM9DQXX');
-        </script>
-        <meta name="renderer" content="webkit" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <link rel="icon" type="image/png" href="/images/sites/favicon/1.png?v=1.0.2" />
-    <meta name="keywords" content="小黄书,xChina,免费成人网站,成人小说,色情网站,情色网站,19禁社区,成人视频,成人影片,人体摄影,性爱视频,私拍套图,裸模,美女模特,裸体写真,国模,大尺度,无圣光,大胆写真,轰趴猫,JVID,丽图100,性感美女,情色小说,乱伦小说,撸一发,麻豆传媒,果冻传媒,蜜桃传媒,天美传媒,星空传媒,乌鸦传媒,精东传媒,SWAG,JVID,探花系列,国产AV,在线视频,免费AV，国产A片,有声成人小说,黄色小说" />
-    <meta name="description" content="《小黄书》（xChina）是华语区最大的综合性成人网站之一，拥有美女套图、模特写真、人体摄影、成人影片、性爱视频、国模大尺度无圣光写真、成人小说、福利资源下载等诸多海量内容，服务于广大华人色友，提供中文简体、繁体版本、韩语、英语、西班牙语版本，完全免费，让你一次看不够" />
-    <title>不良女学生榨干男教师，玉足踩蛋，小穴吞根 - 独立创作者 - 中文AV - 小黄书 xChina</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="RATING" content="RTA-5042-1996-1400-1577-RTA" />
-    <meta name="rating" content="adult" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="不良女学生榨干男教师，玉足踩蛋，小穴吞根 - 独立创作者 - 中文AV" />
-    <meta name="twitter:description" content="《小黄书》（xChina）是华语区最大的综合性成人网站之一，拥有美女套图、模特写真、人体摄影、成人影片、性爱视频、国模大尺度无圣光写真、成人小说、福利资源下载等诸多海量内容，服务于广大华人色友，提供中文简体、繁体版本、韩语、英语、西班牙语版本，完全免费，让你一次看不够" />
-    <meta name="twitter:image" content="https://img.xchina.download/cover/6a6b9e4c1a4bd.webp" />
-    <meta property="og:site_name" content="小黄书 xChina" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://xchina.co/video/id-6a6b9e4c1a4bd.html" />
-    <meta property="og:title" content="不良女学生榨干男教师，玉足踩蛋，小穴吞根 - 独立创作者 - 中文AV" />
-    <meta property="og:description" content="《小黄书》（xChina）是华语区最大的综合性成人网站之一，拥有美女套图、模特写真、人体摄影、成人影片、性爱视频、国模大尺度无圣光写真、成人小说、福利资源下载等诸多海量内容，服务于广大华人色友，提供中文简体、繁体版本、韩语、英语、西班牙语版本，完全免费，让你一次看不够" />
-    <meta property="og:image" content="https://img.xchina.download/cover/6a6b9e4c1a4bd.webp" />
-            <meta property="og:duration" content="2564" />
-        <meta name="referrer" content="always" />
-    <link rel="stylesheet" href="/plugins/fontawesome-free-6.7.2-web/css/all.min.css" />
-            <link rel="stylesheet" href="/css/dst/main.min.css?v=1.1.75" />
-                <link rel="stylesheet" href="/css/libs/cn.css?v=1.0.2" />
-        <script src="/scripts/jquery-3.5.1.min.js"></script>
-    <script src="/scripts/jquery.blockUI.min.js"></script>
-    <script src="/scripts/myDialog/core-ui.js?v=1.0.6"></script>
-    <script src="/scripts/myDialog/myDialog.js?v=1.0.1"></script>
-    <link rel="stylesheet" href="/scripts/myDialog/myDialog.css?v=1.0.1" />
-    <script src="/scripts/push.js?v=1.0.2"></script>
-    <script src="/scripts/my.js?v=1.0.10"></script>
-    <script src="/scripts/comment.js?v=1.0.12"></script>
-    <link rel="stylesheet" href="/css/avatars/avatar.css?v=1.0.16">    <link rel="canonical" href="https://xchina.co/video/id-6a6b9e4c1a4bd.html" />
-    <link rel="alternate" hreflang="zh-Hans" href="https://xchina.co/video/id-6a6b9e4c1a4bd.html"/>
-<link rel="alternate" hreflang="zh-Hant" href="https://tw.xchina.co/video/id-6a6b9e4c1a4bd.html"/>
-<link rel="alternate" hreflang="ko" href="https://kr.xchina.co/video/id-6a6b9e4c1a4bd.html"/>
-<link rel="alternate" hreflang="en" href="https://en.xchina.co/video/id-6a6b9e4c1a4bd.html"/>
-<link rel="alternate" hreflang="es" href="https://es.xchina.co/video/id-6a6b9e4c1a4bd.html"/>
-    <meta http-equiv="content-language" content="zh-Hans" />
-    <meta http-equiv="Delegate-CH" content="Sec-CH-UA https://s.magsrv.com; Sec-CH-UA-Mobile https://s.magsrv.com; Sec-CH-UA-Arch https://s.magsrv.com; Sec-CH-UA-Model https://s.magsrv.com; Sec-CH-UA-Platform https://s.magsrv.com; Sec-CH-UA-Platform-Version https://s.magsrv.com; Sec-CH-UA-Bitness https://s.magsrv.com; Sec-CH-UA-Full-Version-List https://s.magsrv.com; Sec-CH-UA-Full-Version https://s.magsrv.com;" />
-        <script>
-    window.__user = null;
-    window.__copyMsg = "当前网址已复制";
-</script><script>
-    var favOptions = {"enabled":true,"objMode":"video","objId":"6a6b9e4c1a4bd","isFaved":false};
-    var showFav = function() {
-        if (favOptions.enabled) {
-            if (favOptions.isFaved) {
-                $("footer .menu-item.fav").addClass("isFaved");
-                $("footer .menu-item.fav i").removeClass("far").addClass("fas");
-            } else {
-                $("footer .menu-item.fav").removeClass("isFaved");
-                $("footer .menu-item.fav i").removeClass("fas").addClass("far");
-            }
-        }
-    };
-    var toggleFav = function () {
-        if (favOptions.enabled) {
-            if (!__user) {
-                my.confirm("需要登录才能使用收藏功能，前去登录吗？", function () {
-                    location.href = "https://xchina.online/?s=wyBpv1EajoQTsWkjTRUXn2xWN1RRUDFDcElyWjBxOUVyc2p4QjN5QlNmdUE3cGVGbHJKeGducG56TXFiemhiZ3AvcVduTUdBY1RTUlg5NE5VdGRsdVBjRE53NDFnYlc4aThpbW5BPT0%3D";
-                });
-            } else {
-                my.ajax({
-                    action: "toggleFavorite",
-                    objMode: favOptions.objMode,
-                    objId: favOptions.objId
-                }, function (result) {
-                    switch (result.code) {
-                        case 0:
-                            favOptions.isFaved = result.favorited;
-                            showFav();
-                            if (typeof __showFav === 'function') {__showFav(result.favorited);};
-                            my.success(favOptions.isFaved ? "已加入收藏" : "已取消收藏");
-                            break;
-                        default:
-                            my.error(result.message);
-                            break;
-                    }
-                });
-            }
-        }
-    };
-</script>    
-<script type="application/ld+json">[{"@context":"https:\/\/schema.org","@type":"VideoObject","identifier":"6a6b9e4c1a4bd","contentRating":"R18","isFamilyFriendly":false,"name":"不良女学生榨干男教师，玉足踩蛋，小穴吞根","mainEntityOfPage":"https:\/\/xchina.co\/video\/id-6a6b9e4c1a4bd.html","contentUrl":"https:\/\/xchina.co\/video\/id-6a6b9e4c1a4bd.html","uploadDate":"2026-07-31T05:51:43+08:00","thumbnailUrl":"https:\/\/img.xchina.download\/cover\/6a6b9e4c1a4bd.webp","duration":"PT42M44S","actor":[{"@type":"Person","identifier":"66950913ec5bd","name":"懒懒猪","alternateName":["lazypiggy"],"gender":"female","jobTitle":"AV Actress","url":"https:\/\/xchina.co\/model\/id-66950913ec5bd.html","image":"https:\/\/upload.xchina.io\/model\/669509597d2be.webp"}]},{"@context":"https:\/\/schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"首页","item":"https:\/\/xchina.co\/"},{"@type":"ListItem","position":2,"name":"成人影片","item":"https:\/\/xchina.co\/videos.html"},{"@type":"ListItem","position":3,"name":"中文AV","item":"https:\/\/xchina.co\/videos\/series-63824a975d8ae.html"},{"@type":"ListItem","position":4,"name":"独立创作者","item":"https:\/\/xchina.co\/videos\/series-61bf6e439fed6.html"},{"@type":"ListItem","position":5,"name":"不良女学生榨干男教师，玉足踩蛋，小穴吞根","item":"https:\/\/xchina.co\/video\/id-6a6b9e4c1a4bd.html"}]}]</script>
-        <script>
-        $(document).ready(function() {
-            try {
-                my.initToggleMenu();
-                my.initTabletPcNavMenu();
-            } catch (e) {}
-        });
-    </script>
-            <script>
-            (function() {
-                try {
-                    var match = document.cookie.match(/(?:^|;\s*)ck_theme=([^;]*)/);
-                    var theme = match ? decodeURIComponent(match[1]) : null;
-                    if (theme === 'dark') {
-                        document.documentElement.setAttribute('data-theme', 'dark');
-                    } else {
-                        document.documentElement.removeAttribute('data-theme');
-                    }
-                } catch (e) {}
-            })();
-        </script>
-        <script src="/scripts/themeManager.js?v=1.0.2"></script>
-        <script>
-            $(document).ready(function() {
-                window.themeManager = new ThemeManager({
-                    cookieName: 'ck_theme',
-                    icons: {
-                        useFontAwesome: false
-                    },
-                    onThemeChange: function(theme) {}
-                });
-                window.themeManager.bindButton('#theme-toggle-btn');
-            });
-        </script>
-        <script>
-        window.TOUCH_PAYLOAD = {
-            site_id: 1,
-            page: 1,
-            objects: [{"mode":"video","id":"6a6b9e4c1a4bd"},{"mode":"series_video","id":"61bf6e439fed6"},{"mode":"series_video","id":"63824a975d8ae"},{"mode":"model","id":"66950913ec5bd"}]        };
-    </script>
-    <script>window.__site_id = 1;</script><script src="/service/assets/links-runtime.js?v=1.1.2" defer></script><script src="/service/assets/core-state.js?v=202608012212" defer></script><script src="/service/assets/core-runtime.js?v=1.2.2" defer></script><script src="/service/assets/touch-runtime.js?v=1.1.2" defer></script><link rel="stylesheet" href="/service/assets/links-style.css?v=1.1.1"><link rel="stylesheet" href="/service/assets/core-style.css?v=1.1.1"></head>
-
-<body class="video">
-    <nav class="mobile">
-    <div class="topMenu">
-        <div class="logo">
-            <a href="/"><img src="/images/sites/logo/1.png?v=1.0.2" alt="小黄书 xChina" /></a>
-            <div class="country" data-prefix="马 ">马 VN</div>
-        </div>
-        <div class="theme-container"><div id="theme-toggle-btn"></div></div>
-        <div class="history-btn-container"><a href="/myHistory.html" title="浏览历史"><i class="fas fa-clock-rotate-left"></i></a></div>
-        <div class="toggle-btn-container"><i class="toggle-btn fas fa-bars"></i></div>
-    </div>
-    <div class="overlay"></div>
-    <div class="toggle-bar"><div>
-        <i class="close-btn fas fa-xmark"></i>
-    </div>
-    <div><a href="/videos.html"><div class="menu"><div><i class="fas fa-video"></i> </div><div>成人影片</div></div></a><a href="/photos.html"><div class="menu"><div><i class="far fa-image"></i> </div><div>情色套图</div></div></a><a href="/fictions.html"><div class="menu"><div><i class="fas fa-book"></i> </div><div>成人小说</div></div></a><div class="menu"><div><i class="fas fa-layer-group"></i> </div><div>分类 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/categories.html" subid="5"><div><i class="fas fa-sitemap"></i>分类</div></a><a href="/collections" subid="5"><div><i class="fas fa-th-large"></i>合集</div></a></div></div><a href="/models.html"><div class="menu"><div><i class="fas fa-person-dress"></i> </div><div>模特/女优</div></div></a><a href="/search.html"><div class="menu"><div><i class="fas fa-magnifying-glass"></i> </div><div>站内搜索</div></div></a><a href="/myHistory.html"><div class="menu"><div><i class="fas fa-clock-rotate-left"></i> </div><div>浏览历史</div></div></a><a href="/trend.html"><div class="menu"><div><i class="fas fa-chart-line"></i> </div><div>热门趋势</div></div></a><a href="/comments.html"><div class="menu"><div><i class="far fa-comment"></i> </div><div>色友评论</div></div></a><div class="menu"><div><i class="fas fa-camera"></i> </div><div>业余自拍 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/amateurs.html" subid="11"><div><i class="fas fa-camera"></i>全部自拍</div></a><a href="/amateurPost.html" subid="11"><div><i class="far fa-sun"></i>我要发表</div></a></div></div><div class="menu"><div><i class="fab fa-android"></i> </div><div>AI色情 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/videos/series-69f3977abc9f7.html" subid="12"><div><i class="fas fa-paw"></i>AI视频</div></a><a href="/photos/series-6443d480eb757.html" subid="12"><div><i class="fas fa-paw"></i>AI图区</div></a><a href="https://huangguo.video" target="_blank" subid="12"><div><i class="fas fa-theater-masks"></i>黄果剧场</div></a><a href="/aiViews.html" subid="12"><div><i class="fas fa-eye"></i>AI怎么看</div></a></div></div><div class="menu"><div><i class="fas fa-sitemap"></i> </div><div>旗下站点 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="https://huangguo.video" target="_blank" subid="14"><div><i class="fas fa-theater-masks"></i>黄果剧场</div></a><a href="https://1909.me" target="_blank" subid="14"><div><img src="/images/sites/9.png?v=1.0.2" alt="磁力链接下载网" />磁力链接下载网</div></a><a href="https://litu100.xyz" target="_blank" subid="14"><div><img src="/images/sites/14.png" alt="丽图·污漫画" />丽图·污漫画</div></a><a href="https://shise.me" target="_blank" subid="14"><div><img src="/images/sites/11.png" alt="视色" />视色</div></a><a href="https://xchina.app" target="_blank" subid="14"><div><img src="/images/sites/5.png" alt="成人APP精选" />成人APP精选</div></a><a href="https://sexgps.net" target="_blank" subid="14"><div><img src="/images/sites/4.png" alt="色情导航" />色情导航</div></a><a href="https://javd.me" target="_blank" subid="14"><div><img src="/images/sites/21.png" alt="JAVD" />JAVD</div></a><a href="https://myjav.tv" target="_blank" subid="14"><div><img src="/images/sites/6.png" alt="MyJav" />MyJav</div></a><a href="https://seyeah.com" target="_blank" subid="14"><div><img src="/images/sites/24.png" alt="色也" />色也</div></a></div></div><div class="menu"><div><i class="fas fa-image"></i> </div><div>联系我们 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="https://xchina.work/support" target="_blank" subid="15"><div><i class="fas fa-chart-line"></i>广告/投稿/联系</div></a><a href="/app.html" subid="15"><div><i class="fas fa-mobile-screen"></i>APP下载</div></a><a href="https://xiaohuangshu.me" target="_blank" subid="15"><div><i class="fas fa-link"></i>网址发布页</div></a><a href="/blog/id-67726ee04037b.html" subid="15"><div><i class="far fa-credit-card"></i>高价收图</div></a><a href="/dmca.html" subid="15"><div><i class="fas fa-flag"></i>DMCA</div></a><a href="/blogs.html" subid="15"><div><i class="fas fa-rss"></i>站务博客</div></a></div></div><a href="https://theporndude.com/zh" clickmode="link" clickid="561" rel="nofollow" target="_blank"><div class="menu"><div><i class="far fa-copyright"></i> </div><div>PornDude</div></div></a></div>
-</nav>
-<nav class="pc">
-    <div>
-        <div class="logo">
-            <a href="/"><img src="/images/sites/logo/1.png?v=1.0.2" alt="小黄书 xChina" /></a>
-            <div class="country" data-prefix="马 ">马 VN</div>
-        </div>
-        <div class="topMenu"><a href="/videos.html"><div class="menu"><div><i class="fas fa-video"></i> </div><div>成人影片</div></div></a><a href="/photos.html"><div class="menu"><div><i class="far fa-image"></i> </div><div>情色套图</div></div></a><a href="/fictions.html"><div class="menu"><div><i class="fas fa-book"></i> </div><div>成人小说</div></div></a><div class="menu"><div><i class="fas fa-layer-group"></i> </div><div>分类 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/categories.html" subid="5"><div><i class="fas fa-sitemap"></i>分类</div></a><a href="/collections" subid="5"><div><i class="fas fa-th-large"></i>合集</div></a></div></div><a href="/models.html"><div class="menu"><div><i class="fas fa-person-dress"></i> </div><div>模特/女优</div></div></a><a href="/search.html"><div class="menu"><div><i class="fas fa-magnifying-glass"></i> </div><div>站内搜索</div></div></a><a href="/myHistory.html"><div class="menu"><div><i class="fas fa-clock-rotate-left"></i> </div><div>浏览历史</div></div></a><a href="/trend.html"><div class="menu"><div><i class="fas fa-chart-line"></i> </div><div>热门趋势</div></div></a><a href="/comments.html"><div class="menu"><div><i class="far fa-comment"></i> </div><div>色友评论</div></div></a><div class="menu"><div><i class="fas fa-camera"></i> </div><div>业余自拍 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/amateurs.html" subid="11"><div><i class="fas fa-camera"></i>全部自拍</div></a><a href="/amateurPost.html" subid="11"><div><i class="far fa-sun"></i>我要发表</div></a></div></div><div class="menu"><div><i class="fab fa-android"></i> </div><div>AI色情 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="/videos/series-69f3977abc9f7.html" subid="12"><div><i class="fas fa-paw"></i>AI视频</div></a><a href="/photos/series-6443d480eb757.html" subid="12"><div><i class="fas fa-paw"></i>AI图区</div></a><a href="https://huangguo.video" target="_blank" subid="12"><div><i class="fas fa-theater-masks"></i>黄果剧场</div></a><a href="/aiViews.html" subid="12"><div><i class="fas fa-eye"></i>AI怎么看</div></a></div></div><div class="menu"><div><i class="fas fa-sitemap"></i> </div><div>旗下站点 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="https://huangguo.video" target="_blank" subid="14"><div><i class="fas fa-theater-masks"></i>黄果剧场</div></a><a href="https://1909.me" target="_blank" subid="14"><div><img src="/images/sites/9.png?v=1.0.2" alt="磁力链接下载网" />磁力链接下载网</div></a><a href="https://litu100.xyz" target="_blank" subid="14"><div><img src="/images/sites/14.png" alt="丽图·污漫画" />丽图·污漫画</div></a><a href="https://shise.me" target="_blank" subid="14"><div><img src="/images/sites/11.png" alt="视色" />视色</div></a><a href="https://xchina.app" target="_blank" subid="14"><div><img src="/images/sites/5.png" alt="成人APP精选" />成人APP精选</div></a><a href="https://sexgps.net" target="_blank" subid="14"><div><img src="/images/sites/4.png" alt="色情导航" />色情导航</div></a><a href="https://javd.me" target="_blank" subid="14"><div><img src="/images/sites/21.png" alt="JAVD" />JAVD</div></a><a href="https://myjav.tv" target="_blank" subid="14"><div><img src="/images/sites/6.png" alt="MyJav" />MyJav</div></a><a href="https://seyeah.com" target="_blank" subid="14"><div><img src="/images/sites/24.png" alt="色也" />色也</div></a></div></div><div class="menu"><div><i class="fas fa-image"></i> </div><div>联系我们 <i class="fas fa-caret-down caret"></i></div><div class="subs"><a href="https://xchina.work/support" target="_blank" subid="15"><div><i class="fas fa-chart-line"></i>广告/投稿/联系</div></a><a href="/app.html" subid="15"><div><i class="fas fa-mobile-screen"></i>APP下载</div></a><a href="https://xiaohuangshu.me" target="_blank" subid="15"><div><i class="fas fa-link"></i>网址发布页</div></a><a href="/blog/id-67726ee04037b.html" subid="15"><div><i class="far fa-credit-card"></i>高价收图</div></a><a href="/dmca.html" subid="15"><div><i class="fas fa-flag"></i>DMCA</div></a><a href="/blogs.html" subid="15"><div><i class="fas fa-rss"></i>站务博客</div></a></div></div><a href="https://theporndude.com/zh" clickmode="link" clickid="561" rel="nofollow" target="_blank"><div class="menu"><div><i class="far fa-copyright"></i> </div><div>PornDude</div></div></a></div>
-        <div class="theme-container"><div id="theme-toggle-btn"></div></div>
-        <div class="languages"><div class="language current" language="cn" checked="true">简体</div><div class="choose"><a href="https://xchina.co/video/id-6a6b9e4c1a4bd.html" rel="nofollow"><div class="language" language="cn"checked="true">简体</div></a><a href="https://tw.xchina.co/video/id-6a6b9e4c1a4bd.html" rel="nofollow"><div class="language" language="tw">繁體</div></a><a href="https://kr.xchina.co/video/id-6a6b9e4c1a4bd.html" rel="nofollow"><div class="language" language="kr">한국인</div></a><a href="https://en.xchina.co/video/id-6a6b9e4c1a4bd.html" rel="nofollow"><div class="language" language="en">English</div></a><a href="https://es.xchina.co/video/id-6a6b9e4c1a4bd.html" rel="nofollow"><div class="language" language="es">Español</div></a></div></div>
-        <div class="login"><div id="nav-user-wrap"></div><script>window.__navUserConfig={"loginUrl":"https:\/\/xchina.online\/?s=f6PqIPEGx9zCP_btHPOi4GIrQlBLOGJrRHlrWFhGYjJVSEgxMWFjWmxLbE12cmZCQ09hS1NNQWxyR3I0VWFVSEdYdEZXcDlXaVdqUi9mOE9wNW9STDBRbW4rTE4zOUVhRnNDcFB3PT0%3D","logoutLabel":"退出","loginRegisterLabel":"登录 | 注册","userMenus":[{"url":"\/my.html","label":"个人中心","icon":"far fa-user"},{"url":"\/myFavs.html","label":"我的收藏","icon":"fas fa-heart"},{"url":"\/myComments.html","label":"我的评论","icon":"far fa-comment"},{"url":"\/myAmateurs.html","label":"我的业余自拍","icon":"far fa-image"},{"url":"\/myFictions.html","label":"我的成人小说","icon":"fas fa-book"},{"url":"\/myPoints.html","label":"我的积分","icon":"far fa-gem"},{"url":"\/myPointUse.html","label":"积分兑换中心","icon":"fas fa-arrow-right-arrow-left"},{"url":"\/myHistory.html","label":"我的历史记录","icon":"fas fa-clock-rotate-left"}]};</script></div>
-    </div>
-</nav>    <div class="hero-section"><div class="hero-title"><div class="main-container"><h1 class="hero-title-item">不良女学生榨干男教师，玉足踩蛋，小穴吞根</h1><div class="hero-title-item">中文AV - 独立创作者</div></div></div></div>    <div class="breadcrumb"><div class="main-container"><span class="breadcrumb-prefix">📍</span><span><a href="/">首页</a><i class="fas fa-angles-right"></i><a href="/videos.html">成人影片</a><i class="fas fa-angles-right"></i><a href="/videos/series-63824a975d8ae.html">中文AV</a><i class="fas fa-angles-right"></i><a href="/videos/series-61bf6e439fed6.html">独立创作者</a><i class="fas fa-angles-right"></i><a href="/video/id-6a6b9e4c1a4bd.html">不良女学生榨干男教师，玉足踩蛋，小穴吞根</a></span></div></div>    <a id="anchor-page-top"></a>
-    <div class="main-container">
-<script src="/plugins/video.js/8.12.0/video.min.js"></script><link href="/plugins/video.js/8.12.0/video-js.min.css" rel="stylesheet" /><script src="/plugins/videojs-landscape-fullscreen/videojs-landscape-fullscreen.min.js?v=1.0.51"></script><script src="/scripts/videoPlayer/videoPlayer.js?v=1.0.51"></script><link rel="stylesheet" href="/scripts/videoPlayer/videoPlayer.css?v=1.0.28" /><script>
-$(document).ready(function() {
-    if (typeof window._videoPlayerInited === 'undefined') window._videoPlayerInited = {};
-    if (!window._videoPlayerInited['video-player']) {
-        window._videoPlayerInited['video-player'] = true;
-        const player = new VideoPlayer('video-player', {
-            src: 'https://video.xchina.download/m3u8/6a6b9e4c1a4bd/720.m3u8?expires=1785598712&md5=o7IvBXoZMSSs0HzYHNbORQ',
-            poster: 'https://img.xchina.download/cover/6a6b9e4c1a4bd.webp',
-            rememberSettings: true,
-            customButton: true,
-            skipTime: 10,
-            tapToSeek: true,
-            tapAreaWidth: 25,
-            centerTapAction: 'toggle',
-            tapHoverEffect: 'none',
-            tapSeekTime: 10,
-            playbackRates: [0.5,1,1.5,2],
-            enableAds: false,
-            vastUrl: '',
-            vttUrl: 'https://video.xchina.download/ts/6a6b9e4c1a4bd/thumbs/thumbs.vtt',
-            skipAdAfter: 5,
-            showAdCountdown: true,
-            enableLandscapeFullscreen: true,
-            landscapeMode: 'smart',
-            enableAutoHideControls: true,
-            autoHideDelay: 3000,
-            showOnHover: true,
-            showOnPause: true,
-            showOnAd: true,
-        });
+        </style><style id="dynamic-cue-styles">
+    video::cue {
+      color: #ffffff !important;
+      font-size: 24px !important;
+      font-weight: bold !important;
+      background: rgba(0, 0, 0, 0.5) !important;
     }
-});
-</script>
-<script>
-    (function() {
-        const BaitPath = '/scripts/ads.js?v=1.0.2';
-        const TIMEOUT_MS = 2500;
-        const debugLog = false;
-
-        const _key = '__' + Math.random().toString(36).slice(2, 8);
-        const result = {
-            detected: false,
-            details: null,
-            timestamp: Date.now()
-        };
-        window[_key] = result;
-
-        function log(...args) {
-            if (debugLog) console.log('[AdProbe]', ...args);
-        }
-
-        function checkDomBait() {
-            return new Promise((resolve) => {
-                try {
-                    const el = document.createElement('div');
-                    el.className = 'ad-banner ads adunit advertisement';
-                    el.style.cssText = 'width:1px;height:1px;position:absolute;left:-9999px;';
-                    (document.body || document.documentElement).appendChild(el);
-                    requestAnimationFrame(() => {
-                        const cs = getComputedStyle(el);
-                        const hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
-                        const removed = !document.body.contains(el);
-                        if (document.body.contains(el)) el.remove();
-                        resolve(hidden || removed);
-                    });
-                } catch (e) {
-                    resolve(false);
-                }
-            });
-        }
-
-        function checkScriptBait() {
-            return new Promise((resolve) => {
-                let done = false;
-                const s = document.createElement('script');
-                s.src = BaitPath + '#' + Math.random();
-                s.async = true;
-                s.onload = () => {
-                    if (!done) {
-                        done = true;
-                        cleanup(false);
-                    }
-                };
-                s.onerror = () => {
-                    if (!done) {
-                        done = true;
-                        cleanup(true);
-                    }
-                };
-                const timer = setTimeout(() => {
-                    if (!done) {
-                        done = true;
-                        cleanup(true);
-                    }
-                }, TIMEOUT_MS);
-
-                function cleanup(blocked) {
-                    clearTimeout(timer);
-                    if (s.parentNode) s.parentNode.removeChild(s);
-                    resolve(blocked);
-                }
-                document.head.appendChild(s);
-            });
-        }
-
-        async function checkFetchBait() {
-            try {
-                const resp = await fetch(BaitPath + '#' + Math.random(), {
-                    mode: 'no-cors',
-                    cache: 'no-store'
-                });
-                return false;
-            } catch (e) {
-                return true;
-            }
-        }
-
-        async function runDetection(round = 'initial') {
-            if (!document.body) {
-                await new Promise(r => window.addEventListener('DOMContentLoaded', r, {
-                    once: true
-                }));
-            }
-            const [domBlocked, scriptBlocked, fetchBlocked] = await Promise.all([
-                checkDomBait(),
-                checkScriptBait(),
-                checkFetchBait()
-            ]);
-            const detected = domBlocked || scriptBlocked || fetchBlocked;
-            if (detected) {
-                log('detected on', round, {
-                    domBlocked,
-                    scriptBlocked,
-                    fetchBlocked
-                });
-            }
-            return detected;
-        }
-
-        async function start() {
-            const first = await runDetection('first');
-            window.addEventListener('load', async () => {
-                setTimeout(async () => {
-                    const second = await runDetection('second');
-                    const detected = first || second;
-                    result.detected = detected;
-                    result.details = {
-                        first,
-                        second
-                    };
-                    result.timestamp = Date.now();
-                    window[_key] = result;
-                    const ev = new CustomEvent('site:probe:complete', {
-                        detail: {
-                            key: _key,
-                            result
-                        }
-                    });
-                    window.dispatchEvent(ev);
-                    if (window.__siteProbeCallbacks) {
-                        window.__siteProbeCallbacks.forEach(fn => {
-                            try {
-                                fn(result);
-                            } catch (e) {}
-                        });
-                    }
-                    log('final result', result);
-                }, 1000);
-            });
-        }
-
-        window.registerSiteProbeCallback = function(cb) {
-            if (!window.__siteProbeCallbacks) window.__siteProbeCallbacks = [];
-            window.__siteProbeCallbacks.push(cb);
-            try {
-                cb(window[_key]);
-            } catch (e) {}
-        };
-        window.getSiteProbeKey = function() {
-            return _key;
-        };
-
-        start();
-    })();
-</script>
-
-<script>
-    (function() {
-        function thisMethod() {
-            const playerElement = document.getElementById('video-player');
-            if (playerElement) {
-                const playerContainer = playerElement.closest('.player-container') || playerElement.parentElement;
-
-                if (playerContainer && !playerContainer.querySelector('.block-overlay')) {
-                    const currentPosition = window.getComputedStyle(playerContainer).position;
-                    if (currentPosition === 'static') {
-                        playerContainer.style.position = 'relative';
-                    }
-
-                    const overlay = document.createElement('div');
-                    overlay.className = 'block-overlay';
-                    overlay.innerHTML = '<div><p>我们依靠广告维持运营，请关闭广告拦截插件，或将本站加入白名单，谢谢配合</p><p><a href="/adBlock.html">如何关闭</a></p>';
-                    playerContainer.appendChild(overlay);
-
-                    my.ajax({
-                        action: "recordDetect"
-                    }, function(result) {}, false, true);
-
-                }
-            }
-
-        }
-
-        let actionDone = false;
-
-        function handleDetected(result) {
-            if (actionDone) return;
-            if (!(result && result.detected)) return;
-            actionDone = true;
-            setTimeout(thisMethod, 3000);
-        }
-
-        if (window.registerSiteProbeCallback) {
-            window.registerSiteProbeCallback(handleDetected);
-        } else {
-            window.addEventListener('site:probe:complete', function(e) {
-                try {
-                    const info = e && e.detail && e.detail.result ? e.detail.result : null;
-                    if (info && info.detected) handleDetected(info);
-                } catch (err) {}
-            });
-
-            try {
-                if (typeof window.getSiteProbeKey === 'function') {
-                    const key = window.getSiteProbeKey();
-                    if (key && window[key] && window[key].detected) handleDetected(window[key]);
-                }
-            } catch (e) {}
-        }
-
-    })();
-</script>
-
-<div class="layout-lr video">
-    <div class="left-1">
-        <script>
-$(document).ready(function () {
-    var $searchInput = $(".sidebar-search-input");
-    var $searchBtn = $(".sidebar-search-btn");
-    
-    function performSearch() {
-        var keyword = $searchInput.val().trim();
-        keyword = keyword.replace(/[\*\"\\?\&<>]/g, "");
-        keyword = keyword.replace(/\s+/g, "+");
-        
-        if (keyword.length < 2) {
-            my.error("请输入关键词（2字以上）");
-            $searchInput.focus();
-            return false;
-        }
-                var url = "/videos/keyword-" + encodeURIComponent(keyword) + ".html";
-        location.href = url;
-        return true;
+    .video-js video::cue {
+      color: #ffffff !important;
+      font-size: 24px !important;
+      font-weight: bold !important;
+      background: rgba(0, 0, 0, 0.5) !important;
     }
-    
-    $searchInput.on("keypress", function (event) {
-        if (event.keyCode === 13 || event.which === 13) {
-            event.preventDefault();
-            performSearch();
-        }
-    });
-    
-    $searchBtn.on("click", function (event) {
-        event.preventDefault();
-        performSearch();
-    });
-    
-    $searchInput.on("focus", function() {
-        $(this).removeClass("error");
-    });
-});
-</script>
-<div class="content-box sidebar-search" role="search">
-    <div class="header">影片搜索</div>
-    <div class="search-input-wrapper">
-        <input class="sidebar-search-input" type="text" name="keyword" value="" placeholder="影片标题、番号、女优" maxlength="20" autocomplete="off" />
-        <button type="button" class="sidebar-search-btn" title="搜索">
-            <i class="fas fa-magnifying-glass"></i>
-        </button>
-    </div>
-</div>        <div class="content-box series"><h3>影片分类</h3><div class="parent">中文AV</div><a href="/videos/series-5f904550b8fcc.html"><div class="sub">麻豆传媒 (3574)</div></a><a href="/videos/series-61bf6e439fed6.html"><div class="sub checked">独立创作者 (2176)</div></a><a href="/videos/series-61014080dbfde.html"><div class="sub">糖心Vlog (1586)</div></a><a href="/videos/series-5fe8403919165.html"><div class="sub">蜜桃传媒 (1107)</div></a><a href="/videos/series-6054e93356ded.html"><div class="sub">星空传媒 (1006)</div></a><a href="/videos/series-60153c49058ce.html"><div class="sub">天美传媒 (780)</div></a><a href="/videos/series-65e5f74e4605c.html"><div class="sub">香蕉视频 (646)</div></a><a href="/videos/series-5fe840718d665.html"><div class="sub">果冻传媒 (627)</div></a><a href="/videos/series-60126bcfb97fa.html"><div class="sub">精东影业 (536)</div></a><a href="/videos/series-6072997559b46.html"><div class="sub">杏吧原版 (516)</div></a><a href="/videos/series-63d134c7a0a15.html"><div class="sub">爱豆传媒 (393)</div></a><a href="/videos/series-63986aec205d8.html"><div class="sub">其他中文AV (355)</div></a><a href="/videos/series-64e9cce89da21.html"><div class="sub">IBiZa Media (322)</div></a><a href="/videos/series-63490362dac45.html"><div class="sub">性视界 (316)</div></a><a href="/videos/series-63732f5c3d36b.html"><div class="sub">ED Mosaic (296)</div></a><a href="/videos/series-65bcaa9688514.html"><div class="sub">大象传媒 (244)</div></a><a href="/videos/series-6230974ada989.html"><div class="sub">扣扣传媒 (201)</div></a><a href="/videos/series-6360ca9706ecb.html"><div class="sub">萝莉社 (190)</div></a><a href="/videos/series-633ef3ef07d33.html"><div class="sub">SA国际传媒 (159)</div></a><a href="/videos/series-6248705dab604.html"><div class="sub">抖阴 (53)</div></a><a href="/videos/series-6193d27975579.html"><div class="sub">葫芦影业 (47)</div></a><a href="/videos/series-637750ae0ee71.html"><div class="sub">乌托邦 (43)</div></a><a href="/videos/series-6405b6842705b.html"><div class="sub">爱神传媒 (38)</div></a><a href="/videos/series-60589daa8ff97.html"><div class="sub">乐播传媒 (34)</div></a><a href="/videos/series-69f3977abc9f7.html"><div class="sub">AI视频 (32)</div></a><a href="/videos/series-639c8d983b7d5.html"><div class="sub">91茄子 (31)</div></a><a href="/videos/series-6964cfbda328b.html"><div class="sub">JVID (27)</div></a><a href="/videos/series-671ddc0b358ca.html"><div class="sub">草莓视频 (26)</div></a><a href="/videos/series-64eda52c1c3fb.html"><div class="sub">YOYO (20)</div></a><a href="/videos/series-671dd88d06dd3.html"><div class="sub">51吃瓜 (17)</div></a><a href="/videos/series-64458e7da05e6.html"><div class="sub">哔哩传媒 (16)</div></a><a href="/videos/series-6560dc053c99f.html"><div class="sub">映秀传媒 (15)</div></a><a href="/videos/series-648e1071386ef.html"><div class="sub">西瓜影视 (11)</div></a><a href="/videos/series-64be8551bd0f1.html"><div class="sub">思春社 (5)</div></a><div class="parent">日本AV</div><a href="/videos/series-6395aba3deb74.html"><div class="sub">有码AV (8699)</div></a><a href="/videos/series-6395ab7fee104.html"><div class="sub">无码AV (2669)</div></a><a href="/videos/series-6608638e5fcf7.html"><div class="sub">AV解说 (597)</div></a><div class="parent">模特私拍</div><a href="/videos/series-63963186ae145.html"><div class="sub">PANS视频 (1934)</div></a><a href="/videos/series-63963534a9e49.html"><div class="sub">其他模特私拍 (538)</div></a><a href="/videos/series-64edbeccedb2e.html"><div class="sub">热舞 (301)</div></a><a href="/videos/series-63ed0f22e9177.html"><div class="sub">相约中国 (154)</div></a><a href="/videos/series-6396315ed2e49.html"><div class="sub">果哥作品 (57)</div></a><a href="/videos/series-68456564f2710.html"><div class="sub">SweatGirl (19)</div></a><a href="/videos/series-6396319e6b823.html"><div class="sub">风吟鸟唱作品 (11)</div></a><a href="/videos/series-6754a97d2b343.html"><div class="sub">色艺无间 (10)</div></a><a href="/videos/series-668c3b2de7f1c.html"><div class="sub">黄甫 (9)</div></a><a href="/videos/series-63ab1dd83a1c6.html"><div class="sub">日月俱乐部 (1)</div></a><div class="parent">业余拍摄</div><a href="/videos/series-63965bf7b7f51.html"><div class="sub">探花现场 (620)</div></a><a href="/videos/series-63965bd5335fc.html"><div class="sub">主播现场 (156)</div></a><div class="parent">情色电影</div><a href="/videos/series-6396492fdb1a0.html"><div class="sub">华语电影 (241)</div></a><a href="/videos/series-6396494584b57.html"><div class="sub">日韩电影 (81)</div></a><a href="/videos/series-63964959ddb1b.html"><div class="sub">欧美电影 (23)</div></a><div class="parent">其他影片</div><a href="/videos/series-63963ea949a82.html"><div class="sub">其他亚洲影片 (130)</div></a><a href="/videos/series-63963de3f2a0f.html"><div class="sub">门事件 (107)</div></a><a href="/videos/series-6396404e6bdb5.html"><div class="sub">其他欧美影片 (51)</div></a><a href="/videos/series-66643478ceedd.html"><div class="sub">无关情色 (23)</div></a></div>        <div id="core-zone-8"></div>
-        <div id="z-extra-4"></div>
-    </div>
-    <div class="right-5">
-        <div id="core-zone-4"></div>
-        <div id="z-extra-1"></div>
-        <div id="z-extra-2"></div>
-        <div id="z-extra-3"></div>
-        <div class="content-box"><div class="tab-container"><div class="tab-navs"><div class="tab-nav active" data-tab="tab_6a6dfef042aed_1" onclick="
-            var $container = $(this).closest('.tab-container');
-            $container.find('.tab-nav, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            $('#tab_6a6dfef042aed_1').addClass('active');
-        ">影片信息</div><div class="tab-nav" data-tab="tab_6a6dfef042aed_2" onclick="
-            var $container = $(this).closest('.tab-container');
-            $container.find('.tab-nav, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            $('#tab_6a6dfef042aed_2').addClass('active');
-        ">下载</div><div class="tab-nav" data-tab="tab_6a6dfef042aed_3" onclick="
-            var $container = $(this).closest('.tab-container');
-            $container.find('.tab-nav, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            $('#tab_6a6dfef042aed_3').addClass('active');
-        ">截屏</div><div class="tab-nav" data-tab="tab_6a6dfef042aed_4" onclick="
-            var $container = $(this).closest('.tab-container');
-            $container.find('.tab-nav, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            $('#tab_6a6dfef042aed_4').addClass('active');
-        ">分享</div><div class="tab-nav" data-tab="tab_6a6dfef042aed_5" onclick="
-            var $container = $(this).closest('.tab-container');
-            $container.find('.tab-nav, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            $('#tab_6a6dfef042aed_5').addClass('active');
-        ">提示</div></div><div class="tab-contents"><div class="tab-content active" id="tab_6a6dfef042aed_1"><div class="info-card video-detail"><div class="item"><div class="icon"><i class="fas fa-address-card"></i></div><div class="text">不良女学生榨干男教师，玉足踩蛋，小穴吞根</div></div><div class="item floating"><div class="model-avatar-container"><a href="/model/id-66950913ec5bd.html"><div class="model-item" style="background-image: url('https://upload.xchina.io/model/669509597d2be.webp');"><div>懒懒猪</div></div></a></div></div><div class="item mobile-only"><div class="icon"><i class="fas fa-person-dress"></i></div><div class="text"><div class="model-container"><a href="/model/id-66950913ec5bd.html" class="model-item">懒懒猪</a></div></div></div><div class="item"><div class="icon"><i class="fas fa-video-camera"></i></div><div class="text"><a href="/videos/series-63824a975d8ae.html">中文AV</a><span class="joiner">-</span><a href="/videos/series-61bf6e439fed6.html">独立创作者</a></div></div><div class="item"><div class="icon"><i class="fas fa-link"></i></div><div class="text"><div class='cpc-text'>推广：<a href="https://xchina.click/prepare.html?id=M0huUTZiMjZ1WG5DOVJiN1FLdFozakZ2YmtSRlREVktRelowU0RoWWRGbzJMMko2ZW5jOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">学生求包养</a><a href="https://xchina.click/prepare.html?id=dUo2MnlfdHUtTmxtZGFXdXROY201alJDU0hFdmFFNUpZa2RwTnpFeU1GQlZja04xZEZFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">换妻群交群</a><a href="https://xchina.click/prepare.html?id=OGZNUl80TWIzR3VWUklock5lU2NSa2g1ZG5WTWRXUjZaVnBwTWl0dU1WSjRLMGt3YlhjOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">Ai榨精淫欲💋</a><a href="https://xchina.click/prepare.html?id=MXQtTkp4UFFVWXBTa1hBeWNlYUJPV3R5YWpCaU5tdFhSMUJRTVhaMFVFaHdhbFJ0UzFFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">个人兼职上门</a><a href="https://xchina.click/prepare.html?id=VUZoSnNSTFlyU0pEcVZuM0FDMlBta3c1TDI1Q2RWWXJSbWhJT1hKaVVEUlpNV3R5VlZFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">同城免费约炮</a><a href="https://xchina.click/prepare.html?id=SDJyaXRKbjg1cnh1X1BVdlZEMXpNbFpES3pkeWIwNUNXSEYwWW1jeFpuVm5XVmcxYlhjOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">学生免费上门</a><a href="https://xchina.click/prepare.html?id=cm5fWEtjWnh3NDJsT3FyTFV3UFJXMDFTY25GRVRWcHNVR3BoYTFSc2VVc3lSME5xU0VFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">嫩茶每日分享</a><a href="https://xchina.click/prepare.html?id=MU1MNlJEVEo4X0l1RE1xVVdJU1BvRmRzTDNodFRTOVZXQzlWY3l0T1dFdzVNaXRNV0djOVBRPT0=" target="_blank" rel="nofollow noopener sponsor" style="padding-right: 10px;">少妇换妻啪啪群</a></div></div></div></div></div><div class="tab-content" id="tab_6a6dfef042aed_2"><div class="info-card"><div class="item"><a href="/katfile/id-6a6bc835b2b0f.html"><div class="btn download">影片下载</div></a></div></div></div><div class="tab-content" id="tab_6a6dfef042aed_3"><div class="info-card"><div class="screenshot-container"><div><img src="https://img.xchina.download/cover/6a6b9e4c1a4bd.webp" alt="【独立创作者】不良女学生榨干男教师，玉足踩蛋，小穴吞根" /></div><div><img src="https://img.xchina.download/screenshot/6a6b9e4c1a4bd.webp" alt="【独立创作者】不良女学生榨干男教师，玉足踩蛋，小穴吞根" /></div></div></div></div><div class="tab-content" id="tab_6a6dfef042aed_4"><div class="info-card"><div class="item"><a href="https://twitter.com/intent/tweet?text=%E3%80%90%E7%8B%AC%E7%AB%8B%E5%88%9B%E4%BD%9C%E8%80%85%E3%80%91%E4%B8%8D%E8%89%AF%E5%A5%B3%E5%AD%A6%E7%94%9F%E6%A6%A8%E5%B9%B2%E7%94%B7%E6%95%99%E5%B8%88%EF%BC%8C%E7%8E%89%E8%B6%B3%E8%B8%A9%E8%9B%8B%EF%BC%8C%E5%B0%8F%E7%A9%B4%E5%90%9E%E6%A0%B9%0Ahttps%3A%2F%2Fxchina.co%2Fvideo%2Fid-6a6b9e4c1a4bd.html" target="_blank" rel="nofollow noreferrer noopener"><div class="btn twitter">分享到 Twitter</div></a></div><div class="item"><div class="btn copy" copycaption="当前网址已复制" copyvalue="https://xchina.co/video/id-6a6b9e4c1a4bd.html">复制当前网址</div></div></div></div><div class="tab-content" id="tab_6a6dfef042aed_5"><div class="info-card"><div class="item"><div class="icon"><i class="fas fa-bell"></i></div><div class="text"><div>防盗链启用中，如果无法看到图片，请关闭浏览器的隐私模式（或称为隐身模式）</div></div></div><div class="item"><div class="icon"><i class="fas fa-bell"></i></div><div class="text"><div>大陆网友可能会被防火墙屏蔽或卡顿，翻墙推荐使用<a clickmode="ad" clickid="2" href="https://www.vps000.org/?code=E21C20" target="_blank" rel="nofollow">《威伯斯云VPN》</a></div></div></div><div class="item"><div class="icon"><i class="fas fa-bell"></i></div><div class="text"><div>分享原创作品？<a href="/amateurs.html">《业余自拍》</a>欢迎你</div></div></div><div class="item"><div class="icon"><i class="fas fa-bell"></i></div><div class="text"><div>漫漫长夜如何度过？下载几个APP吧：<a href="https://xchina.app" target="_blank">成人APP精选</a></div></div></div></div></div></div></div></div>        <div class="content-box player-container">
-                            <div id="video-player" class="video-player"></div>
-                    </div>
-        <div class="content-box">
-            
-
-<script>
-    var commentOptions = {"dataMode":"object","dataObject":{"mode":"video","id":"6a6b9e4c1a4bd"},"words":{"success":"操作成功","reply":"回复","view":"查看","submitReply":"添加公开回复","cancel":"取消","hideReplies":"隐藏回复","n_replies":"条回复","n_floor":"楼","no_record":"还没有人发表过评论","no_record_my":"您还没有发表过评论","translate":"翻译它","translation":"翻译：","translating":"翻译中","translate_failed":"翻译失败","comment_success":"评论发表成功"},"config":{"maxChar":300,"maxReplyLength":300,"selectors":{"dataContainer":".data","pagerContainer":".pager-js"},"scrollAnchor":"#comment_start","scrollOffset":100,"scrollDuration":500}};
-    var userInfo = {"Nickname":"越南色友","AvatarHtml":"<div class=\"avatar char s40\">越<\/div>"};
-    var quickRepliesData = ["视频很好看，女优很漂亮，导演很有才，摄像很专业，化妆很完美，灯光很给力，剧情很精彩，场务很敬业","由衷感謝大大精彩的分享 !","楼主一生平安！（请狼友保持队形）…","对楼主的敬意犹如滔滔流水连绵不绝，又如黄河泛滥一发而不可收","真是生我者父母，知我者楼主呀！","楼主把自己女朋友视频发上来不怕被她发现吗","这也太美了，看in了看in了","太销魂了吧~让人快把持不住了","这真的是太正点了！整个就是超级完美的","这不是我的前女友吗？","这不是我的老婆吗？什么时候出来拍片了？","这还能把持住的就不是男人啦！","真的是太正点了，看得我心中的火高涨呀","清纯可爱的肉体看了真是赏心悦目","身材比例真是完美，皮肤白皙吹弹可破","真乃美胸也，小弟昂然佩服","天啊！超正的，再看下去就要爆炸啦∼","这诱惑谁受的了呀，杀人了～","已经下载到硬盘留着慢慢欣赏了","这是我看过最美的小穴了！","年轻、貌美、身材好，全世界的正妹是都跑来当女优了吗","真的波涛汹涌，好想摸摸看哟","我跟你们这些凡夫俗子不一样，我是进来欣赏艺术的","放开那个无辜的男人，有本事冲我来！","摄影师怎么忍得住啊！","她们这些光着身子，在镜头前和男人欢愉做爱的女子，和我们底层男性一样，为了生活奉献着灵魂，值得尊敬","给大大手动点赞👍","感谢大大分享！1024！"];
-</script>
-
-<script>
-    var minChar = 4;
-    var maxChar = 300;
-
-    $(document).ready(function() {
-        var currentStarRating = 0;
-
-        function initStarRating() {
-            $('.star-rating').each(function() {
-                var $rating = $(this);
-                var $labels = $rating.find('label');
-
-                $labels.on('mouseenter', function() {
-                    var starId = $(this).attr('for');
-                    var value = parseInt(starId.replace('star', ''));
-                    showStars($rating, value, true);
-                });
-
-                $rating.on('mouseleave', function() {
-                    showStars($rating, currentStarRating, false);
-                });
-
-                $labels.on('click', function() {
-                    var starId = $(this).attr('for');
-                    var value = parseInt(starId.replace('star', ''));
-
-                    if (currentStarRating === value) {
-                        currentStarRating = 0;
-                        $rating.find('input[type="radio"]').prop('checked', false);
-                    } else {
-                        currentStarRating = value;
-                        $('#' + starId).prop('checked', true);
-                    }
-
-                    showStars($rating, currentStarRating, false);
-                });
-            });
-        }
-
-        function showStars($rating, count, isHover) {
-            var $labels = $rating.find('label');
-
-            $labels.removeClass('active hover-active');
-
-            for (var i = 1; i <= count; i++) {
-                var $label = $rating.find('label[for="star' + i + '"]');
-                if (isHover) {
-                    $label.addClass('hover-active');
-                } else {
-                    $label.addClass('active');
-                }
-            }
-        }
-
-        function getCurrentRating() {
-            return currentStarRating;
-        }
-
-        function setRating(rating) {
-            currentStarRating = rating;
-            var $rating = $('.star-rating');
-            if (rating > 0) {
-                $('#star' + rating).prop('checked', true);
-            } else {
-                $rating.find('input[type="radio"]').prop('checked', false);
-            }
-            showStars($rating, currentStarRating, false);
-        }
-
-        initStarRating();
-
-        $("a[name='submit-comment']").click(function() {
-            let $btn = $(this);
-            if (!$btn.hasClass("disabled")) {
-                $btn.addClass("disabled");
-
-                var scoreValue = $("input[type='radio'][name='score']:checked").val();
-
-                my.ajax({
-                    action: "submitComment",
-                    objMode: commentOptions.dataObject.mode,
-                    objId: commentOptions.dataObject.id,
-                    content: $("textarea[name='comment']").val().trim(),
-                    country: $(".quick-reply select[name='country']").val(),
-                    score: scoreValue
-                }, function(result) {
-                    $btn.removeClass("disabled");
-                    switch (result.code) {
-                        case 0:
-                            my.success(commentOptions.words.comment_success);
-                            $("textarea[name='comment']").val("");
-                            currentStarRating = 0;
-                            $('.star-rating input[type="radio"]').prop('checked', false);
-                            showStars($('.star-rating'), 0, false);
-                            commentManager.commentPage = 1;
-                            commentManager.getComments();
-                            break;
-                        default:
-                            my.error(result.message);
-                            break;
-                    }
-                });
-            }
-        });
-
-        $(".quick-reply-btn").click(function() {
-            showQuickReplyModal();
-        });
-
-        $("textarea[name='comment']").keyup(function() {
-            var charCount = $(this).val().length;
-            $(".charCount").text(charCount + " / " + maxChar);
-        }).trigger("keyup");
-
-        window.getCurrentRating = getCurrentRating;
-        window.setRating = setRating;
-    });
-
-    function showQuickReplyModal() {
-        if (!quickRepliesData || Object.keys(quickRepliesData).length === 0) {
-            return;
-        }
-
-        var quickReplyListHtml = '<div class="quick-reply-list">';
-        for (var key in quickRepliesData) {
-            var replyText = quickRepliesData[key];
-            quickReplyListHtml += '<div class="quick-reply-item" data-reply="' + replyText.replace(/"/g, '&quot;') + '">';
-            quickReplyListHtml += '<div class="reply-text">' + replyText + '</div>';
-            quickReplyListHtml += '</div>';
-        }
-        quickReplyListHtml += '</div>';
-
-        quickReplyListHtml += '<style>';
-        quickReplyListHtml += '.quick-reply-list { max-height: 400px; overflow-y: auto; }';
-        quickReplyListHtml += '.quick-reply-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s; }';
-        quickReplyListHtml += '.quick-reply-item:hover { background-color: #f5f5f5; }';
-        quickReplyListHtml += '.quick-reply-item:last-child { border-bottom: none; }';
-        quickReplyListHtml += '.reply-text { line-height: 1.4; }';
-        quickReplyListHtml += '</style>';
-
-        var modal = new Modal({
-            threeSection: true,
-            headerText: "快捷回复",
-            showDefaultCloseButton: true,
-            showHeaderCloseButton: true,
-            backdropClose: true,
-            escClose: true
-        });
-
-        modal.setContent(quickReplyListHtml).showModal();
-
-        setTimeout(function() {
-            $('.quick-reply-item').click(function() {
-                var replyText = $(this).data('reply');
-                $("textarea[name='comment']").val(replyText).trigger('keyup');
-                modal.closeModal();
-            });
-        }, 100);
+    #my-video::cue {
+      color: #ffffff !important;
+      font-size: 24px !important;
+      font-weight: bold !important;
+      background: rgba(0, 0, 0, 0.5) !important;
     }
-</script>
+  </style></head>
+<body tabindex="0">
+<div class="player-container">
+  <div id="osd-display"><i class="fas fa-volume-up"></i> <span>100%</span></div>
+  
+  <!-- Custom Settings Panel — menu dạng danh sách drill-down (kiểu YouTube) -->
+  
 
-<a id="anchor-comment"></a>
-<div class="content-box comments">
-    <div class="header">
-        <div class="title-lr">
-            <div class="left">
-                色友点评                (1)            </div>
-        </div>
+  
+  <div webkit-playsinline="" playsinline="true" poster="https://sv1.rophim.mom/stream/1420/poster.jpg" preload="none" class="video-js vjs-default-skin vjs-big-play-centered vjs-fill my-video-dimensions vjs-controls-disabled vjs-touch-enabled vjs-workinghover vjs-v8 vjs-user-active vjs-playing vjs-has-started" id="my-video" tabindex="-1" lang="vi" translate="no" role="region" aria-label="Video Player"><video id="my-video_html5_api" class="vjs-tech" preload="none" poster="https://sv1.rophim.mom/stream/1420/poster.jpg" playsinline="playsinline" webkit-playsinline="" tabindex="-1" src="blob:https://sv1.rophim.mom/b3a046ea-9896-4a4c-a94a-de3ba2e4bb5b"></video><div class="vjs-poster" aria-disabled="false"><picture class="vjs-poster" tabindex="-1"><img loading="lazy" alt="" src="https://sv1.rophim.mom/stream/1420/poster.jpg"></picture></div><div class="vjs-title-bar vjs-hidden"><div class="vjs-title-bar-title" id="vjs-title-bar-title-85"></div><div class="vjs-title-bar-description" id="vjs-title-bar-description-86"></div></div><div class="vjs-text-track-display" translate="yes" aria-live="off" aria-atomic="true"><div style="position: absolute; inset: 0px; margin: 1.5%;"></div></div><div class="vjs-loading-spinner" dir="ltr"><span class="vjs-control-text">Video Player is loading.</span></div><button class="vjs-big-play-button" type="button" title="Play Video" aria-disabled="false"><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite">Play Video</span></button><div class="vjs-control-bar" dir="ltr"><button class="vjs-play-control vjs-control vjs-button vjs-playing" type="button" title="Pause" aria-disabled="false"><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite">Pause</span></button><button class="vjs-skip-btn vjs-control vjs-button" title="Lùi 10s" type="button" aria-disabled="false"><i class="fas fa-rotate-left"></i><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite"></span></button><button class="vjs-skip-btn vjs-control vjs-button" title="Tiến 10s" type="button" aria-disabled="false"><i class="fas fa-rotate-right"></i><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite"></span></button><div class="vjs-volume-panel vjs-control vjs-volume-panel-horizontal"><button class="vjs-mute-control vjs-control vjs-button vjs-vol-3" type="button" title="Mute" aria-disabled="false"><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite">Mute</span></button><div class="vjs-volume-control vjs-control vjs-volume-horizontal"><div tabindex="0" class="vjs-volume-bar vjs-slider-bar vjs-slider vjs-slider-horizontal" role="slider" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Volume Level" aria-live="polite" aria-valuetext="100%"><div class="vjs-volume-level"><span class="vjs-control-text"></span></div></div></div></div><div class="vjs-progress-control vjs-control"><div tabindex="0" class="vjs-progress-holder vjs-slider vjs-slider-horizontal" role="slider" aria-valuenow="0.21" aria-valuemin="0" aria-valuemax="100" aria-label="Progress Bar" aria-valuetext="0:00:17 of 2:16:14"><div class="vjs-load-progress" style="width: 0.59%;"><span class="vjs-control-text"><span>Loaded</span>: <span class="vjs-control-text-loaded-percentage">0.59%</span></span><div data-start="0.001022" data-end="47.972402" style="left: 0%; width: 100%;"></div></div><div class="vjs-play-progress vjs-slider-bar" aria-hidden="true" style="width: 0.21%;"></div></div></div><div class="vjs-current-time vjs-time-control vjs-control"><span class="vjs-control-text" role="presentation">Current Time&nbsp;</span><span class="vjs-current-time-display" role="presentation">0:16</span></div><div class="vjs-time-control vjs-time-divider" aria-hidden="true"><div><span>/</span></div></div><div class="vjs-duration vjs-time-control vjs-control"><span class="vjs-control-text" role="presentation">Duration&nbsp;</span><span class="vjs-duration-display" role="presentation">2:16:14</span></div><div class="vjs-custom-control-spacer vjs-spacer">&nbsp;</div><button class="vjs-zoom-btn vjs-control vjs-button" title="Zoom fit màn hình" type="button" aria-disabled="false"><i class="fas fa-expand-alt"></i><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite"></span></button><button class="vjs-custom-settings-btn vjs-control vjs-button" title="Cài đặt phụ đề &amp; âm thanh" type="button" aria-disabled="false"><i class="fas fa-cog"></i><span class="vjs-settings-badge" id="settingsQualityBadge" style="display:none"></span><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite"></span></button><button class="vjs-fullscreen-control vjs-control vjs-button" type="button" title="Fullscreen" aria-disabled="false"><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite">Fullscreen</span></button></div><div class="vjs-error-display vjs-modal-dialog vjs-hidden " tabindex="-1" aria-describedby="my-video_component_323_description" aria-hidden="true" aria-label="Modal Window" role="dialog"><p class="vjs-modal-dialog-description vjs-control-text" id="my-video_component_323_description">This is a modal window.</p><div class="vjs-modal-dialog-content" role="document"></div></div><div class="vjs-modal-dialog vjs-hidden  vjs-text-track-settings" tabindex="-1" aria-describedby="my-video_component_329_description" aria-hidden="true" aria-label="Caption Settings Dialog" role="dialog"><p class="vjs-modal-dialog-description vjs-control-text" id="my-video_component_329_description">Beginning of dialog window. Escape will cancel and close the window.</p><div class="vjs-modal-dialog-content" role="document"><div class="vjs-track-settings-colors"><fieldset class="vjs-fg vjs-track-setting"><legend id="captions-text-legend-my-video_component_329">Text</legend><span class="vjs-text-color"><label id="captions-foreground-color-my-video_component_329" class="vjs-label">Color</label><select aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329"><option id="captions-foreground-color-my-video_component_329-White" value="#FFF" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-White">White</option><option id="captions-foreground-color-my-video_component_329-Black" value="#000" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Black">Black</option><option id="captions-foreground-color-my-video_component_329-Red" value="#F00" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Red">Red</option><option id="captions-foreground-color-my-video_component_329-Green" value="#0F0" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Green">Green</option><option id="captions-foreground-color-my-video_component_329-Blue" value="#00F" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Blue">Blue</option><option id="captions-foreground-color-my-video_component_329-Yellow" value="#FF0" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Yellow">Yellow</option><option id="captions-foreground-color-my-video_component_329-Magenta" value="#F0F" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Magenta">Magenta</option><option id="captions-foreground-color-my-video_component_329-Cyan" value="#0FF" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-color-my-video_component_329 captions-foreground-color-my-video_component_329-Cyan">Cyan</option></select></span><span class="vjs-text-opacity vjs-opacity"><label id="captions-foreground-opacity-my-video_component_329" class="vjs-label">Opacity</label><select aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-opacity-my-video_component_329"><option id="captions-foreground-opacity-my-video_component_329-Opaque" value="1" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-opacity-my-video_component_329 captions-foreground-opacity-my-video_component_329-Opaque">Opaque</option><option id="captions-foreground-opacity-my-video_component_329-SemiTransparent" value="0.5" aria-labelledby="captions-text-legend-my-video_component_329 captions-foreground-opacity-my-video_component_329 captions-foreground-opacity-my-video_component_329-SemiTransparent">Semi-Transparent</option></select></span></fieldset><fieldset class="vjs-bg vjs-track-setting"><legend id="captions-background-my-video_component_329">Text Background</legend><span class="vjs-bg-color"><label id="captions-background-color-my-video_component_329" class="vjs-label">Color</label><select aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329"><option id="captions-background-color-my-video_component_329-Black" value="#000" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Black">Black</option><option id="captions-background-color-my-video_component_329-White" value="#FFF" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-White">White</option><option id="captions-background-color-my-video_component_329-Red" value="#F00" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Red">Red</option><option id="captions-background-color-my-video_component_329-Green" value="#0F0" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Green">Green</option><option id="captions-background-color-my-video_component_329-Blue" value="#00F" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Blue">Blue</option><option id="captions-background-color-my-video_component_329-Yellow" value="#FF0" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Yellow">Yellow</option><option id="captions-background-color-my-video_component_329-Magenta" value="#F0F" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Magenta">Magenta</option><option id="captions-background-color-my-video_component_329-Cyan" value="#0FF" aria-labelledby="captions-background-my-video_component_329 captions-background-color-my-video_component_329 captions-background-color-my-video_component_329-Cyan">Cyan</option></select></span><span class="vjs-bg-opacity vjs-opacity"><label id="captions-background-opacity-my-video_component_329" class="vjs-label">Opacity</label><select aria-labelledby="captions-background-my-video_component_329 captions-background-opacity-my-video_component_329"><option id="captions-background-opacity-my-video_component_329-Opaque" value="1" aria-labelledby="captions-background-my-video_component_329 captions-background-opacity-my-video_component_329 captions-background-opacity-my-video_component_329-Opaque">Opaque</option><option id="captions-background-opacity-my-video_component_329-SemiTransparent" value="0.5" aria-labelledby="captions-background-my-video_component_329 captions-background-opacity-my-video_component_329 captions-background-opacity-my-video_component_329-SemiTransparent">Semi-Transparent</option><option id="captions-background-opacity-my-video_component_329-Transparent" value="0" aria-labelledby="captions-background-my-video_component_329 captions-background-opacity-my-video_component_329 captions-background-opacity-my-video_component_329-Transparent">Transparent</option></select></span></fieldset><fieldset class="vjs-window vjs-track-setting"><legend id="captions-window-my-video_component_329">Caption Area Background</legend><span class="vjs-window-color"><label id="captions-window-color-my-video_component_329" class="vjs-label">Color</label><select aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329"><option id="captions-window-color-my-video_component_329-Black" value="#000" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Black">Black</option><option id="captions-window-color-my-video_component_329-White" value="#FFF" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-White">White</option><option id="captions-window-color-my-video_component_329-Red" value="#F00" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Red">Red</option><option id="captions-window-color-my-video_component_329-Green" value="#0F0" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Green">Green</option><option id="captions-window-color-my-video_component_329-Blue" value="#00F" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Blue">Blue</option><option id="captions-window-color-my-video_component_329-Yellow" value="#FF0" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Yellow">Yellow</option><option id="captions-window-color-my-video_component_329-Magenta" value="#F0F" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Magenta">Magenta</option><option id="captions-window-color-my-video_component_329-Cyan" value="#0FF" aria-labelledby="captions-window-my-video_component_329 captions-window-color-my-video_component_329 captions-window-color-my-video_component_329-Cyan">Cyan</option></select></span><span class="vjs-window-opacity vjs-opacity"><label id="captions-window-opacity-my-video_component_329" class="vjs-label">Opacity</label><select aria-labelledby="captions-window-my-video_component_329 captions-window-opacity-my-video_component_329"><option id="captions-window-opacity-my-video_component_329-Transparent" value="0" aria-labelledby="captions-window-my-video_component_329 captions-window-opacity-my-video_component_329 captions-window-opacity-my-video_component_329-Transparent">Transparent</option><option id="captions-window-opacity-my-video_component_329-SemiTransparent" value="0.5" aria-labelledby="captions-window-my-video_component_329 captions-window-opacity-my-video_component_329 captions-window-opacity-my-video_component_329-SemiTransparent">Semi-Transparent</option><option id="captions-window-opacity-my-video_component_329-Opaque" value="1" aria-labelledby="captions-window-my-video_component_329 captions-window-opacity-my-video_component_329 captions-window-opacity-my-video_component_329-Opaque">Opaque</option></select></span></fieldset></div><div class="vjs-track-settings-font"><fieldset class="vjs-font-percent vjs-track-setting"><legend id="captions-font-size-my-video_component_329" class="">Font Size</legend><select aria-labelledby="captions-font-size-my-video_component_329"><option id="captions-font-size-my-video_component_329-50" value="0.50" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-50">50%</option><option id="captions-font-size-my-video_component_329-75" value="0.75" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-75">75%</option><option id="captions-font-size-my-video_component_329-100" value="1.00" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-100">100%</option><option id="captions-font-size-my-video_component_329-125" value="1.25" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-125">125%</option><option id="captions-font-size-my-video_component_329-150" value="1.50" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-150">150%</option><option id="captions-font-size-my-video_component_329-175" value="1.75" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-175">175%</option><option id="captions-font-size-my-video_component_329-200" value="2.00" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-200">200%</option><option id="captions-font-size-my-video_component_329-300" value="3.00" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-300">300%</option><option id="captions-font-size-my-video_component_329-400" value="4.00" aria-labelledby="captions-font-size-my-video_component_329 captions-font-size-my-video_component_329-400">400%</option></select></fieldset><fieldset class="vjs-edge-style vjs-track-setting"><legend id="my-video_component_329" class="">Text Edge Style</legend><select aria-labelledby="my-video_component_329"><option id="my-video_component_329-None" value="none" aria-labelledby="my-video_component_329 my-video_component_329-None">None</option><option id="my-video_component_329-Raised" value="raised" aria-labelledby="my-video_component_329 my-video_component_329-Raised">Raised</option><option id="my-video_component_329-Depressed" value="depressed" aria-labelledby="my-video_component_329 my-video_component_329-Depressed">Depressed</option><option id="my-video_component_329-Uniform" value="uniform" aria-labelledby="my-video_component_329 my-video_component_329-Uniform">Uniform</option><option id="my-video_component_329-Dropshadow" value="dropshadow" aria-labelledby="my-video_component_329 my-video_component_329-Dropshadow">Dropshadow</option></select></fieldset><fieldset class="vjs-font-family vjs-track-setting"><legend id="captions-font-family-my-video_component_329" class="">Font Family</legend><select aria-labelledby="captions-font-family-my-video_component_329"><option id="captions-font-family-my-video_component_329-ProportionalSansSerif" value="proportionalSansSerif" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-ProportionalSansSerif">Proportional Sans-Serif</option><option id="captions-font-family-my-video_component_329-MonospaceSansSerif" value="monospaceSansSerif" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-MonospaceSansSerif">Monospace Sans-Serif</option><option id="captions-font-family-my-video_component_329-ProportionalSerif" value="proportionalSerif" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-ProportionalSerif">Proportional Serif</option><option id="captions-font-family-my-video_component_329-MonospaceSerif" value="monospaceSerif" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-MonospaceSerif">Monospace Serif</option><option id="captions-font-family-my-video_component_329-Casual" value="casual" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-Casual">Casual</option><option id="captions-font-family-my-video_component_329-Script" value="script" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-Script">Script</option><option id="captions-font-family-my-video_component_329-SmallCaps" value="small-caps" aria-labelledby="captions-font-family-my-video_component_329 captions-font-family-my-video_component_329-SmallCaps">Small Caps</option></select></fieldset></div><div class="vjs-track-settings-controls"><button type="button" class="vjs-default-button" title="restore all settings to the default values">Reset<span class="vjs-control-text"> restore all settings to the default values</span></button><button type="button" class="vjs-done-button">Done</button></div></div><button class="vjs-close-button vjs-control vjs-button" type="button" title="Close Modal Dialog" aria-disabled="false"><span class="vjs-icon-placeholder" aria-hidden="true"></span><span class="vjs-control-text" aria-live="polite">Close Modal Dialog</span></button><p class="vjs-control-text">End of dialog window.</p></div><div class="custom-settings-panel" id="customSettingsPanel">
+    <div id="settingsViews"></div>
+
+    <!-- State ẩn: các hàm setupSubtitleTracks/setupAudioTracks/setupQualityTracks
+         đổ options vào các select này; menu drill-down đọc từ đây ra để vẽ -->
+    <div style="display:none">
+      <select id="cfgSubSelect"><option value="-1">Tắt phụ đề</option></select>
+      <select id="cfgAudioSelect"><option value="-1">Âm thanh gốc</option></select>
+      <div id="qualitySection" style="display:none">
+        <select id="cfgQualitySelect"></select>
+      </div>
+      <select id="cfgSubSize">
+        <option value="18px">Nhỏ</option>
+        <option value="24px" selected="">Vừa</option>
+        <option value="32px">Lớn</option>
+        <option value="40px">Rất lớn</option>
+      </select>
+      <select id="cfgSubColor">
+        <option value="#ffffff">Trắng</option>
+        <option value="#ffff00">Vàng</option>
+        <option value="#00ff00">Xanh lá</option>
+        <option value="#00ffff">Cyan</option>
+      </select>
+      <select id="cfgSubPos">
+        <option value="10%">Thấp</option>
+        <option value="18%" selected="">Vừa</option>
+        <option value="28%">Cao</option>
+        <option value="38%">Rất cao</option>
+      </select>
+      <select id="cfgSubBg">
+        <option value="rgba(0,0,0,0)">Không nền</option>
+        <option value="rgba(0,0,0,0.5)">Nền mờ</option>
+        <option value="rgba(0,0,0,0.9)">Nền đen đậm</option>
+      </select>
     </div>
-    <div class="layout-lr">
-        <div class="left-fixed-50">
-            <div class="user-avatar">
-                <div class="avatar char s40">越</div>            </div>
-        </div>
-        <div>
-            <div class="submit-comment">
-                <div class="submit">
-                                            <div class="quick-reply">
-                            <button type='button' class='btn comment-dot smaller quick-reply-btn'>快捷回复</button>                                                    </div>
-                                        <div class="textarea-container">
-                        <textarea name="comment" placeholder="无需注册就能点评，试试吧"></textarea>
-                    </div>
-                                            <div class="rating">
-                            <div class="submit-score star-rating">
-                                <input type="radio" name="score" id="star1" value="1" />
-                                <label for="star1"></label>
-                                <input type="radio" name="score" id="star2" value="2" />
-                                <label for="star2"></label>
-                                <input type="radio" name="score" id="star3" value="3" />
-                                <label for="star3"></label>
-                                <input type="radio" name="score" id="star4" value="4" />
-                                <label for="star4"></label>
-                                <input type="radio" name="score" id="star5" value="5" />
-                                <label for="star5"></label>
-                            </div>
-                        </div>
-                                        <div class="button-line">
-                        <span class="charCount"></span>
-                        <a name="submit-comment" class="btn yes button-submit-comment">发表评论</a>
-                    </div>
-                                            <div class="rules">
-                            <ul>
-                                                                    <li>
-                                        任何人都可以发表评论，注册用户会显示昵称，未注册用户会显示所在国家；                                    </li>
-                                                                                                    <li>
-                                        本站崇尚言论自由，我们不设审查，但对以下情况零容忍，违反者会受到封号乃至封禁 IP 的处罚：                                        <ul>
-                                            <li>
-                                                发广告（任何出现他站网址或引导进入他站的都会被视为广告）；                                            </li>
-                                            <li>
-                                                暴力、仇恨或歧视言论；                                            </li>
-                                                                                            <li>
-                                                    针对女优、模特的粗鄙、暴虐言论；                                                </li>
-                                                <li>
-                                                    侵犯女优、模特隐私的言论（禁止开盒）；                                                </li>
-                                                                                        <li>
-                                                无意义的灌水；                                            </li>
-                                            <li>
-                                                同一主题请以回复方式发表在一篇评论中，禁止发表多个评论影响其他色友阅读；                                            </li>
-                                                                                            <li>
-                                                    <a href="/blog/id-677ba804c2777.html">收起戾气，文明讨论；</a>
-                                                </li>
-                                                                                    </ul>
-                                    </li>
-                                                                <li>推广：<a href="https://xchina.click/prepare.html?id=M0huUTZiMjZ1WG5DOVJiN1FLdFozakZ2YmtSRlREVktRelowU0RoWWRGbzJMMko2ZW5jOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">学生求包养</a><a href="https://xchina.click/prepare.html?id=dUo2MnlfdHUtTmxtZGFXdXROY201alJDU0hFdmFFNUpZa2RwTnpFeU1GQlZja04xZEZFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">换妻群交群</a><a href="https://xchina.click/prepare.html?id=OGZNUl80TWIzR3VWUklock5lU2NSa2g1ZG5WTWRXUjZaVnBwTWl0dU1WSjRLMGt3YlhjOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">Ai榨精淫欲💋</a><a href="https://xchina.click/prepare.html?id=MXQtTkp4UFFVWXBTa1hBeWNlYUJPV3R5YWpCaU5tdFhSMUJRTVhaMFVFaHdhbFJ0UzFFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">个人兼职上门</a><a href="https://xchina.click/prepare.html?id=VUZoSnNSTFlyU0pEcVZuM0FDMlBta3c1TDI1Q2RWWXJSbWhJT1hKaVVEUlpNV3R5VlZFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">同城免费约炮</a><a href="https://xchina.click/prepare.html?id=SDJyaXRKbjg1cnh1X1BVdlZEMXpNbFpES3pkeWIwNUNXSEYwWW1jeFpuVm5XVmcxYlhjOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">学生免费上门</a><a href="https://xchina.click/prepare.html?id=cm5fWEtjWnh3NDJsT3FyTFV3UFJXMDFTY25GRVRWcHNVR3BoYTFSc2VVc3lSME5xU0VFOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">嫩茶每日分享</a><a href="https://xchina.click/prepare.html?id=MU1MNlJEVEo4X0l1RE1xVVdJU1BvRmRzTDNodFRTOVZXQzlWY3l0T1dFdzVNaXRNV0djOVBRPT0=" target="_blank" rel="nofollow noopener sponsor">少妇换妻啪啪群</a></li>                            </ul>
-                        </div>
-                                    </div>
-            </div>
-        </div>
-    </div>
-    <div>
-        <a id="comment_start"></a>
-        <div class="pager-js"></div>
-        <div class="data"></div>
-        <div class="pager-js"></div>
-    </div>
-</div>        </div>
-        <div id="core-zone-5"></div>
-    </div>
+  </div></div>
 </div>
+<script src="/assets/player/video.min.js"></script>
+<script>if (typeof videojs === 'undefined') document.write('<script src="https:\/\/cdnjs.cloudflare.com\/ajax\/libs\/video.js\/8.3.0\/video.min.js"><\/script>');</script>
+<script src="/assets/player/hls.min.js"></script>
+<script>if (typeof Hls === 'undefined') document.write('<script src="https:\/\/cdn.jsdelivr.net\/npm\/hls.js@1.5.13\/dist\/hls.min.js"><\/script>');</script>
+<script>
+var M3U8_SRC = 'https://sv1.rophim.mom/stream/1420/index.m3u8';
+var isLegacy = true;
+var Button = videojs.getComponent('Button');v
+class SkipBackward extends Button {
+  constructor(p,o){super(p,o);}
+  createEl(){return super.createEl('button',{className:'vjs-skip-btn vjs-control vjs-button',innerHTML:'<i class="fas fa-rotate-left"></i>',title:'Lùi 10s'});}
+  handleClick(){this.player_.currentTime(this.player_.currentTime()-10);this.player_.userActive(true);}
+}
+videojs.registerComponent('SkipBackward', SkipBackward);
+class SkipForward extends Button {
+  constructor(p,o){super(p,o);}
+  createEl(){return super.createEl('button',{className:'vjs-skip-btn vjs-control vjs-button',innerHTML:'<i class="fas fa-rotate-right"></i>',title:'Tiến 10s'});}
+  handleClick(){this.player_.currentTime(this.player_.currentTime()+10);this.player_.userActive(true);}
+}
+videojs.registerComponent('SkipForward', SkipForward);
+class ZoomFitButton extends Button {
+  constructor(p,o){super(p,o);}
+  createEl(){return super.createEl('button',{className:'vjs-zoom-btn vjs-control vjs-button',innerHTML:'<i class="fas fa-expand-alt"></i>',title:'Zoom fit màn hình'});}
+  handleClick(){var el=this.player_.el();var z=el.classList.toggle('vjs-zoom-fill');this.el().querySelector('i').className=z?'fas fa-compress-alt':'fas fa-expand-alt';this.player_.userActive(true);}
+}
+videojs.registerComponent('ZoomFitButton', ZoomFitButton);
 
-<script src="/scripts/browseHistory.js?v=1.0.3"></script><script>browseHistory.add("6a6b9e4c1a4bd","video");</script></div>
+class CustomSettingsButton extends Button {
+  constructor(p,o){super(p,o);}
+  createEl(){return super.createEl('button',{className:'vjs-custom-settings-btn vjs-control vjs-button',innerHTML:'<i class="fas fa-cog"></i><span class="vjs-settings-badge" id="settingsQualityBadge" style="display:none"></span>',title:'Cài đặt phụ đề & âm thanh'});}
+  handleClick(){toggleCustomSettings();this.player_.userActive(true);}
+}
+videojs.registerComponent('CustomSettingsButton', CustomSettingsButton);
 
+// iOS (iPhone/iPad): fullscreen LUÔN chuyển sang player native của hệ thống →
+// phụ đề/âm thanh phải là TRACK NATIVE của luồng HLS mới đi theo vào fullscreen.
+// (video.js DOM sub + overlay <audio> nằm ngoài video native → mất khi full.)
+var IS_IOS = /iP(hone|od|ad)/.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); // iPad iOS13+
 
-
-<footer class="mobile"><a href="/"><div class="menu-item"><div><i class="fas fa-home"></i></div><div>首页</div></div></a><a href="/categories.html"><div class="menu-item"><div><i class="fas fa-sitemap"></i></div><div>分类</div></div></a><a href="/search.html"><div class="menu-item"><div><i class="fas fa-magnifying-glass"></i></div><div>搜索</div></div></a><a href="javascript: share();"><div class="menu-item"><div><i class="fas fa-share"></i></div><div>分享</div></div></a><a href="javascript: toggleFav();"><div class="menu-item fav"><div><i class="far fa-heart"></i></div><div>收藏</div></div></a><a href="/my.html"><div class="menu-item"><div><i class="far fa-user"></i></div><div>我的</div></div></a><div class="z-10-root"></div></footer><script>
-var share = function () {
-    const shareModal = new Modal({
-        threeSection: false,
-        showDefaultCloseButton: true,
-        escClose: true,
-        backdropClose: true
-    });
-
-    const shareContent = `
-        <div class="modal-share">
-            <div>
-                <img class="qrcode" src="/images/empty.png" />
-            </div>
-            <div>
-                当前网址二维码
-            </div>
-            <div>
-                <a name="BtnCopy" class="btn btn-clone" copyvalue="https://xchina.co/video/id-6a6b9e4c1a4bd.html?id=6a6b9e4c1a4bd" copycaption="已复制">
-                    <i class="fas fa-clone"></i> 复制当前网址
-                </a>
-            </div>
-        </div>
-    `;
-
-    shareModal.setContent(shareContent).showModal();
-    my.initCopy();
-    
-    const qrcodeImg = shareModal.modalElement.querySelector('.qrcode');
-    if (qrcodeImg && !qrcodeImg.getAttribute('loaded')) {
-        qrcodeImg.setAttribute('loaded', 'true');
-        qrcodeImg.src = "/qrcode.php?url=https%3A%2F%2Fxchina.co%2Fvideo%2Fid-6a6b9e4c1a4bd.html%3Fid%3D6a6b9e4c1a4bd";
-    }
-};
-</script><footer class="pc"><div><div>Copyright © 2026 小黄书 xChina</div></div><div><div>友情链接：</div><div class="links-root"><div class="z-links"></div><a href="https://5鈑歿梦庫.aqddh6v1827.cc/伺旻亰7册" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1gi4w9hZeQVlHAQxP5PJSVf0")'>千度导航</a><a href="https://www.fanqianglu.com" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1gkGT3rOSJN6SSiju2RM9ifI")'>翻墙撸</a><a href="https://roshy.tv/uncensored-jav" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1gspQduAZNbVhUApxfrxf_r4")'>JAV Uncensored</a><a href="https://javd.me" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1gnm3W82wBepIFiM67iSSihk")'>JAVD</a><a href="https://myjav.tv" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1gpEEU67jFdXbkvLqdjqzZFI")'>MyJav</a><a href="https://seyudao.com" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1guK53dNXY8Q5FerszK9cDyw")'>色欲岛</a><a href="https://x-novel.com" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1glLyXScnfXS3crWnUlby4o8")'>夜读小说</a><a href="https://topnav.ai" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1goNDlg5lHjJ8emny2d4lYK8")'>AI成人导航</a><a href="https://huangguo.video" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1giCsmFqsqvQhxRKO983W200")'>黄果剧场</a><a href="https://sexgps.net" rel="nofollow noopener" target="_blank" onclick='window.__sharedServiceReport("LcLRwrUYMYfQKRgez2e1ggZl00y0bRUTQQqWFatgibI")'>色情导航</a></div><div class="exchange"><a href="/aboutus.html" target="_blank">关于我们</a> | <a href="/ad.html">广告服务</a></div></div></div></footer><div class="floating-toolbar"><div class="btn-group"><a class="anchor" href="#anchor-page-top"><div class="floating-btn anchor-top"><i class="fas fa-angle-double-up"></i></div></a></div><div class="btn-group"><div class="floating-btn favorite disabled"><i class="far fa-heart" title="请先登录"></i></div><script>
-$(document).ready(function() {
-    $(".floating-btn.favorite").click(function() {
-        let btn = $(this);
-        if (btn.hasClass("disabled")) return;
-        if (btn.hasClass("doing")) return;
-        btn.addClass("doing");
-        my.ajax({
-            action: "toggleFavorite",
-            objMode: "video",
-            objId: "6a6b9e4c1a4bd"
-        }, function (result) {
-            btn.removeClass("doing");
-            if (result.favorited) {
-                btn.addClass("checked");
-                btn.find("i").removeClass("far").addClass("fas");
-            } else {
-                btn.removeClass("checked");
-                btn.find("i").removeClass("fas").addClass("far");
-            }
-        }, false, true);
-    });
+var player = videojs('my-video',{
+  fill:true, fluid:false, autoplay:false, inactivityTimeout:3000,
+  playbackRates:[0.5,1,1.25,1.5,2],
+  html5: {
+    // iOS: để trình duyệt render track native (sub + audio đi theo vào fullscreen native).
+    // Khác: dùng track ảo của video.js để tùy biến giao diện phụ đề trên PC/Android.
+    nativeTextTracks: IS_IOS,
+    nativeAudioTracks: IS_IOS,
+    nativeVideoTracks: IS_IOS
+  },
+  userActions:{doubleClick:false,hotkeys:false},
+  controlBar:{
+    children:['playToggle','SkipBackward','SkipForward','volumePanel',
+    'progressControl',
+    'currentTimeDisplay','timeDivider','durationDisplay',
+    {name:'CustomControlSpacer',className:'vjs-custom-control-spacer'},
+    'ZoomFitButton','CustomSettingsButton','fullscreenToggle']
+  }
 });
-</script></div><div class="btn-group"><a class="anchor" href="#anchor-comment"><div class="floating-btn anchor-comment"><i class="far fa-comments"></i></div></a></div></div><script>
-$(function () {
-    $('.floating-toolbar a.anchor').click(function(e) {
-        let target = $(this).attr('href');
-        if (target && target.startsWith('#')) {
-            let el = $(target);
-            if (el.length) {
-                    e.preventDefault();
-                    let navHeight = $('nav.pc').outerHeight() || 0;
-                    let top = el.offset().top - navHeight;
-                    $('html, body').animate({
-                        scrollTop: top
-                    }, 500);
-                }
-            }
-        });
-    });
-</script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"be9b8e0138214f4a83f8510dde623e3e"}' crossorigin="anonymous"></script>
-</body>
 
-</html>
+// ── Resume từ localStorage ────────────────────────────────────────────────────
+var VID_KEY = 'vp_pos_1420';
+player.ready(function(){
+  // Di chuyển Settings Panel vào trong player element để hiển thị được khi Fullscreen
+  var panel = document.getElementById('customSettingsPanel');
+  if (panel) {
+    player.el().appendChild(panel);
+  }
+
+  // ── Gắn hls.js vào native <video> element (bỏ qua Video.js VHS để tránh CORS trên PC) ──
+  var videoEl = player.el().querySelector('video');
+  var metadataAudios = [];
+  var metadataSubs = [];
+  // iOS: LUÔN dùng HLS native (bỏ qua hls.js dù ManagedMediaSource iOS 17.1+ có thể
+  // báo hỗ trợ) → sub/audio nhúng do Safari xử, đi theo vào fullscreen native.
+  var useNativeHls = IS_IOS && videoEl.canPlayType('application/vnd.apple.mpegurl');
+
+  if (!useNativeHls && typeof window.Hls !== 'undefined' && Hls.isSupported()) {
+    // subtitleDisplay:false + renderTextTracksNatively:false → hls.js KHÔNG tự
+    // vẽ và KHÔNG tạo native text track cho phụ đề nhúng. Nếu bật, video.js
+    // (nativeTextTracks:false) sẽ nhân bản track ra vẽ lần 2 → phụ đề chồng nhau
+    // + menu bị trùng. Phụ đề nhúng chỉ dành cho iOS native (nhánh else).
+    var hls = new Hls({
+      maxBufferLength: 30, maxMaxBufferLength: 60,
+      subtitleDisplay: false,
+      renderTextTracksNatively: false
+    });
+    hls.loadSource(M3U8_SRC);
+    hls.attachMedia(videoEl);
+    hlsInstance = hls; // Lưu instance toàn cục
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+      if (hls.subtitleTracks && hls.subtitleTracks.length) hls.subtitleTrack = -1;
+      setupAudioTracks(metadataAudios, hls);
+      setupQualityTracks(hls);
+      // PC/Android: luôn dùng remote VTT qua video.js (một hệ thống duy nhất)
+      setupSubtitleTracks(metadataSubs);
+    });
+  } else {
+    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.src = M3U8_SRC;
+      videoEl.load();
+    }
+    videoEl.addEventListener('loadedmetadata', function() {
+      // Safari native HLS: chờ audio/text tracks in-stream xuất hiện rồi mới
+      // quyết định — nếu stream không có mới fallback sang remote VTT /
+      // overlay audio (iOS fullscreen native chỉ nhận track nằm trong luồng HLS)
+      setTimeout(function() {
+        setupAudioTracks(metadataAudios, null);
+        var hasStreamSubs = videoEl.textTracks && videoEl.textTracks.length > 0;
+        setupSubtitleTracks(hasStreamSubs ? [] : metadataSubs);
+      }, 500);
+    });
+  }
+
+  // Khởi tạo style settings cho phụ đề
+  initStyleSettings();
+
+  // iOS (iPhone + iPad): LUÔN dùng fullscreen NATIVE của thẻ video để sub/audio
+  // native đi theo vào fullscreen. Mặc định iPad có Fullscreen API cho phần tử nên
+  // video.js dùng element-fullscreen (sub native không hiện) → ép iPad theo cách
+  // native của thẻ video cho ĐỒNG NHẤT với iPhone.
+  if (IS_IOS) {
+    var iosVEl = player.el().querySelector('video');
+    if (iosVEl && typeof iosVEl.webkitEnterFullscreen === 'function') {
+      player.requestFullscreen = function() {
+        try { iosVEl.webkitEnterFullscreen(); } catch (e) {}
+        return Promise.resolve();
+      };
+    }
+  }
+
+  // Fallback fullscreen: iframe thiếu allowfullscreen hoặc trình duyệt không có
+  // Fullscreen API → dùng trình phát fullscreen native của video element
+  player.on('fullscreenerror', function() {
+    var vEl = player.el().querySelector('video');
+    if (vEl && typeof vEl.webkitEnterFullscreen === 'function') {
+      try { vEl.webkitEnterFullscreen(); } catch (err) {}
+    }
+  });
+
+  // Lắng nghe click/touch lên toàn bộ màn hình video để Play/Pause (sửa lỗi PC và Mobile không click được)
+  var lastTap = 0;
+  ['click', 'touchend'].forEach(function(evt) {
+    player.el().addEventListener(evt, function(e){
+      if(e.target.closest('.vjs-control-bar') || e.target.closest('.vjs-big-play-button') || e.target.closest('.vjs-menu-button-popup') || e.target.closest('#customSettingsPanel')) return;
+      var now = Date.now();
+      if (window.__settingsClosedAt && now - window.__settingsClosedAt < 500) return; // click này vừa dùng để đóng menu cài đặt
+      if (now - lastTap < 300) return; // chống dội lệnh kép touchend + click
+      lastTap = now;
+      if(player.paused()){ player.play(); player.userActive(true); } else { player.pause(); player.userActive(true); }
+    }, { passive: false });
+  });
+
+  // Tự động xoay ngang màn hình (Landscape) khi bấm Fullscreen trên Điện thoại
+  player.on('fullscreenchange', function() {
+    if(player.isFullscreen()) {
+      if(screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(function(){}); }
+      else if(screen.lockOrientation) { screen.lockOrientation('landscape'); }
+    } else {
+      if(screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
+      else if(screen.unlockOrientation) { screen.unlockOrientation(); }
+    }
+  });
+
+  var saved = parseFloat(localStorage.getItem(VID_KEY)||'0');
+  if(saved>10){
+    var h=Math.floor(saved/3600),m=Math.floor((saved%3600)/60),s=Math.floor(saved%60);
+    document.getElementById('resume-time-str').textContent=(h?h+':':'')+(h?String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0');
+    setTimeout(function(){document.getElementById('resume-toast').classList.add('show');},1000);
+    document.getElementById('btn-resume-yes').onclick=function(){player.currentTime(saved);document.getElementById('resume-toast').remove();};
+    document.getElementById('btn-resume-no').onclick=function(){document.getElementById('resume-toast').remove();};
+  }
+  setInterval(function(){if(!player.paused())localStorage.setItem(VID_KEY,player.currentTime());},5000);
+});
+
+
+
+// ── Khóa menu click-show (Tương thích Mobile) ────────────────────────────────
+player.ready(function(){
+  var rb = player.controlBar.playbackRateMenuButton;
+  if(rb) {
+    rb.off('mouseover'); rb.off('mouseout');
+    var rbEl = rb.el();
+    
+    var handleToggle = function(e) {
+      if(e.target.closest('.vjs-menu-item')){
+        setTimeout(function(){ rbEl.classList.remove('vjs-click-show'); }, 150);
+        return; // Cho phép Menu Item tự xử lý tốc độ
+      }
+      if(e.target.closest('.vjs-menu')) return; // Không đóng nếu bấm lệch trong khung menu
+      
+      e.stopPropagation();
+      if(e.type === 'touchend') e.preventDefault();
+      rbEl.classList.toggle('vjs-click-show');
+    };
+
+    rbEl.addEventListener('click', handleToggle);
+    rbEl.addEventListener('touchend', handleToggle, {passive: false});
+  }
+
+  var closeMenu = function(e){
+    if(rb && !rb.el().contains(e.target)) rb.el().classList.remove('vjs-click-show');
+  };
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('touchstart', closeMenu, {passive: true});
+});
+
+var hlsInstance = null;
+
+function toggleCustomSettings() {
+  var panel = document.getElementById('customSettingsPanel');
+  if (!panel.classList.contains('show')) {
+    renderSettingsMenu('main'); // luôn mở lại từ màn hình chính, dữ liệu track mới nhất
+  }
+  panel.classList.toggle('show');
+}
+
+function changePlaybackRate(val) {
+  player.playbackRate(parseFloat(val));
+}
+
+// Xử lý đóng menu cài đặt khi bấm ra ngoài (hỗ trợ cả click trên PC và touch trên Mobile)
+['click', 'touchstart'].forEach(function(evt) {
+  document.addEventListener(evt, function(e) {
+    var panel = document.getElementById('customSettingsPanel');
+    var btn = document.querySelector('.vjs-custom-settings-btn');
+    if (panel && panel.classList.contains('show') && !panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
+      panel.classList.remove('show');
+      // Đánh dấu để cú click/touch này CHỈ đóng menu, không toggle play/pause video
+      window.__settingsClosedAt = Date.now();
+    }
+  }, true); // Sử dụng capture phase (true) để chặn trước khi video.js chặn sự kiện touch
+});
+
+// ── Menu Cài đặt drill-down (kiểu YouTube): Chất lượng / Phụ đề / Âm thanh /
+//    Kiểu phụ đề / Tốc độ. Đọc trạng thái từ các select ẩn để vẽ danh sách. ──
+var SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+function settingsSelText(sel) {
+  var o = sel.options[sel.selectedIndex];
+  return o ? o.textContent : '';
+}
+
+function renderSettingsMenu(view) {
+  var wrap = document.getElementById('settingsViews');
+  if (!wrap) return;
+
+  var selSub     = document.getElementById('cfgSubSelect');
+  var selAudio   = document.getElementById('cfgAudioSelect');
+  var selQuality = document.getElementById('cfgQualitySelect');
+  var qualityOn  = document.getElementById('qualitySection').style.display !== 'none';
+
+  function navRow(target, label, value) {
+    return '<div class="settings-row" data-nav="' + target + '"><span>' + label + '</span>' +
+      '<span class="row-value">' + value + ' <i class="fas fa-chevron-right"></i></span></div>';
+  }
+  function backHeader(title, backTo) {
+    return '<div class="settings-header with-back" data-nav="' + (backTo || 'main') + '">' +
+      '<i class="fas fa-chevron-left"></i> ' + title + '</div>';
+  }
+  function optionRows(sel, backTo) {
+    var out = '';
+    for (var i = 0; i < sel.options.length; i++) {
+      var o = sel.options[i];
+      var active = (i === sel.selectedIndex);
+      out += '<div class="settings-row settings-option' + (active ? ' active' : '') + '"' +
+        ' data-select="' + sel.id + '" data-value="' + String(o.value).replace(/"/g, '&quot;') + '"' +
+        ' data-back="' + backTo + '"><span>' + o.textContent + '</span>' +
+        '<span class="row-value">' + (active ? '<i class="fas fa-check"></i>' : '') + '</span></div>';
+    }
+    return out;
+  }
+
+  var html = '';
+  if (view === 'main') {
+    html = '<div class="settings-header">Cài đặt</div>';
+    if (qualityOn) html += navRow('quality', 'Chất lượng', settingsSelText(selQuality));
+    html += navRow('sub', 'Phụ đề', settingsSelText(selSub));
+    html += navRow('audio', 'Âm thanh', settingsSelText(selAudio));
+    html += navRow('substyle', 'Kiểu phụ đề', 'Tuỳ chỉnh');
+    html += navRow('speed', 'Tốc độ', player.playbackRate() + 'x');
+  } else if (view === 'quality') {
+    html = backHeader('Chất lượng') + optionRows(selQuality, 'main');
+  } else if (view === 'sub') {
+    html = backHeader('Phụ đề') + optionRows(selSub, 'main');
+  } else if (view === 'audio') {
+    html = backHeader('Âm thanh') + optionRows(selAudio, 'main');
+  } else if (view === 'speed') {
+    html = backHeader('Tốc độ');
+    var cur = player.playbackRate();
+    SPEED_OPTIONS.forEach(function(r) {
+      var active = Math.abs(cur - r) < 0.001;
+      html += '<div class="settings-row settings-option' + (active ? ' active' : '') + '" data-speed="' + r + '">' +
+        '<span>' + (r === 1 ? 'Chuẩn (1x)' : r + 'x') + '</span>' +
+        '<span class="row-value">' + (active ? '<i class="fas fa-check"></i>' : '') + '</span></div>';
+    });
+  } else if (view === 'substyle') {
+    html = backHeader('Kiểu phụ đề') +
+      navRow('subsize',  'Cỡ chữ',  settingsSelText(document.getElementById('cfgSubSize'))) +
+      navRow('subcolor', 'Màu chữ', settingsSelText(document.getElementById('cfgSubColor'))) +
+      navRow('subpos',   'Vị trí',  settingsSelText(document.getElementById('cfgSubPos'))) +
+      navRow('subbg',    'Nền',     settingsSelText(document.getElementById('cfgSubBg')));
+  } else if (view === 'subsize') {
+    html = backHeader('Cỡ chữ', 'substyle') + optionRows(document.getElementById('cfgSubSize'), 'substyle');
+  } else if (view === 'subcolor') {
+    html = backHeader('Màu chữ', 'substyle') + optionRows(document.getElementById('cfgSubColor'), 'substyle');
+  } else if (view === 'subpos') {
+    html = backHeader('Vị trí', 'substyle') + optionRows(document.getElementById('cfgSubPos'), 'substyle');
+  } else if (view === 'subbg') {
+    html = backHeader('Nền', 'substyle') + optionRows(document.getElementById('cfgSubBg'), 'substyle');
+  }
+
+  wrap.innerHTML = html;
+}
+
+// Điều hướng menu bằng event delegation (bind 1 lần, sống sót qua innerHTML thay đổi)
+document.getElementById('customSettingsPanel').addEventListener('click', function(e) {
+  var el = e.target.closest('[data-nav],[data-select],[data-speed]');
+  if (!el) return;
+  e.stopPropagation();
+
+  if (el.dataset.nav) { renderSettingsMenu(el.dataset.nav); return; }
+
+  if (el.dataset.speed) {
+    player.playbackRate(parseFloat(el.dataset.speed));
+    renderSettingsMenu('main');
+    return;
+  }
+
+  var sel = document.getElementById(el.dataset.select);
+  if (sel) {
+    sel.value = el.dataset.value;
+    if (typeof sel.onchange === 'function') sel.onchange(); // kích hoạt logic track/style cũ
+  }
+  renderSettingsMenu(el.dataset.back || 'main');
+});
+
+// Badge nhỏ hiển thị chất lượng đang chọn nổi trên nút bánh răng (kiểu YouTube)
+function updateSettingsBadge() {
+  var badge = document.getElementById('settingsQualityBadge');
+  if (!badge) return;
+  var section = document.getElementById('qualitySection');
+  var sel = document.getElementById('cfgQualitySelect');
+  if (!sel || !section || section.style.display === 'none' || !sel.options.length) {
+    badge.style.display = 'none';
+    return;
+  }
+  var opt = sel.options[sel.selectedIndex];
+  var txt = opt ? opt.textContent : '';
+  if (txt.indexOf('Tự động') !== -1) txt = 'Auto';
+  else if (txt.indexOf('4K') !== -1) txt = '4K';
+  badge.textContent = txt;
+  badge.style.display = 'block';
+}
+
+function setupQualityTracks(hls) {
+  var select = document.getElementById('cfgQualitySelect');
+  var section = document.getElementById('qualitySection');
+  if (!select || !section) return;
+
+  select.innerHTML = '';
+
+  if (!hls || !hls.levels || hls.levels.length <= 1) {
+    section.style.display = 'none';
+    updateSettingsBadge();
+    return;
+  }
+
+  section.style.display = 'block';
+
+  var capIdx = -1;
+  hls.levels.forEach(function(level, idx) {
+    if (level.height <= 1080) capIdx = idx;
+  });
+  var hasAbove1080 = capIdx !== -1 && capIdx < hls.levels.length - 1;
+
+  function labelFor(level) {
+    // 4K ultrawide có height < 2160 (vd 3832x1592) → nhận diện theo width
+    if (level.height >= 2000 || level.width >= 3000) return '4K (' + level.height + 'p)';
+    if (level.height === 1080) return '1080p';
+    if (level.height === 720) return '720p';
+    return level.height + 'p';
+  }
+
+  if (hasAbove1080) {
+    // Video có bậc trên 1080p (4K): CHỈ 2 lựa chọn — 1080p (mặc định, khóa cứng)
+    // và 4K (chọn tay khi cần). Không hiện "Tự động" vì với video 1080p+4K thì
+    // Auto giới hạn 1080p ⇢ luôn ra 1080p, trùng hệt lựa chọn 1080p → thừa.
+    // Khóa 1080p tránh box/điện thoại tự nhảy 4K gây vỡ hình.
+    hls.autoLevelCapping = -1;
+    hls.currentLevel = capIdx;
+    hls.levels.forEach(function(level, idx) {
+      var opt = document.createElement('option');
+      opt.value = idx.toString();
+      opt.textContent = labelFor(level);
+      select.appendChild(opt);
+    });
+    select.value = capIdx.toString();
+  } else {
+    // Video không có 4K (chỉ ≤1080p): giữ "Tự động" để thích ứng băng thông
+    hls.autoLevelCapping = -1;
+    var optAuto = document.createElement('option');
+    optAuto.value = '-1';
+    optAuto.textContent = 'Tự động (Auto)';
+    select.appendChild(optAuto);
+    hls.levels.forEach(function(level, idx) {
+      var opt = document.createElement('option');
+      opt.value = idx.toString();
+      opt.textContent = labelFor(level);
+      select.appendChild(opt);
+    });
+    select.value = hls.currentLevel.toString();
+  }
+  updateSettingsBadge();
+
+  select.onchange = function() {
+    var val = parseInt(this.value);
+    if (hlsInstance) {
+      hlsInstance.currentLevel = val;
+    }
+    updateSettingsBadge();
+  };
+}
+
+function updateNativeCuePositions() {
+  const tracks = player.textTracks();
+  const posValStr = localStorage.getItem('vp_sub_pos') || '18%';
+  const percentage = 100 - parseFloat(posValStr); // "18%" -> 82% từ top
+  
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i];
+    if (!track._cueListenerAdded) {
+      track.addEventListener('cuechange', function() {
+        const activeCues = this.activeCues;
+        if (activeCues) {
+          for (let j = 0; j < activeCues.length; j++) {
+            const cue = activeCues[j];
+            if (cue.snapToLines !== false || cue.line !== percentage) {
+              cue.snapToLines = false;
+              cue.line = percentage;
+            }
+          }
+        }
+      });
+      track._cueListenerAdded = true;
+    }
+    
+    // Cập nhật các cue đang hoạt động ngay lập tức
+    const activeCues = track.activeCues;
+    if (activeCues) {
+      for (let j = 0; j < activeCues.length; j++) {
+        const cue = activeCues[j];
+        if (cue.snapToLines !== false || cue.line !== percentage) {
+          cue.snapToLines = false;
+          cue.line = percentage;
+        }
+      }
+    }
+  }
+}
+
+function applySubStyles() {
+  const size = localStorage.getItem('vp_sub_size') || '24px';
+  const color = localStorage.getItem('vp_sub_color') || '#ffffff';
+  const bg = localStorage.getItem('vp_sub_bg') || 'rgba(0, 0, 0, 0.5)';
+  const pos = localStorage.getItem('vp_sub_pos') || '18%';
+  
+  document.documentElement.style.setProperty('--sub-font-size', size);
+  document.documentElement.style.setProperty('--sub-color', color);
+  document.documentElement.style.setProperty('--sub-bg', bg);
+  document.documentElement.style.setProperty('--sub-position', pos);
+
+  // Ghi đè CSS cho native ::cue của trình duyệt di động (tránh lỗi cô lập lớp hiển thị phụ đề không nhận CSS variables)
+  let styleEl = document.getElementById('dynamic-cue-styles');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamic-cue-styles';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    video::cue {
+      color: ${color} !important;
+      font-size: ${size} !important;
+      font-weight: bold !important;
+      background: ${bg} !important;
+    }
+    .video-js video::cue {
+      color: ${color} !important;
+      font-size: ${size} !important;
+      font-weight: bold !important;
+      background: ${bg} !important;
+    }
+    #my-video::cue {
+      color: ${color} !important;
+      font-size: ${size} !important;
+      font-weight: bold !important;
+      background: ${bg} !important;
+    }
+  `;
+
+  // Cập nhật vị trí cho native text track cues
+  updateNativeCuePositions();
+}
+
+function initStyleSettings() {
+  const sizeSelect = document.getElementById('cfgSubSize');
+  const colorSelect = document.getElementById('cfgSubColor');
+  const posSelect = document.getElementById('cfgSubPos');
+  const bgSelect = document.getElementById('cfgSubBg');
+  
+  sizeSelect.value = localStorage.getItem('vp_sub_size') || '24px';
+  colorSelect.value = localStorage.getItem('vp_sub_color') || '#ffffff';
+  posSelect.value = localStorage.getItem('vp_sub_pos') || '18%';
+  bgSelect.value = localStorage.getItem('vp_sub_bg') || 'rgba(0, 0, 0, 0.5)';
+  
+  applySubStyles();
+  
+  sizeSelect.onchange = function() { localStorage.setItem('vp_sub_size', this.value); applySubStyles(); };
+  colorSelect.onchange = function() { localStorage.setItem('vp_sub_color', this.value); applySubStyles(); };
+  posSelect.onchange = function() { localStorage.setItem('vp_sub_pos', this.value); applySubStyles(); };
+  bgSelect.onchange = function() { localStorage.setItem('vp_sub_bg', this.value); applySubStyles(); };
+}
+
+// ── Audio Overlay Synchronization (thuyết minh chồng lên tiếng gốc) ──────────
+var syncAudioEl = null;
+var syncHls = null;
+var isSyncingAudio = false;
+var currentAudioTrackUrl = null;
+var syncListenersAdded = false;
+
+// Gắn listener đồng bộ MỘT LẦN vào player; luôn đọc syncAudioEl hiện tại (biến
+// module) nên vẫn đúng dù element được tạo mới mỗi lần chọn thuyết minh.
+function ensureSyncListeners() {
+  if (syncListenersAdded) return;
+  syncListenersAdded = true;
+  player.on('play', function() {
+    if (isSyncingAudio && syncAudioEl && syncAudioEl.paused) syncAudioEl.play().catch(function(){});
+  });
+  player.on('pause', function() {
+    if (isSyncingAudio && syncAudioEl && !syncAudioEl.paused) syncAudioEl.pause();
+  });
+  player.on('ended', function() {
+    if (syncAudioEl) { syncAudioEl.pause(); try { syncAudioEl.currentTime = 0; } catch(e){} }
+  });
+  player.on('timeupdate', function() {
+    if (!isSyncingAudio || !syncAudioEl) return;
+    // Hồi overlay nếu nó bị khựng/tự dừng giữa chừng ("chạy 1 lúc rồi mất")
+    if (!player.paused() && syncAudioEl.paused) { syncAudioEl.play().catch(function(){}); }
+    var vt = player.currentTime();
+    var driff = vt - syncAudioEl.currentTime;
+    var ad = Math.abs(driff);
+    if (ad > 0.75) {
+      // Lệch lớn → seek 1 lần (tránh seek liên tục gây rebuffer vòng lặp → câm)
+      try { syncAudioEl.currentTime = vt; } catch(e){}
+    } else if (ad > 0.08) {
+      // Lệch nhỏ → chỉnh tốc độ kéo về, KHÔNG seek (không rebuffer)
+      syncAudioEl.playbackRate = player.playbackRate() * (driff > 0 ? 1.05 : 0.95);
+    } else {
+      syncAudioEl.playbackRate = player.playbackRate();
+    }
+  });
+  player.on('seeking', function() { if (isSyncingAudio && syncAudioEl) { try { syncAudioEl.currentTime = player.currentTime(); } catch(e){} } });
+  player.on('seeked',  function() { if (isSyncingAudio && syncAudioEl) { try { syncAudioEl.currentTime = player.currentTime(); } catch(e){} } });
+  player.on('ratechange', function() { if (syncAudioEl) syncAudioEl.playbackRate = player.playbackRate(); });
+  player.on('volumechange', function() { applyAudioSyncVolumes(); });
+  // Watchdog tự hồi: bắt cả trường hợp thẻ audio "đứng hình" (không paused nhưng
+  // currentTime đóng băng do hls.js thứ 2 ngừng nạp buffer / chết) — nguyên nhân
+  // "chạy 1 lúc rồi mất" mà điều kiện .paused không bắt được. Đứng im ~3s → DỰNG LẠI luồng.
+  var wdLast = -1, wdStall = 0, wdHealAt = 0;
+  setInterval(function() {
+    if (!isSyncingAudio || !syncAudioEl || player.paused()) { wdLast = -1; wdStall = 0; return; }
+    if (syncAudioEl.paused || syncAudioEl.ended) { syncAudioEl.play().catch(function(){}); }
+    var t = syncAudioEl.currentTime;
+    if (Math.abs(t - wdLast) < 0.05) { wdStall++; } else { wdStall = 0; }
+    wdLast = t;
+    // Đứng im ~3s → coi luồng đã chết → dựng lại tại đúng vị trí (chặn dựng dồn: tối đa 8s/lần)
+    if (wdStall >= 3 && currentAudioTrackUrl && (Date.now() - wdHealAt > 8000)) {
+      wdHealAt = Date.now();
+      wdStall = 0;
+      initSyncAudio(currentAudioTrackUrl);
+    }
+  }, 1000);
+}
+
+function initSyncAudio(audioUrl) {
+  ensureSyncListeners();
+
+  // Huỷ HẲN element + hls cũ rồi tạo mới hoàn toàn. Tái dùng element cũ (sau khi
+  // đã src='' / detach) là nguyên nhân "chọn lại thuyết minh bị mất tiếng".
+  if (syncHls) { try { syncHls.destroy(); } catch(e){} syncHls = null; }
+  if (syncAudioEl) { try { syncAudioEl.pause(); } catch(e){} try { syncAudioEl.remove(); } catch(e){} syncAudioEl = null; }
+
+  syncAudioEl = document.createElement('audio');
+  syncAudioEl.style.display = 'none';
+  syncAudioEl.preload = 'auto';
+  document.body.appendChild(syncAudioEl);
+
+  var resolvedUrl = audioUrl;
+  var baseCdn = isLegacy ? 'https://sv1.rophim.mom' : '';
+  if (!resolvedUrl.startsWith('http')) {
+    resolvedUrl = baseCdn + (resolvedUrl.startsWith('/') ? '' : '/') + resolvedUrl;
+  }
+
+  isSyncingAudio = true;
+  currentAudioTrackUrl = resolvedUrl;
+
+  var elForThisRun = syncAudioEl; // khoá đúng element của lần chọn này
+  var started = false;
+  var startPlayback = function() {
+    if (started || elForThisRun !== syncAudioEl) return; // chống gọi trùng / gọi nhầm element cũ
+    started = true;
+    try { syncAudioEl.currentTime = player.currentTime(); } catch(e){}
+    syncAudioEl.playbackRate = player.playbackRate();
+    applyAudioSyncVolumes();
+    if (!player.paused()) syncAudioEl.play().catch(function(){});
+  };
+
+  // Phát dựa trên 'canplay' của chính thẻ audio — đáng tin cho CẢ hls.js lẫn native,
+  // KHÔNG bị lỡ như khi chỉ nghe MANIFEST_PARSED (playlist đã cache có thể fire
+  // trước khi listener kịp gắn → nguyên nhân "chọn lại thuyết minh bị câm").
+  syncAudioEl.addEventListener('canplay', startPlayback);
+
+  // Trình duyệt phát được HLS native (TV Samsung/LG, Safari) → dùng native cho
+  // thẻ audio, KHÔNG mở hls.js/MSE thứ 2. Tizen chỉ có 1 pipeline MSE: mở
+  // MediaSource thứ 2 làm chết luồng video (màn đen, còn tiếng, không tua được).
+  if (syncAudioEl.canPlayType('application/vnd.apple.mpegurl')) {
+    syncAudioEl.src = resolvedUrl;
+    syncAudioEl.load();
+  } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+    syncHls = new Hls();
+    syncHls.on(Hls.Events.MANIFEST_PARSED, startPlayback); // đăng ký TRƯỚC loadSource
+    // Tự phục hồi khi luồng audio thứ 2 lỗi mạng/decode (không có sẽ "chạy 1 lúc rồi mất")
+    syncHls.on(Hls.Events.ERROR, function(evt, data) {
+      if (!data || !data.fatal || elForThisRun !== syncAudioEl) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) { try { syncHls.startLoad(); } catch(e){} }
+      else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) { try { syncHls.recoverMediaError(); } catch(e){} }
+      else { try { syncHls.destroy(); } catch(e){} syncHls = null; }
+    });
+    syncHls.loadSource(resolvedUrl);
+    syncHls.attachMedia(syncAudioEl);
+  } else {
+    syncAudioEl.src = resolvedUrl;
+    syncAudioEl.load();
+  }
+}
+
+function stopSyncAudio() {
+  isSyncingAudio = false;
+  currentAudioTrackUrl = null;
+  if (syncHls) { try { syncHls.destroy(); } catch(e){} syncHls = null; }
+  if (syncAudioEl) {
+    try { syncAudioEl.pause(); } catch(e){}
+    try { syncAudioEl.remove(); } catch(e){}
+    syncAudioEl = null;
+  }
+}
+
+function applyAudioSyncVolumes() {
+  if (!isSyncingAudio || !syncAudioEl) return;
+
+  // Thuyết minh phát ĐỒNG THỜI với tiếng gốc (kiểu thuyết minh VN: giọng đọc
+  // chồng lên nền tiếng gốc). Overlay theo âm lượng/mute của player, KHÔNG câm gốc.
+  syncAudioEl.volume = player.volume();
+  syncAudioEl.muted = player.muted();
+}
+
+function setupAudioTracks(metadataAudios, hls) {
+  var audioSelect = document.getElementById('cfgAudioSelect');
+  if (!audioSelect) return;
+  
+  audioSelect.innerHTML = '';
+  var addedTrackNames = new Set();
+  
+  var mainVideo = player.el().querySelector('video');
+  var hasHlsTracks = hls && hls.audioTracks && hls.audioTracks.length > 0;
+  var hasNativeTracks = mainVideo && mainVideo.audioTracks && mainVideo.audioTracks.length > 0;
+
+  // hls.js (PC/Android, cả Safari desktop) → phát thuyết minh bằng OVERLAY (đáng tin;
+  // hls.js KHÔNG đọc được alternate-audio của video ABR muxed). Native (iPhone, hls=null)
+  // → dùng track trộn nhúng trong master (Apple xử đúng; iOS chặn autoplay <audio>).
+  var usePcOverlay = !!hls;
+
+  // Nhãn audio ĐÃ TRỘN (mixed): trên PC overlay bằng giọng đọc _voice → bỏ track nhúng
+  // trùng tên khỏi danh sách HLS để không trùng lặp.
+  var mixedNames = {};
+  (metadataAudios || []).forEach(function(a) {
+    if (a.status === 'completed' && a.mixed) mixedNames[a.label || ('Thuyết minh ' + (a.lang || '').toUpperCase())] = true;
+  });
+  function voiceUrlOf(u) { return String(u || '').replace(/(audio_[a-zA-Z0-9]+)\/playlist\.m3u8/, '$1_voice/playlist.m3u8'); }
+
+  // 1. Liệt kê track nhúng (HLS hoặc native)
+  if (hasHlsTracks) {
+    hls.audioTracks.forEach(function(track, idx) {
+      var labelText = (idx === 0) ? 'Âm thanh gốc' : (track.name || ('Audio ' + (idx + 1)));
+      if (idx !== 0 && mixedNames[labelText]) return; // để overlay _voice lo (tránh trùng + lỗi ABR)
+      addedTrackNames.add(labelText);
+      var opt = document.createElement('option');
+      opt.value = 'hls:' + idx;
+      opt.textContent = labelText;
+      audioSelect.appendChild(opt);
+    });
+  } else if (hasNativeTracks) {
+    var tracks = mainVideo.audioTracks;
+    for (var i = 0; i < tracks.length; i++) {
+      var labelText = (i === 0) ? 'Âm thanh gốc' : (tracks[i].label || tracks[i].language || ('Audio ' + (i + 1)));
+      addedTrackNames.add(labelText);
+      var opt = document.createElement('option');
+      opt.value = 'native:' + i;
+      opt.textContent = labelText;
+      audioSelect.appendChild(opt);
+    }
+  }
+
+  // 2. Add fallback original audio option ONLY if no embedded tracks exist
+  if (!hasHlsTracks && !hasNativeTracks) {
+    var opt = document.createElement('option');
+    opt.value = '-1';
+    opt.textContent = 'Âm thanh gốc';
+    audioSelect.appendChild(opt);
+    addedTrackNames.add('Âm thanh gốc');
+  }
+
+  // 3. Overlay thuyết minh — CHỈ trên nhánh hls.js (PC/Android). Giọng đọc chồng
+  //    lên tiếng gốc. Audio đã trộn (mixed) → overlay bằng track _voice (giọng thuần);
+  //    audio chưa trộn → dùng chính url của nó (vốn là giọng thuần).
+  var hasDbAudio = false;
+  var firstDbAudioUrl = '';
+  if (usePcOverlay) {
+    (metadataAudios || []).forEach(function(audio) {
+      if (audio.status !== 'completed') return;
+      var labelText = audio.label || ('Thuyết minh ' + (audio.lang || '').toUpperCase());
+      if (addedTrackNames.has(labelText)) return;
+      addedTrackNames.add(labelText);
+      var ovUrl = audio.mixed ? voiceUrlOf(audio.url) : audio.url;
+      var opt = document.createElement('option');
+      opt.value = 'db:' + ovUrl;
+      opt.textContent = labelText;
+      audioSelect.appendChild(opt);
+      if (!hasDbAudio) { hasDbAudio = true; firstDbAudioUrl = ovUrl; }
+    });
+  }
+  
+  audioSelect.onchange = function() {
+    var val = this.value;
+    if (val === "-1") {
+      stopSyncAudio();
+      if (hls && hls.audioTracks.length > 0) {
+        hls.audioTrack = 0;
+      } else if (mainVideo && mainVideo.audioTracks && mainVideo.audioTracks.length > 0) {
+        for (var i = 0; i < mainVideo.audioTracks.length; i++) {
+          mainVideo.audioTracks[i].enabled = (i === 0);
+        }
+      }
+    } else if (val.startsWith('db:')) {
+      stopSyncAudio();
+      if (hls && hls.audioTracks.length > 0) hls.audioTrack = 0; // video chính phát TIẾNG GỐC, overlay chồng giọng
+      initSyncAudio(val.substring(3));
+    } else if (val.startsWith('hls:')) {
+      stopSyncAudio();
+      if (hls) {
+        hls.audioTrack = parseInt(val.substring(4));
+      }
+    } else if (val.startsWith('native:')) {
+      stopSyncAudio();
+      if (mainVideo && mainVideo.audioTracks) {
+        var idx = parseInt(val.substring(7));
+        for (var i = 0; i < mainVideo.audioTracks.length; i++) {
+          mainVideo.audioTracks[i].enabled = (i === idx);
+        }
+      }
+    }
+  };
+
+  // Mặc định phát thuyết minh.
+  if (hasDbAudio && firstDbAudioUrl) {
+    // PC: overlay giọng đọc + tiếng gốc (video chính phát gốc)
+    if (hls && hls.audioTracks.length > 0) hls.audioTrack = 0;
+    audioSelect.value = 'db:' + firstDbAudioUrl;
+    initSyncAudio(firstDbAudioUrl);
+  } else if (hasNativeTracks) {
+    // iPhone: bật track trộn nhúng (track 1) trong master
+    if (mainVideo.audioTracks.length > 1) {
+      for (var i = 0; i < mainVideo.audioTracks.length; i++) {
+        mainVideo.audioTracks[i].enabled = (i === 1);
+      }
+    }
+    for (var j = 0; j < mainVideo.audioTracks.length; j++) {
+      if (mainVideo.audioTracks[j].enabled) {
+        audioSelect.value = 'native:' + j;
+        break;
+      }
+    }
+  } else if (hasHlsTracks) {
+    // Hiếm: hls.js đọc được alternate-audio → chọn luồng thuyết minh (index 1)
+    if (hls.audioTracks.length > 1 && hls.audioTrack === 0) hls.audioTrack = 1;
+    var currentTrack = hls.audioTrack;
+    if (currentTrack !== -1 && currentTrack !== undefined) audioSelect.value = 'hls:' + currentTrack;
+  }
+}
+
+function setupSubtitleTracks(metadataSubs) {
+  var subSelect = document.getElementById('cfgSubSelect');
+  if (!subSelect) return;
+
+  subSelect.innerHTML = '<option value="-1">Tắt phụ đề</option>';
+
+  var textTracks = player.textTracks();
+
+  // Xoá HẾT remote text track cũ để hàm chạy lại không cộng dồn → nhân đôi phụ đề
+  if (player.remoteTextTracks) {
+    var olds = player.remoteTextTracks(), rm = [];
+    for (var i = 0; i < olds.length; i++) rm.push(olds[i]);
+    rm.forEach(function(t){ try { player.removeRemoteTextTrack(t); } catch(e){} });
+  }
+
+  var hasSubActive = false;
+
+  if (metadataSubs && metadataSubs.length) {
+    metadataSubs.forEach(function(sub) {
+      var src = sub.url;
+      var baseCdn = isLegacy ? 'https://sv1.rophim.mom' : '';
+      if (src.startsWith('videos/')) {
+        src = baseCdn + '/api/stream/lv0001420/subtitles/' + src.split('/').pop();
+      } else if (!src.startsWith('http')) {
+        src = baseCdn + '/' + src.replace(/^\//, '');
+      }
+      player.addRemoteTextTrack({
+        kind: 'subtitles', src: src, srclang: sub.lang, label: sub.label, default: false
+      }, true);
+    });
+  }
+
+  function isSub(t){ return t && (t.kind === 'subtitles' || t.kind === 'captions'); }
+  function keyOf(t){ return (t.label || '') + '|' + (t.language || ''); }
+
+  var updateSubMenu = function() {
+    var tracks = textTracks;
+
+    // Đảm bảo TỐI ĐA 1 track đang hiển thị (chống 2 phụ đề chồng nếu có track trùng)
+    var shownOnce = false;
+    for (var i = 0; i < tracks.length; i++) {
+      if (!isSub(tracks[i])) continue;
+      if (tracks[i].mode === 'showing') {
+        if (shownOnce) tracks[i].mode = 'disabled';
+        else shownOnce = true;
+      }
+    }
+
+    // Auto bật phụ đề đầu tiên nếu chưa track nào hiển thị
+    if (!hasSubActive && !shownOnce) {
+      for (var j = 0; j < tracks.length; j++) {
+        if (isSub(tracks[j])) { tracks[j].mode = 'showing'; hasSubActive = true; break; }
+      }
+    }
+
+    // Dựng menu: gộp trùng theo nhãn+ngôn ngữ (1 file sub chỉ hiện 1 dòng)
+    subSelect.innerHTML = '<option value="-1">Tắt phụ đề</option>';
+    var seen = {};
+    for (var k = 0; k < tracks.length; k++) {
+      if (!isSub(tracks[k])) continue;
+      var key = keyOf(tracks[k]);
+      if (seen[key]) continue;
+      seen[key] = true;
+      var opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = tracks[k].label || tracks[k].language || ('Sub ' + (k + 1));
+      if (tracks[k].mode === 'showing') opt.selected = true;
+      subSelect.appendChild(opt);
+    }
+  };
+
+  textTracks.addEventListener('addtrack', function(){ updateSubMenu(); updateNativeCuePositions(); });
+  textTracks.addEventListener('change',   function(){ updateSubMenu(); updateNativeCuePositions(); });
+  updateSubMenu();
+  updateNativeCuePositions();
+
+  subSelect.onchange = function() {
+    var selectedIdx = parseInt(this.value);
+    var tracks = textTracks;
+    if (selectedIdx === -1) hasSubActive = true; // đừng auto bật lại sau khi user tắt
+    // Bật đúng 1 track được chọn, tắt tất cả còn lại (kể cả track trùng nhãn)
+    for (var i = 0; i < tracks.length; i++) {
+      if (isSub(tracks[i])) tracks[i].mode = (i === selectedIdx) ? 'showing' : 'disabled';
+    }
+  };
+}
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;0460179e760d42749c34377b1d92549f&quot;,&quot;r&quot;:1}" crossorigin="anonymous"></script>
+
+</body></html>
