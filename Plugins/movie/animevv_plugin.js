@@ -23,9 +23,9 @@ function log(msg) {
 }
 
 
-
 function getHomeSections() {
     return JSON.stringify([
+
         {"slug": "/top","title": "Top Anime","type": "Horizontal"},
        {"slug": "/quoc-gia/Trung%20Qu%E1%BB%91c","title": "Trung Quốc","type": "Horizontal"},
        {"slug": "/quoc-gia/Nh%E1%BA%ADt%20B%E1%BA%A3n","title": "Nhật Bản","type": "Horizontal"},
