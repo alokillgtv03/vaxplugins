@@ -1,5 +1,5 @@
 
-BASEURL = "https://animevietsub.wiki"
+BASEURL = "https://animevietsub.ing"
 DEV = false;
 
 function getManifest() {
@@ -7,12 +7,13 @@ function getManifest() {
         "id": "animevietsub",
         "name": "AnimeVietSub",
         "version": "1.1.2",
-        "baseUrl": "https://animevietsub.wiki",
+        "baseUrl": "https://animevietsub.ing",
       	"info": "Nguồn phim Anime chất lượng. Nguồn này hay bị nhà mạng chặn. Các bạn hãy dùng APP 1.1.1.1 hoặc DNS và DPI trên app để xem nhé.",
-        "iconUrl": "https://animevietsub.wiki/statics/default/images/logo.png",
+        "iconUrl": "https://animevietsub.ing/statics/default/images/logo.png",
         "isEnabled": true,
         "type": "MOVIE",
-        "playerType": "embed"
+      debug: true,
+        "playerType": "embedtoexoplay"
     });
 }
 
@@ -430,43 +431,93 @@ function parseDetailResponse(htmlContent, pageUrl) {
 function customJS(initialLink){
   return `
 (function() {
+    // ----------------------------------------------------
+    // HÀM HELPER GHI LOG QUA SNIFFERBRIDGE
+    // ----------------------------------------------------
+    const log = function(...args) {
+        const message = "[CustomJS] " + args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+        if (typeof SnifferBridge !== 'undefined' && typeof SnifferBridge.log === 'function') {
+            SnifferBridge.log(message);
+        } else {
+            console.log(message);
+        }
+    };
 
+    const warn = function(...args) {
+        const message = "[CustomJS-WARN] " + args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+        if (typeof SnifferBridge !== 'undefined' && typeof SnifferBridge.log === 'function') {
+            SnifferBridge.log(message);
+        } else {
+            console.warn(message);
+        }
+    };
+
+    const error = function(...args) {
+        const message = "[CustomJS-ERROR] " + args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+        if (typeof SnifferBridge !== 'undefined' && typeof SnifferBridge.log === 'function') {
+            SnifferBridge.log(message);
+        } else {
+            console.error(message);
+        }
+    };
+
+    log("Đang khởi tạo script can thiệp...");
+
+    // ----------------------------------------------------
+    // 1. VÔ HIỆU HÓA CÁC HÀM DIALOG & MỞ TAB MỚI (CHẶN POPUP)
+    // ----------------------------------------------------
     const noop = function(){};
-
     window.alert = noop;
-
-    window.confirm = function() {
-        return false;
-    };
-
-    window.prompt = function() {
-        return null;
-    };
-
-    window.open = function() {
-        return null;
-    };
-
-    try {
-
-        const block = function() {
-            console.log("Navigation blocked");
+    window.confirm = () => false;
+    window.prompt = () => null;
+    
+    // Ghi đè window.open triệt để
+    const safeOpen = function() {
+        warn("Đã chặn một yêu cầu window.open()");
+        return {
+            closed: true,
+            close: noop,
+            focus: noop,
+            blur: noop,
+            postMessage: noop
         };
+    };
+    
+    try {
+        Object.defineProperty(window, 'open', {
+            get: () => safeOpen,
+            set: () => {},
+            configurable: false
+        });
+    } catch(e) {
+        window.open = safeOpen;
+    }
 
-        Location.prototype.assign = block;
-        Location.prototype.replace = block;
+    // ----------------------------------------------------
+    // 2. PHÁT HIỆN VÀ CHẶN CHUYỂN TRANG (NAVIGATION BLOCK)
+    // ----------------------------------------------------
+    try {
+        const blockNav = function(url) {
+            warn("Đã chặn hành vi chuyển trang (assign/replace):", url);
+        };
+        Location.prototype.assign = blockNav;
+        Location.prototype.replace = blockNav;
+    } catch(e) {
+        error("Không thể ghi đè Location prototype:", e);
+    }
 
-    } catch(e) {}
-
+    // Chặn chống rời trang (beforeunload spam)
     window.addEventListener("beforeunload", function(e) {
         e.stopImmediatePropagation();
         e.preventDefault();
     }, true);
 
-})();
-(function() {
+    log("Cấu hình bảo vệ cơ bản hoàn tất.");
 
-    // 1. CHÈN NGAY CSS VÀO HEAD VÀ BẬT LOADING OVERLAY CHE PHỦ TOÀN BỘ WEBSITE
+    // ----------------------------------------------------
+    // 3. CHÈN CSS LOADING OVERLAY
+    // ----------------------------------------------------
+    log("Chèn CSS và Loading Overlay...");
     let styleTag = document.createElement('style');
     styleTag.textContent = \`
         margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000;
@@ -492,26 +543,51 @@ function customJS(initialLink){
     if (document.body) document.body.appendChild(overlay);
     else document.documentElement.appendChild(overlay);
 
-    // Chặn quảng cáo
-    window.addEventListener('click', function(e) {
-        if (!e.target.closest('#floating-select-box') && !e.target.closest('#episode-grid-popup')) {
-            let aTag = e.target.closest('a');
-            if (aTag && (aTag.target === '_blank' || aTag.href)) {
+    // ----------------------------------------------------
+    // 4. CHẶN AD-CLICKS & POPUP TOÀN DIỆN
+    // ----------------------------------------------------
+    const preventAdClick = function(e) {
+        // Cho phép click bên trong UI của ứng dụng
+        if (e.target.closest('#floating-select-box') || e.target.closest('#episode-grid-popup') || e.target.closest('#btn-resume-saved') || e.target.closest('#btn-resume-current')) {
+            return;
+        }
+
+        let aTag = e.target.closest('a');
+        if (aTag) {
+            const targetAttr = aTag.getAttribute('target');
+            const hrefAttr = aTag.getAttribute('href');
+
+            // Chặn chuyển tab hoặc link chuyển trang của quảng cáo
+            if (targetAttr === '_blank' || (hrefAttr && !hrefAttr.startsWith('javascript:'))) {
+                warn("Đã chặn Click mở Quảng Cáo/Link:", hrefAttr);
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 e.preventDefault();
+                return false;
             }
         }
-    }, true);
-    window.open = function() { return null; };
+    };
 
+    // Chặn trên tất cả sự kiện chuột có thể kích hoạt QC
+    ['click', 'mousedown', 'mouseup', 'pointerdown'].forEach(eventType => {
+        window.addEventListener(eventType, preventAdClick, true);
+    });
+
+    // ----------------------------------------------------
+    // 5. KHỞI TẠO LOGIC TẬP PHIM
+    // ----------------------------------------------------
     function init() {
+        log("Trang đã tải xong. Bắt đầu quét danh sách tập...");
         const episodeLinks = document.querySelectorAll(".episode .episode-link");
         const allEpisodes = [];
+        
         episodeLinks.forEach((link, index) => {
             const url = link.getAttribute("href");
             const title = link.getAttribute("title") || ("Tập " + link.textContent.trim());
             if (url) allEpisodes.push({ index, title, url });
         });
+
+        log(\`Tìm thấy \${allEpisodes.length} tập phim.\`, allEpisodes);
 
         let currentPlayingIndex = 0;
         const currentUrl = window.location.href;
@@ -521,12 +597,17 @@ function customJS(initialLink){
             }
         });
 
+        log(\`Tập hiện tại phát hiện dựa trên URL: Tập \${currentPlayingIndex + 1}\`);
+
         const storageKey = "anime_history_" + window.location.pathname.replace(/[^a-zA-Z0-9]/g, "_");
         let savedIndex = localStorage.getItem(storageKey);
 
         if (savedIndex !== null) {
             savedIndex = parseInt(savedIndex, 10);
+            log(\`Lịch sử xem trong LocalStorage: Tập \${savedIndex + 1}\`);
+
             if (currentPlayingIndex !== savedIndex && currentPlayingIndex !== savedIndex + 1) {
+                log("Lịch sử lệch so với tập hiện tại, hiển thị Popup hỏi chuyển tập...");
                 if (overlay) overlay.remove();
                 let savedEpObj = allEpisodes[savedIndex] || { title: "Tập " + (savedIndex + 1) };
                 let currentEpObj = allEpisodes[currentPlayingIndex] || { title: "Tập " + (currentPlayingIndex + 1) };
@@ -554,10 +635,12 @@ function customJS(initialLink){
                 document.body.appendChild(modalOverlay);
 
                 document.getElementById('btn-resume-saved').onclick = () => {
+                    log(\`Chọn quay lại \${savedEpObj.title}\`);
                     localStorage.setItem(storageKey, savedIndex);
                     window.location.href = allEpisodes[savedIndex].url;
                 };
                 document.getElementById('btn-resume-current').onclick = () => {
+                    log(\`Chọn tiếp tục xem \${currentEpObj.title}\`);
                     localStorage.setItem(storageKey, currentPlayingIndex);
                     modalOverlay.remove();
                     document.documentElement.appendChild(overlay);
@@ -567,30 +650,48 @@ function customJS(initialLink){
             }
         }
 
+        log("Cập nhật lịch sử và khởi chạy ứng dụng...");
         localStorage.setItem(storageKey, currentPlayingIndex);
         runApp(currentPlayingIndex, overlay, allEpisodes);
     }
 
+    // ----------------------------------------------------
+    // 6. CHUYỂN GIAO DIỆN & EMBED PLAYER
+    // ----------------------------------------------------
     function runApp(currentPlayingIndex, overlay, allEpisodes) {
+        log("Khởi chạy runApp()...");
         let initLink = "` + (initialLink || '') + `";
+        
         if (!initLink) {
+            log("Chưa có initialLink. Bắt đầu tìm PLAYER_DATA hoặc iframe...");
             try {
                 let scriptTags = document.querySelectorAll('script');
                 for (let s of scriptTags) {
                     let m = s.textContent.match(/window\\.PLAYER_DATA\\s*=\\s*(\\{[\\s\\S]*?\\});/);
                     if (m) {
                         let d = JSON.parse(m[1]);
-                        if (d && d.link) { initLink = d.link; break; }
+                        if (d && d.link) { 
+                            initLink = d.link; 
+                            log("Tìm thấy link player từ PLAYER_DATA:", initLink);
+                            break; 
+                        }
                     }
                 }
                 if (!initLink) {
                     let f = document.querySelector('iframe');
-                    if (f) initLink = f.src;
+                    if (f) {
+                        initLink = f.src;
+                        log("Lấy link player từ Iframe đầu tiên:", initLink);
+                    }
                 }
-            } catch(e) {}
+            } catch(e) {
+                error("Lỗi khi trích xuất link player ban đầu:", e);
+            }
         }
+        
         if (initLink && initLink.indexOf('//') === 0) initLink = "https:" + initLink;
 
+        log("Dọn dẹp DOM cũ để chuẩn bị nhúng Iframe...");
         document.documentElement.style.cssText = "margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;background:#000;";
         document.body.innerHTML = "";
         document.body.style.cssText = "margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;background:#000;position:relative;";
@@ -657,6 +758,7 @@ function customJS(initialLink){
         });
 
         if (initLink) {
+            log("Nhúng Iframe chính:", initLink);
             let newIframe = document.createElement("iframe");
             newIframe.className = "frameMain";
             let autoUrl = initLink.includes("?") ? initLink + "&autoplay=1" : initLink + "?autoplay=1";
@@ -672,12 +774,15 @@ function customJS(initialLink){
             });
 
             newIframe.onload = function() {
+                log("Iframe đã load hoàn tất, ẩn Loading Overlay");
                 if (overlay) {
                     overlay.style.opacity = "0";
                     setTimeout(() => overlay.remove(), 300);
                 }
             };
             document.body.appendChild(newIframe);
+        } else {
+            warn("Không tìm thấy link Embed Player nào!");
         }
 
         document.body.appendChild(container);
@@ -698,6 +803,7 @@ function customJS(initialLink){
 
         function fetchPage(episodeObj) {
             if (episodeObj.index === currentPlayingIndex) return;
+            log(\`Fetch ngầm dữ liệu: Tập \${episodeObj.index + 1}\`);
             fetch(episodeObj.url)
                 .then(r => r.text())
                 .then(htmlText => {
@@ -705,12 +811,16 @@ function customJS(initialLink){
                     if (srcNext && srcNext[1]) {
                         const framelink = decodeURIComponent(srcNext[1].replaceAll('\\\\/', '/'));
                         listFrame[episodeObj.index] = { title: episodeObj.title, link: framelink, index: episodeObj.index, url: episodeObj.url };
+                        log(\`Lấy thành công link Tập \${episodeObj.index + 1}\`);
                         updateSelectUI();
                     }
-                }).catch(() => {});
+                }).catch((err) => {
+                    error(\`Thất bại khi fetch tập \${episodeObj.index + 1}:\`, err);
+                });
         }
 
         function changeEpisode(targetIndex) {
+            log(\`Yêu cầu chuyển sang Tập \${targetIndex + 1}\`);
             const ep = listFrame[targetIndex];
             if (ep && ep.link) {
                 currentPlayingIndex = targetIndex;
@@ -721,10 +831,13 @@ function customJS(initialLink){
                 if (targetIframe) {
                     let cleanLink = ep.link.split('&autoplay=')[0].split('?autoplay=')[0];
                     let autoUrl = cleanLink.includes("?") ? cleanLink + "&autoplay=1&t=" + Date.now() : cleanLink + "?autoplay=1&t=" + Date.now();
+                    log("Cập nhật src Iframe:", autoUrl);
                     targetIframe.src = autoUrl;
                 }
                 togglePopup(false);
                 updateSelectUI();
+            } else {
+                warn(\`Tập \${targetIndex + 1} chưa sẵn sàng!\`);
             }
         }
 
@@ -810,16 +923,15 @@ function customJS(initialLink){
             });
         }
 
+        log("Khởi chạy tiến trình fetch ngầm cho các tập...");
         allEpisodes.forEach(episode => fetchPage(episode));
     }
 
-    // Chờ cho trang web load hoàn tất rồi mới chạy logic trích xuất tập phim và dựng giao diện
     if (document.readyState === 'complete') init();
     else window.addEventListener('load', init);
 })();
   `;
 }
-
 
 
 
