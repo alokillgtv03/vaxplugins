@@ -5,12 +5,11 @@ function getManifest() {
         "id": "krx18",
         "name": "Phim 18+ Hàn",
         "description": "Nguồn XXX hàn quốc Hay", 
-        "version": "1.1.8",
+        "version": "1.1.9",
         "BASEURL": "https://krx18.com",
         "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
         "isEnabled": true,
         "isAdult": true,
-        debug: true,
         "type": "MOVIE",
         "playerType": "embed"
     });
@@ -338,7 +337,8 @@ function runjS() {
 
     var WORKER_POOL = [
       "https://soft-surf-c11d.alokillgtv.workers.dev",
-      "https://soft-water-25b0.alokillgtv02.workers.dev"
+      "https://soft-water-25b0.alokillgtv02.workers.dev",
+      "https://raspy-king-7894.alokillgtv03.workers.dev"
     ];
 
     var CUSTOM_REFERER = window.location.href;
