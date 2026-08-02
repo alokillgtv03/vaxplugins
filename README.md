@@ -30,6 +30,184 @@ NGƯỜI DÙNG bấm vào mục "Hành Động" trên Trang chủ
 └───────────────────────────────────────────────────────────────────┘
 ```
 
+### Luồng Xem Phim & Truyền Hình IPTV (Chi Tiết → Player)
+
+```
+NẾU type = "IPTV" HOẶC "VIDEO":
+   App bỏ qua màn hình Chi tiết (Detail Screen) → mở thẳng Màn hình Player
+   App chạy ngầm luồng lấy link:
+      1. Gọi getUrlDetail(id) để lấy URL API chi tiết kênh (lưu ý: id ban đầu là URL gốc chưa có query param)
+      2. App fetch HTTP URL đó (Hỗ trợ Kodi Pipe Header: "url|User-Agent=...&Referer=...")
+      3. App gọi parseDetailResponse(html, apiUrl) để lấy JSON luồng phát & DRM
+      4. ExoPlayer tự động nạp User-Agent/DRM Key và phát video
+
+NẾU type = "MOVIE" / "shortfilm":
+   Bước 1: parseMovieDetail(html)
+      → Trả servers + episodes (mỗi episode có id = URL hoặc slug, bắt buộc slug phải duy nhất cho từng tập)
+
+   Bước 2: Người dùng chọn tập
+      → App gọi getUrlDetail(episode.id) để lấy URL fetch
+      → App fetch URL → gọi parseDetailResponse(html, apiUrl)
+
+   Bước 3: parseDetailResponse(html, apiUrl)
+      → Trả { url, headers, mimeType, subtitles, drmType, drmKid, drmKey, drmLicenseKey }
+
+   Bước 4:
+      ├─ Nếu isEmbed = false → ExoPlayer phát url trực tiếp
+      ├─ Nếu isEmbed = true  → App fetch tiếp → gọi parseEmbedResponse()
+      │                        (lặp tối đa 3 lần cho đến khi isEmbed = false)
+      └─ Nếu playerType = "embed" → WebView load url
+```
+
+> 💡 **LƯU Ý QUAN TRỌNG KHI VIẾT PLUGIN (Tránh lỗi mất param & gọi sai tập):**
+> 1. **Gán Param Mặc Định:** Khi phát kiểu `VIDEO` (hoặc bấm Play từ ngoài), `apiUrl` truyền vào `parseDetailResponse` là URL gốc chưa có param. Plugin nên gán giá trị mặc định trong `getUrlDetail()` hoặc `parseDetailResponse()` (ví dụ: `if (!url.includes("streamVD=")) url += "?streamVD=1";`).
+> 2. **Slug Tập Phải Duy Nhất (`slug`):** Mỗi episode trong mảng `episodes` bắt buộc phải có `slug` độc nhất (ví dụ: `ep-1`, `ep-2`, `720p`, `480p`). **KHÔNG ĐẶT TRÙNG SLUG** (như tất cả tập đều là `"slug": "full"`), vì cơ chế Preload (tải ngầm tập tiếp theo) của App dùng `slug` để xác định tập hiện tại — nếu trùng slug `"full"`, App sẽ luôn xác định bạn đang ở Tập 1 và tự động preload Tập 2!
+
+---
+
+## 📺 Cấu Hình Đặc Thù Cho Plugin IPTV & Mã Hóa DRM (ClearKey / Widevine)
+
+### 1. Manifest Plugin IPTV (`getManifest`)
+```javascript
+function getManifest() {
+  return JSON.stringify({
+    "id": "my_iptv_plugin",
+    "name": "Kênh Truyền Hình IPTV",
+    "baseUrl": "https://tv.example.com",
+    "isEnabled": true,
+    "debug": true,         // Bật debug=true để hiện Console Toast Log nổi trên màn hình
+    "type": "IPTV",        // Khai báo kiểu IPTV
+    "layoutType": "HORIZONTAL",
+    "playerType": "exoplayer"
+  });
+}
+```
+
+### 2. Cấu Hình DRM trong `parseDetailResponse()`
+
+#### Cách A: Trả về cặp chìa khóa ClearKey dạng Offline Hex (Khuyên dùng)
+Nếu plugin đã trích xuất được cặp `KID` và `KEY` dạng Hex 32 ký tự:
+```javascript
+function parseDetailResponse(html, apiUrl) {
+  return JSON.stringify({
+    isEmbed: false,
+    url: "https://cdn.example.com/live/manifest.mpd",
+    mimeType: "application/dash+xml",
+    drmType: "clearkey",
+    drmKid: "c410ddc6a75244639fd0561fba5ef19b", // Hex KID 32 ký tự
+    drmKey: "30d13ea42031b9ff8271e5dc37d90e10"   // Hex KEY 32 ký tự
+  });
+}
+```
+👉 **Cơ chế:** ExoPlayer giải mã trực tiếp nội tuyến mà không phát bất kỳ HTTP request DRM nào lúc phát!
+
+#### Cách B: Trả về URL License Server kèm `headers` (`User-Agent`)
+Nếu ExoPlayer cần tự gọi HTTP Request lên URL để xin chìa khóa và bắt buộc có `User-Agent`:
+```javascript
+function parseDetailResponse(html, apiUrl) {
+  return JSON.stringify({
+    isEmbed: false,
+    url: "https://cdn.example.com/live/manifest.mpd",
+    mimeType: "application/dash+xml",
+    drmType: "clearkey", // Hoặc "widevine"
+    drmLicenseKey: "https://tv.example.com/key.php?id=...",
+    headers: {
+      "User-Agent": "Dalvik/2.1.0", // Hoặc User-Agent yêu cầu của server nguồn
+      "Referer": "https://tv.example.com/"
+    }
+  });
+}
+```
+👉 **Cơ chế:** Đối tượng `headers` khai báo ở đây sẽ được ExoPlayer đính kèm trực tiếp vào HTTP Request khi tự động phát lệnh lấy chìa khóa DRM!
+
+### 3. Cú pháp Kodi Pipe Header (`|`)
+App hỗ trợ cú pháp Kodi Pipe Header tại mọi điểm truyền URL:
+- **Truyền Custom User-Agent cho bước App fetch URL chi tiết kênh**:  
+  `"id": "https://tv.example.com/channel?id=90|User-Agent=Dalvik/2.1.0&Referer=https://tv.example.com/"`
+- **Truyền Custom User-Agent cho URL License Server**:  
+  `"drmLicenseKey": "https://tv.example.com/key.php?id=...|User-Agent=Dalvik/2.1.0"`
+
+App sẽ tự động loại bỏ cú pháp `|` để lấy URL sạch và trích xuất đúng các tham số Header nạp vào Request!
+
+---
+
+## 🚀 Bắt Đầu Nhanh (3 Bước)
+
+### Bước 1: Tạo Plugin
+Copy file `plugin_template.js` → đổi tên `ten_web_plugin.js`, bắt đầu viết code.
+
+### Bước 2: Test Trên Máy Tính
+Mở file **`tester.html`** bằng Chrome:
+1. **Nạp JS**: Bấm "Nạp file JS" → chọn file plugin của bạn
+2. **Dán HTML**: Mở trang phim → Ctrl+U (View Source) → copy dán vào ô input
+3. **Chạy thử**: Bấm các nút `parseListResponse()`, `parseMovieDetail()`...
+4. **Xem kết quả**: Xanh = JSON chuẩn ✅ | Đỏ = lỗi cần sửa ❌
+
+### Bước 3: Đăng Ký
+Upload file `.js` lên GitHub Raw → thêm vào `plugins.json` → App tự cập nhật.
+
+### ⚠️ Lưu Ý Quan Trọng Khi Phát Hành Plugin (Mới)
+
+#### 1. Bắt Buộc Sử Dụng Link RAW
+Khi đăng ký plugin trên file JSON hoặc thêm nguồn tùy chỉnh, đường dẫn file JS **bắt buộc phải là đường dẫn RAW** trả về code JavaScript thô.
+*   **Sai:** `https://github.com/user/repo/blob/main/plugin.js` (Trả về giao diện web HTML của GitHub).
+*   **Từ phiên bản App 1.7.5+**: Hỗ trợ thêm link gist/custom domain nhưng nên dùng link RAW.
+
+#### 2. Dung Thứ Dấu Phẩy Thừa & Cấu Trúc Bỏ Ngỏ (Trailing Comma & Loose Schema)
+*   Từ phiên bản ứng dụng **1.7.5+**, bộ phân tích cú pháp JSON của App đã hỗ trợ `allowTrailingComma = true`.
+*   **`FilterOption`**: Trường `value` giờ đây có giá trị mặc định. Nếu plugin khai báo `{ "slug": "/cat-1", "name": "Tên" }` thay vì `value`, App vẫn tự chuyển đổi slug thành `value` mà không crash `MissingFieldException`.
+
+#### 3. Tối Ưu `getUrlDetail` & Tránh OOM (Out Of Memory)
+*   Nếu `getUrlDetail(slug)` nhận được link stream trực tiếp (`.mp4`, `.m3u8`, `.mpd`,...):
+    *   **Khuyến nghị**: Hãy `return JSON.stringify({ "url": directUrl, "isEmbed": false, "mimeType": "..." })` ngay lập tức!
+    *   **Cơ chế bảo vệ từ App**: Nếu `getUrlDetail` trả về URL video trực tiếp (plain string), App sẽ tự động phát hiện và bỏ qua bước fetch HTML (tránh sập bộ nhớ OOM) đồng thời tự động nhận diện `mimeType`.
+
+---
+
+## 📋 Danh Sách Tất Cả Các Hàm
+
+### Nhóm 1: Config (Khai báo)
+
+| Hàm | Trả về | Bắt buộc |
+|-----|--------|----------|
+| `getManifest()` | Thông tin plugin | ✅ |
+| `getHomeSections()` | Các mục trang chủ | ✅ |
+| `getPrimaryCategories()` | Menu thể loại | Tùy chọn |
+| `getFilterConfig()` | Bộ lọc | Tùy chọn |
+
+### Nhóm 2: URL (Sinh đường dẫn)
+# 🛠️ VAAPP Plugin Developer Kit
+
+## App Hoạt Động Như Nào?
+
+VAAPP là một **trình vỏ (Shell)** — nó chỉ lo UI và Player. Toàn bộ nội dung phim/truyện được cung cấp qua **Plugin JS** do bạn viết.
+
+### Luồng Dữ Liệu Chi Tiết
+
+```
+NGƯỜI DÙNG bấm vào mục "Hành Động" trên Trang chủ
+        │
+        ▼
+┌─ APP gọi: getUrlList("hanh-dong", '{"page":1}') ─────────────────┐
+│  Plugin trả: "https://phim.com/the-loai/hanh-dong?page=1"        │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP tự fetch HTTP GET url đó ────────────────────────────────────┐
+│  Nhận toàn bộ HTML/JSON thô từ server                             │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP gọi: parseListResponse(html) ────────────────────────────────┐
+│  Plugin parse HTML → trả JSON: { items: [{id, title, poster}...]} │
+└───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ APP render danh sách phim lên UI ────────────────────────────────┐
+│  Người dùng bấm vào 1 phim → Lặp lại chu trình với Detail/Play   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
 ### Luồng Xem Phim (Chi Tiết → Player)
 
 ```
@@ -82,6 +260,10 @@ Khi đăng ký plugin trên file JSON hoặc thêm nguồn tùy chỉnh, đườ
 *   Nếu `getUrlDetail(slug)` nhận được link stream trực tiếp (`.mp4`, `.m3u8`, `.mpd`,...):
     *   **Khuyến nghị**: Hãy `return JSON.stringify({ "url": directUrl, "isEmbed": false, "mimeType": "..." })` ngay lập tức!
     *   **Cơ chế bảo vệ từ App**: Nếu `getUrlDetail` trả về URL video trực tiếp (plain string), App sẽ tự động phát hiện và bỏ qua bước fetch HTML (tránh sập bộ nhớ OOM) đồng thời tự động nhận diện `mimeType`.
+
+#### 4. Cơ Chế Phòng Lỗi Khi `parseEmbedResponse` Trả Về URL Rỗng
+*   Nếu plugin dùng `isEmbed: true` nhưng hàm `parseEmbedResponse` lỡ trả về `url: ""` (rỗng):
+    *   **Từ bản 1.7.8+**: App sẽ tự động phát hiện và **giữ lại URL embed trước đó**, tiếp tục mở WebView và bật Sniffer thay vì bị lỗi rỗng luồng phát.
 
 ---
 
@@ -146,12 +328,10 @@ Khi đăng ký plugin trên file JSON hoặc thêm nguồn tùy chỉnh, đườ
 
 **`debug` — Console Toast dành cho phát triển plugin:**
 - Không khai báo `debug`, hoặc đặt `"debug": false`: Console Toast **không hiển thị**.
-- Đặt `"debug": true`: bật Console Toast cho plugin đó.
+- Đặt `"debug": true`: Bật hiển thị cửa sổ overlay **Console Toast** cho plugin đó trong App.
 - App cũng tương thích với dạng string `"debug": "true"` và `"debug": "false"`, nhưng nên dùng Boolean chuẩn `true`/`false`.
-- Vị trí cài plugin, tên file, ID có prefix hay không **không ảnh hưởng**. Console chỉ dựa vào `debug` trong `getManifest()`.
-- Khi `debug=true`, app tự ghi `CALL`, `RESULT` và `ERROR` cho mọi hàm plugin chạy qua QuickJS. Arguments/kết quả dài được rút gọn để tránh làm đầy màn hình.
-- Vì đã có auto-log, không cần tự thêm `log()` hoặc `console.log()` chỉ để biết hàm nào được gọi và trả gì.
-- Chỉ dùng `console.log()` khi cần xem biến/trạng thái nội bộ cụ thể bên trong parser.
+- **Cách ghi log trong plugin**: App đã tắt chế độ tự động ngắt/in log mọi hàm chạy qua QuickJS. Để hiển thị log lên Console Toast (và logcat), dev plugin cần **chủ động gọi `console.log(...)`** hoặc `print(...)`, `console.error(...)`, `console.warn(...)` bên trong các hàm JS của plugin.
+- Cửa sổ Console Toast tự động điều chỉnh xuống dòng sát mép trái, hỗ trợ cuộn, phóng to/thu nhỏ và nút Sao chép để copy toàn bộ log.
 
 Ví dụ:
 
@@ -166,15 +346,11 @@ function getManifest() {
         debug: true
     });
 }
-```
 
-Console tự động có dạng:
-
-```text
-[CALL] getUrlList(/latest-updates/, {"page":1})
-[RESULT] getUrlList -> https://example.com/latest-updates/
-[CALL] parseMovieDetail(<html...>, https://example.com/video/123)
-[RESULT] parseMovieDetail -> {"id":"...","title":"...","servers":[...]}...
+function parseListResponse(html) {
+    console.log("Parsing HTML list response length: " + html.length);
+    // ...
+}
 ```
 
 > Biến riêng như `DEV = "true"` không bật Console Toast. Cờ phải nằm trong object do `getManifest()` trả về và có tên chính xác là `debug`.
@@ -187,7 +363,7 @@ Console tự động có dạng:
 | Giá trị | Loại nội dung & Trình phát |
 |---------|----------------------------|
 | `"MOVIE"` | Phim điện ảnh / Phim bộ truyền thống (Trình phát màn hình ngang) |
-| `"VIDEO"` | Video clip / Youtube |
+| `"VIDEO"` | Video clip / Youtube (Bỏ qua màn hình Chi tiết, mở trình phát xem trực tiếp tương tự IPTV) |
 | `"shortfilm"` | Phim ngắn / Drama ngắn / Reels / Shortflix (Trình phát xoay đứng Portrait Zoom, hỗ trợ vuốt LÊN/XUỐNG chuyển tập kiểu TikTok trên Mobile) |
 | `"MANGA"` | Truyện tranh (Trình đọc manga) |
 | `"NOVEL"` | Truyện chữ |
@@ -376,10 +552,35 @@ Khi trang web sử dụng link stream có đuôi mở rộng lạ (ví dụ: lu�
        }
    }
    ```
-   👉 *App Core sẽ ưu tiên 100% `mimeType` và `Stream-Regex` do plugin định nghĩa để phát video mà không cần quan tâm đuôi file.*
-App sẽ POST tới URL đó → nhận response → gọi `parseEmbedResponse(html, url)` → lặp lại nếu `isEmbed` vẫn = `true`.
+   #### 🔐 Khai báo DRM (ClearKey & Widevine DRM)
+Nếu luồng phát DASH (`.mpd`) yêu cầu mã hóa bản quyền DRM, plugin trả về các trường DRM tương ứng trong `parseDetailResponse`:
+
+1. **ClearKey DRM (Cần KID + KEY)**:
+```json
+{
+    "url": "https://example.com/manifest.mpd",
+    "isEmbed": false,
+    "mimeType": "application/dash+xml",
+    "drmType": "clearkey",
+    "drmKid": "aabbcc112233...",
+    "drmKey": "445566778899..."
+}
+```
+
+2. **Widevine DRM (Cần licenseUrl)**:
+```json
+{
+    "url": "https://s7485.cdn.mytvnet.vn/pkg20/__cl/gvtsig/vstv451/manifest.mpd",
+    "isEmbed": false,
+    "mimeType": "application/dash+xml",
+    "drmType": "widevine",
+    "licenseUrl": "https://tv.vietanhtv.top/mytv2/key.php"
+}
+```
 
 ---
+
+### `parseEmbedResponse()` — Phân Tích Iframe Embed
 
 ### 🎬 Chế Độ `embedtoexoplay` & EmbedSniffer (Nâng Cao)
 
@@ -429,12 +630,54 @@ Khi viết `Custom-Js` hoặc mã xử lý trong WebView, plugin có thể sử 
 |------------|---------|-------|
 | `SnifferBridge.play(url)` | `url`: String | Truyền link stream trực tiếp cho ExoPlayer phát |
 | `SnifferBridge.play(url, headersJson)` | `url`: String, `headersJson`: JSON String | Truyền link stream kèm Header tùy chỉnh (ví dụ: `Referer`, `User-Agent`) |
+| `SnifferBridge.playM3u8Content(m3u8Content, baseUrl)` | `m3u8Content`: String, `baseUrl`: String | ⚡ **Giải mã & Phát Blob M3U8 tại Local (127.0.0.1)**. Tự động chuẩn hóa đường dẫn tương đối và phát qua ExoPlayer không qua server trung gian |
+| `SnifferBridge.playM3u8Content(m3u8Content, baseUrl, headersJson)` | Thêm `headersJson`: String | Giống `playM3u8Content()` nhưng đính kèm thêm Header cho ExoPlayer |
 | `SnifferBridge.playVideo(url, headersJson)` | Bí danh | Giống `play()` |
 | `SnifferBridge.playExoPlayer(url, headersJson)` | Bí danh | Giống `play()` |
 | `SnifferBridge.sendToPlayer(url, headersJson)` | Bí danh | Giống `play()` |
 | `SnifferBridge.toast(message)` | `message`: String | 💡 **Hiển thị thông báo Toast nổi trên màn hình App** (Rất hữu ích khi debug WebView ngầm/embed) |
 | `SnifferBridge.log(message)` | `message`: String | 📝 **Ghi log debug ra Android Logcat** (Tag: `SnifferBridgeJS`) |
 | `SnifferBridge.onVideoDetected(url)` | `url`: String | Hàm callback cũ (tương thích ngược) |
+
+#### ⚡ Hướng Dẫn Bắt & Giải Mã Blob M3U8 Trực Tiếp Tại Local (Không Dùng Worker/GAS)
+
+Đối với các trang web phim sử dụng kỹ thuật giấu link stream bằng cách đọc file M3U8 và tạo Blob URL trong bộ nhớ RAM trình duyệt (`URL.createObjectURL`), bạn không cần gửi dữ liệu thô lên Cloudflare Worker hay Google Apps Script nữa. 
+
+Trong mã `Custom-Js`, bạn chỉ cần hook `URL.createObjectURL` và truyền nội dung M3U8 thô về cho App bằng `SnifferBridge.playM3u8Content(...)`:
+
+```javascript
+(function initBlobSniffer() {
+  if (typeof URL !== 'undefined' && URL.createObjectURL) {
+    var originalCreateObjectURL = URL.createObjectURL;
+    URL.createObjectURL = function(blob) {
+      var blobUrl = originalCreateObjectURL.apply(this, arguments);
+      if (blob && (blob instanceof Blob || blob instanceof File)) {
+        var processContent = function(content) {
+          if (content && content.trim().indexOf('#EXTM3U') === 0) {
+            // Gửi trực tiếp nội dung M3U8 thô và URL trang hiện tại về App
+            if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
+              window.SnifferBridge.playM3u8Content(content, window.location.href);
+            }
+          }
+        };
+
+        if (typeof blob.text === 'function') {
+          blob.text().then(processContent).catch(function(){});
+        } else {
+          var reader = new FileReader();
+          reader.onload = function(e) { processContent(e.target.result); };
+          reader.readAsText(blob);
+        }
+      }
+      return blobUrl;
+    };
+  }
+})();
+```
+
+👉 **Cơ chế xử lý tự động trong App Android:**
+1. App sẽ tự động quét và chuyển hóa tất cả các đường dẫn phân đoạn tương đối trong M3U8 (ví dụ: `segment_01.ts`, `key.key`) thành đường dẫn tuyệt đối (`https://domain-goc.com/path/segment_01.ts`).
+2. App khởi tạo một **Local HTTP Server** ngầm trên `127.0.0.1` của thiết bị và chuyển URL local cho ExoPlayer phát ngay lập tức với độ trễ ~0ms.
 
 ### 🛠️ Hướng Dẫn Debug Log, Hàm `print()` & Khung Console Nổi (Dành Cho Dev Plugin Local)
 
@@ -785,12 +1028,19 @@ function parseDetailResponse(html, episodeUrl) {
 }
 ```
 
-##### Ví dụ 2: Mã hóa Base64 cho Dữ liệu LỚN / Phức Tạp (Tránh vỡ cú pháp URL)
+##### Ví dụ 2: Mã hóa / Nén Dữ liệu LỚN hoặc Phức Tạp (Tránh vỡ cú pháp ID / URL)
 
-Khi cần truyền Object chứa nhiều dữ liệu (Cookie, Token JWT, bối cảnh Session...), bạn dùng `btoa()` để nén thành chuỗi Base64 1 dòng chữ an toàn:
+> [!WARNING]
+> **Lưu ý quan trọng về môi trường QuickJS:**
+> Môi trường QuickJS của ứng dụng **KHÔNG có sẵn** 2 hàm `btoa()` và `atob()` của trình duyệt Web.
+> Nếu dùng `atob()` trong khối `try { ... } catch(e) {}`, lỗi `ReferenceError: atob is not defined` sẽ bị nuốt im lặng, khiến dữ liệu giải mã bị rỗng `{}` mà không hiện lỗi ra console.
+
+Khi cần truyền Object chứa nhiều dữ liệu (Cookie, Token JWT, bối cảnh Session...), cách chuẩn nhất và tương thích 100% với QuickJS là sử dụng cặp hàm JS chuẩn: `encodeURIComponent()` và `decodeURIComponent()`.
+
+###### 🚀 Cách 1: Dùng `encodeURIComponent` & `decodeURIComponent` (Khuyên dùng - Có sẵn trong QuickJS)
 
 ```javascript
-// 1. Ở parseListResponse: Mã hóa Object thành Base64 đính vào ID
+// 1. Ở parseListResponse: Mã hóa Object thành chuỗi URL safe đính vào ID
 function parseListResponse(html) {
     var bigData = {
         token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -798,8 +1048,8 @@ function parseListResponse(html) {
         quality: "1080p"
     };
 
-    // Nén Object thành chuỗi Base64 an toàn 1 dòng
-    var encodedData = btoa(JSON.stringify(bigData));
+    // Mã hóa JSON string thành chuỗi an toàn 1 dòng (không bị vỡ dấu |, ký tự đặc biệt, xuống dòng)
+    var encodedData = encodeURIComponent(JSON.stringify(bigData));
 
     return JSON.stringify({
         "items": [
@@ -811,24 +1061,70 @@ function parseListResponse(html) {
     });
 }
 
-// 2. Ở parseDetailResponse: Giải mã Base64 ngược lại thành Object
+// 2. Ở parseDetailResponse: Giải mã ngược lại thành Object
 function parseDetailResponse(html, episodeUrl) {
     var data = {};
     if (episodeUrl && episodeUrl.indexOf("|") > -1) {
-        var base64Str = episodeUrl.split("|")[1];
+        var encodedStr = episodeUrl.split("|")[1];
         try {
-            data = JSON.parse(atob(base64Str)); // Giải mã Base64 ngược lại
-        } catch(e) {}
+            data = JSON.parse(decodeURIComponent(encodedStr)); // Giải mã URL-encode lại thành Object
+        } catch(e) {
+            console.error("Lỗi parse data:", e);
+        }
     }
 
     console.log(data.token);   // "eyJhbGciOi..."
     console.log(data.session); // "sess_9988776655"
 
     return JSON.stringify({
-        "url": "https://server.com/stream?token=" + data.token,
+        "url": "https://server.com/stream?token=" + (data.token || ""),
         "isEmbed": false
     });
 }
+```
+
+###### 💡 Cách 2: Nếu bắt buộc cần Base64 (Viết hàm Base64 thuần JS)
+
+Nếu logic của bạn bắt buộc phải tạo/đọc chuỗi mã hóa chuẩn Base64, hãy nhúng 2 hàm helper thuần JS dưới đây vào plugin (thay thế hoàn toàn cho `btoa`/`atob`):
+
+```javascript
+// Helper Base64 thuần JS (Tương thích 100% với QuickJS)
+function base64Encode(str) {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    var output = '';
+    var utf8Str = unescape(encodeURIComponent(str));
+    for (var block, charCode, idx = 0, map = chars;
+        utf8Str.charAt(idx | 0) || (map = '=', idx % 1);
+        output += map.charAt(63 & block >> 8 - idx % 1 * 8)) {
+        charCode = utf8Str.charCodeAt(idx += 3/4);
+        if (charCode > 255) {
+            throw new Error("'base64Encode' failed: string contains out of range characters");
+        }
+        block = block << 8 | charCode;
+    }
+    return output;
+}
+
+function base64Decode(input) {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    var str = String(input).replace(/=+$/, '');
+    var output = '';
+    if (str.length % 4 === 1) {
+        throw new Error("'base64Decode' failed: invalid length");
+    }
+    for (var bc = 0, bs, buffer, idx = 0;
+        buffer = str.charAt(idx++);
+        ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
+            bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+    ) {
+        buffer = chars.indexOf(buffer);
+    }
+    return decodeURIComponent(escape(output));
+}
+
+// Cách dùng trong Plugin:
+// var encoded = base64Encode(JSON.stringify(bigData));
+// var data = JSON.parse(base64Decode(encoded));
 ```
 
 ---
@@ -879,4 +1175,3 @@ while ((match = regex.exec(html)) !== null) {
 | `vlxx_plugin.js` | ⭐⭐⭐ Nâng cao | AJAX POST + recursive embed + mimeType |
 
 🌐 Chúc bạn thành công! Đóng góp plugin cho cộng đồng nha!
-
