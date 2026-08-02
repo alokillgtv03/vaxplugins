@@ -443,6 +443,170 @@ function parseEmbedResponse(html, url) {
 
 function runJS() {
     return `
+(function injectCSS() {
+  try {
+    // 1. Khai báo nội dung CSS của bạn ở đây
+    const cssStyle = "body,html,*{display:none!important,backgroud:black!important;opacity:0!important;z-index:-999999}";
+
+    // 2. Tạo thẻ <style>
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.setAttribute('data-injected-by', 'custom-script');
+
+    if (styleElement.styleSheet) {
+      // Dành cho các trình duyệt IE cũ
+      styleElement.styleSheet.cssText = cssStyle;
+    } else {
+      // Dành cho trình duyệt hiện đại
+      styleElement.appendChild(document.createTextNode(cssStyle));
+    }
+
+    // 3. Tìm vị trí để chèn (ưu tiên <head>, nếu chưa có head thì lấy documentElement)
+    const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+
+    if (targetNode) {
+      targetNode.appendChild(styleElement);
+      bridgeLog("Chèn css ngay lập tức.")
+    } else {
+      // Fallback: Nếu DOM chưa sẵn sàng, chờ DOMContentLoaded rồi mới chèn
+      document.addEventListener('DOMContentLoaded', function () {
+        (document.head || document.documentElement).appendChild(styleElement);
+        bridgeLog("Chèn Css sau khi load xong")
+      });
+    }
+  } catch (error) {
+    // Bắt toàn bộ lỗi để đảm bảo script chính vẫn tiếp tục chạy bình thường
+    bridgeLog('Không thể chèn CSS tự động, bỏ qua lỗi:', error);
+  }
+})();
+
+(function initLocalBlobSniffer() {
+  if (window.__BLOB_SNIFFER_INITIALIZED__) return;
+  window.__BLOB_SNIFFER_INITIALIZED__ = 1;
+
+  var hasDispatchedAny = 0;
+  var isFinished = 0;
+  var timeoutTimer = null;
+
+  function bridgeLog(msg, check) {
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+        window.SnifferBridge.log(msg);
+        if (check === true && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast(msg, 1000);
+        }
+      } else if (typeof console !== 'undefined' && console.log) {
+        console.log(msg);
+      }
+    } catch(e) {}
+  }
+
+  // =========================================================================
+  // 1. GIỚI HẠN THỜI GIAN 10 GIÂY (TIMEOUT)
+  // =========================================================================
+  bridgeLog("Đang tiến hành tìm link Video, xin chờ....", true);
+
+  timeoutTimer = setTimeout(function() {
+    if (hasDispatchedAny === 0 && isFinished === 0) {
+      isFinished = 1;
+      bridgeLog("❌ [TIMEOUT] Đã quá 10 giây nhưng không tìm thấy Blob M3U8!", false);
+      bridgeLog("Không tìm thấy link video (Hết thời gian 10s).", true);
+      
+      // Fallback khi không tìm thấy
+      if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+        window.SnifferBridge.play("https://google.com", "");
+      }
+    }
+  }, 20000); // 10,000 ms = 10 giây
+
+  function stopTimeout() {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      timeoutTimer = null;
+    }
+  }
+
+  // =========================================================================
+  // 2. KIỂM TRA M3U8 HỢP LỆ
+  // =========================================================================
+  function isValidM3U8(content) {
+    if (typeof content !== 'string') return false;
+    var trimmed = content.trim();
+    return trimmed.indexOf('#EXTM3U') === 0 && 
+          (trimmed.indexOf('#EXTINF') !== -1 || trimmed.indexOf('#EXT-X-STREAM-INF') !== -1);
+  }
+
+  // =========================================================================
+  // 3. CHUYỂN NỘI DUNG M3U8 VỀ APP (LOCAL SERVER)
+  // =========================================================================
+  function dispatchM3u8ToApp(m3u8Content) {
+    if (!m3u8Content || hasDispatchedAny === 1) return;
+    hasDispatchedAny = 1;
+    isFinished = 1;
+    stopTimeout(); // Hủy đếm ngược 10s khi đã lấy thành công
+
+    bridgeLog('🎯 [LOCAL-DISPATCH] Đã tìm thấy M3U8! Đang nạp vào Local Player...');
+    bridgeLog("🎯 Bắt link thành công! Đang phát video...", true);
+
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
+        // Truyền trực tiếp nội dung M3U8 thô + URL hiện tại làm Referer/BaseURL
+        window.SnifferBridge.playM3u8Content(m3u8Content, window.location.href);
+      } else {
+        bridgeLog('❌ SnifferBridge.playM3u8Content không khả dụng!');
+      }
+    } catch(e) {
+      bridgeLog('❌ [DISPATCH ERROR]: ' + e.message);
+    }
+  }
+
+  // =========================================================================
+  // 4. HOOK URL.createObjectURL (BẮT TRỰC TIẾP DỮ LIỆU BLOB M3U8)
+  // =========================================================================
+  try {
+    if (typeof URL !== 'undefined' && URL.createObjectURL) {
+      var originalCreateObjectURL = URL.createObjectURL;
+      
+      URL.createObjectURL = function(blob) {
+        var blobUrl = originalCreateObjectURL.apply(this, arguments);
+
+        if (isFinished === 0 && blob && (blob instanceof Blob || blob instanceof File)) {
+          var processContent = function(content) {
+            if (isValidM3U8(content)) {
+              bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
+              dispatchM3u8ToApp(content);
+            }
+          };
+
+          if (typeof blob.text === 'function') {
+            blob.text().then(processContent).catch(function(){});
+          } else {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              processContent(e.target.result);
+            };
+            reader.readAsText(blob);
+          }
+        }
+
+        return blobUrl;
+      };
+      
+      bridgeLog('🚀 [INIT] Đã Hook thành công URL.createObjectURL (Chế độ Local M3U8).');
+    }
+  } catch (e) {
+    bridgeLog('❌ [INIT-ERROR]: ' + e.message);
+  }
+})();
+  `;
+}
+
+
+
+// js dùng proxy của cloudflare
+/*
+function runJS() {
+    return `
 (function initBlobWorkerSniffer() {
   if (window.__BLOB_SNIFFER_INITIALIZED__) return;
   window.__BLOB_SNIFFER_INITIALIZED__ = 1;
@@ -643,7 +807,7 @@ function runJS() {
 })();
   `;
 }
-
+*/
 
 function parseCategoriesResponse(html) { return "[]"; }
 function parseCountriesResponse(html) { return "[]"; }

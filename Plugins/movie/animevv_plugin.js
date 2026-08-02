@@ -5,7 +5,7 @@ function getManifest() {
     id: "animevv",
     name: "Nguồn Animevv",
     description: "Nguồn phim Animevv...",
-    "version": "1.0",
+    "version": "1.1",
     info: "Nguồn phim Animevv, nguồn này dùng servers riêng của họ nên cũng khá mượt mà..",
     baseUrl: "http://vkey.vn/animevv",
     iconUrl: "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/animevv.png",
@@ -417,6 +417,43 @@ function parseDetailResponse(html, url) {
 
 function runJS() {
     return `
+(function injectCSS() {
+  try {
+    // 1. Khai báo nội dung CSS của bạn ở đây
+    const cssStyle = "body,html,*{display:none!important,backgroud:black!important;opacity:0!important;z-index:-999999}";
+
+    // 2. Tạo thẻ <style>
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.setAttribute('data-injected-by', 'custom-script');
+
+    if (styleElement.styleSheet) {
+      // Dành cho các trình duyệt IE cũ
+      styleElement.styleSheet.cssText = cssStyle;
+    } else {
+      // Dành cho trình duyệt hiện đại
+      styleElement.appendChild(document.createTextNode(cssStyle));
+    }
+
+    // 3. Tìm vị trí để chèn (ưu tiên <head>, nếu chưa có head thì lấy documentElement)
+    const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+
+    if (targetNode) {
+      targetNode.appendChild(styleElement);
+      bridgeLog("Chèn css ngay lập tức.")
+    } else {
+      // Fallback: Nếu DOM chưa sẵn sàng, chờ DOMContentLoaded rồi mới chèn
+      document.addEventListener('DOMContentLoaded', function () {
+        (document.head || document.documentElement).appendChild(styleElement);
+        bridgeLog("Chèn Css sau khi load xong")
+      });
+    }
+  } catch (error) {
+    // Bắt toàn bộ lỗi để đảm bảo script chính vẫn tiếp tục chạy bình thường
+    bridgeLog('Không thể chèn CSS tự động, bỏ qua lỗi:', error);
+  }
+})();
+
 (function initLocalBlobSniffer() {
   if (window.__BLOB_SNIFFER_INITIALIZED__) return;
   window.__BLOB_SNIFFER_INITIALIZED__ = 1;
@@ -454,7 +491,7 @@ function runJS() {
         window.SnifferBridge.play("https://google.com", "");
       }
     }
-  }, 10000); // 10,000 ms = 10 giây
+  }, 20000); // 10,000 ms = 10 giây
 
   function stopTimeout() {
     if (timeoutTimer) {
