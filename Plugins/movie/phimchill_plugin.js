@@ -1,12 +1,12 @@
-BASEURL = "https://phimchillhda.im";
+BASEURL = "http://vkey.vn/phimchill";
 
 function getManifest() {
     return JSON.stringify({
         "id": "phimchill",          
         "name": "Phim Chill",
         "description": "Phim online",
-        "version": "3.8.2",             
-        "baseUrl": BASEURL,
+        "version": "3.8.3",             
+        "baseUrl": "http://vkey.vn/phimchill",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/phimchill.ico", 
         "isEnabled": true,
       "layoutType": "HORIZONTAL",
@@ -14,7 +14,6 @@ function getManifest() {
         "playerType": "auto"
     });
 }
-
 
 function getHomeSections() {
     return JSON.stringify([

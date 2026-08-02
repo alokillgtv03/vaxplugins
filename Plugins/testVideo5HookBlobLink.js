@@ -5,11 +5,10 @@
 BaseURL = "https://script.google.com/macros/s/AKfycbydwasfO9sUsP7nSduOON6yKVZUMpSraNRFb58knwl_AKpb6vixCuPe-uptcpaGIiXBEw/exec";
 BaseJSON = "";
 LISTURL = `
-https://animevv.com/
-https://animevv.com/xem-phim/nhat-tram-thuong-khung-p6069/02-98030
+https://phimfun.net/xem-phim/the-legend-of-aang-the-last-airbender-18866/?sv2=true
+https://moviking.neuronix.sbs/embed3rd?id=ce303624bd7a485081c4fa186a0a06cc&web=phimfun.net
+https://cdn.codexa.fun/streaming3rd?id=ce303624bd7a485081c4fa186a0a06cc&web=phimfun.net&lang=
 `
-
-
 function getManifest() {
     return JSON.stringify({
         "id": "testvideo3",          
@@ -22,7 +21,7 @@ function getManifest() {
         "debug":true,
         "type": "MOVIE",
         "adblock": false,
-        "playerType": "embedtoexoplay"
+        "playerType": "embed"
     });
 }
 
@@ -86,334 +85,413 @@ function appendParamWithRegex(url, myParam) {
     return hasQuery ? `${url}&${myParam}` : `${url}?${myParam}`;
 }
 
+
 function parseListResponse(html) {
 
-    try {
-const urls = LISTURL.trim()
-  .split('\n')
-  .map(url => url.trim())
-  .filter(Boolean);
-
-// 2. Lấy URL đầu tiên làm URL chính
-const baseUrl = urls[0];
-
-// 3. Lấy các URL từ vị trí thứ 2 trở đi, encode mã hóa và ghép thành param query
-const queryParams = urls
-  .slice(1)
-  .map(url => `fetchUrl=${encodeURIComponent(url)}`)
-  .join('&');
-
-// 4. Kết hợp lại thành URL hoàn chỉnh
-const finalUrl = `${baseUrl}?${queryParams}`;
+    try {
+var listobj = LISTURL.trim().split("\n");
+var furl = "";
+var path = "";
+for(var $j = 0;$j < listobj.length;$j++){
+    furl = listobj[0];
+    if($j > 0){
+        path += listobj[$j] + "###"
+    }
+}
+path = BASE64ENCODE(path.replace(/###$/,"")) 
+if(furl.indexOf("?") > -1){
+    furl += "&split=" + path
+}
+else{
+    furl += "?split=" + path
+}
 var items = [];
-        items.push({
-            "id": finalUrl,          
-            "title": "Test", 
-            "posterUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png",  
-            "backdropUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png"
-        });
-        
-        return JSON.stringify({
-            "items": items,
-            "pagination": { "currentPage": 1, "totalPages": 1 }
-        });
-    } catch (e) {
-        console.log("Lỗi [parseListResponse]: " + e)
-        return JSON.stringify({ "items": [], "pagination": { "currentPage": 1, "totalPages": 1 } });
-    }
+        items.push({
+            "id": furl,          
+            "title": "Test", 
+            "posterUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png",  
+            "backdropUrl": "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png"
+        });
+        
+        return JSON.stringify({
+            "items": items,
+            "pagination": { "currentPage": 1, "totalPages": 1 }
+        });
+    } catch (e) {
+        console.log("Lỗi [parseListResponse]: " + e)
+        return JSON.stringify({ "items": [], "pagination": { "currentPage": 1, "totalPages": 1 } });
+    }
 }
 
 function parseSearchResponse(html) {
-    return parseListResponse(html);
+    return parseListResponse(html);
 }
-
-
-function checkRaw(scriptStr, returnFixed) {
-  try {
-    if (!scriptStr || typeof scriptStr !== 'string') {
-      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
-      return scriptStr || "";
-    }
-
-    var lines = scriptStr.split('\n');
-    var fixedLines = [];
-    var hasError = false;
-
-    for (var i = 0; i < lines.length; i++) {
-      var currentLine = lines[i];
-      var lineNum = i + 1;
-      var lineErrorFound = false;
-
-      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
-      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
-      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
-      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
-      if (/([^\\])\\$/.test(currentLine)) {
-        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
-        lineErrorFound = true;
-      }
-
-      if (lineErrorFound) {
-        hasError = true;
-      }
-
-      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
-      var fixedLine = currentLine;
-      if (returnFixed) {
-        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
-        fixedLine = fixedLine
-          .replace(/\r/g, "")
-          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
-      }
-
-      fixedLines.push(fixedLine);
-    }
-
-    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
+function BASE64DECODE(base64String) {
     try {
-      new Function(scriptStr);
-    } catch (syntaxErr) {
-      hasError = true;
-      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
+        if (!base64String) return "";
+
+        // 1. Dọn dẹp chuỗi & xử lý nếu App tự động mã hóa URL (ví dụ: %2B, %2F)
+        var str = decodeURIComponent(base64String.trim());
+        
+        // Chuyển URL-safe base64 về base64 chuẩn
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+
+        // Bảng ký tự Base64
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        var output = [];
+        var buffer = 0, bits = 0;
+
+        // 2. Decode Base64 thành Mảng Byte (Uint8Array)
+        for (var i = 0; i < str.length; i++) {
+            var char = str.charAt(i);
+            if (char === '=') break; // Bỏ qua padding
+            var index = chars.indexOf(char);
+            if (index === -1) continue; // Bỏ qua ký tự không hợp lệ
+
+            buffer = (buffer << 6) | index;
+            bits += 6;
+
+            if (bits >= 8) {
+                bits -= 8;
+                output.push((buffer >> bits) & 0xFF);
+            }
+        }
+
+        // 3. Decode UTF-8 từ mảng Byte ra String (không dùng TextDecoder)
+        var result = "";
+        var j = 0;
+        while (j < output.length) {
+            var c = output[j++];
+            if (c < 128) {
+                result += String.fromCharCode(c);
+            } else if (c > 191 && c < 224) {
+                var c2 = output[j++];
+                result += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+            } else if (c > 223 && c < 240) {
+                var c2 = output[j++];
+                var c3 = output[j++];
+                result += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+            } else if (c >= 240) {
+                var c2 = output[j++];
+                var c3 = output[j++];
+                var c4 = output[j++];
+                var u = (((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63)) - 0x10000;
+                result += String.fromCharCode(0xD800 + (u >> 10), 0xDC00 + (u & 0x3FF));
+            }
+        }
+
+        return result;
+
+    } catch (e) {
+        console.log("[BASE64DECODE Error]:", e.message || e);
+        return "";
     }
+}
+function BASE64ENCODE(str) {
+    try {
+        if (!str) return "";
 
-    if (!hasError) {
-      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
+        // 1. Encode String ra mảng UTF-8 Bytes trước
+        var utf8Bytes = [];
+        for (var i = 0; i < str.length; i++) {
+            var code = str.charCodeAt(i);
+            if (code < 128) {
+                utf8Bytes.push(code);
+            } else if (code < 2048) {
+                utf8Bytes.push((code >> 6) | 192, (code & 63) | 128);
+            } else if ((code & 0xFC00) === 0xD800 && i + 1 < str.length && (str.charCodeAt(i + 1) & 0xFC00) === 0xDC00) {
+                // Ký tự Surrogate Pair
+                code = 0x10000 + ((code & 0x03FF) << 10) + (str.charCodeAt(++i) & 0x03FF);
+                utf8Bytes.push((code >> 18) | 240, ((code >> 12) & 63) | 128, ((code >> 6) & 63) | 128, (code & 63) | 128);
+            } else {
+                utf8Bytes.push((code >> 12) | 224, ((code >> 6) & 63) | 128, (code & 63) | 128);
+            }
+        }
+
+        // 2. Chuyển mảng UTF-8 Bytes thành chuỗi Base64
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        var encoded = '';
+        var byte1, byte2, byte3;
+        var b1, b2, b3, b4;
+
+        for (var j = 0; j < utf8Bytes.length; j += 3) {
+            byte1 = utf8Bytes[j];
+            byte2 = j + 1 < utf8Bytes.length ? utf8Bytes[j + 1] : NaN;
+            byte3 = j + 2 < utf8Bytes.length ? utf8Bytes[j + 2] : NaN;
+
+            b1 = byte1 >> 2;
+            b2 = ((byte1 & 3) << 4) | (isNaN(byte2) ? 0 : byte2 >> 4);
+            b3 = isNaN(byte2) ? 64 : ((byte2 & 15) << 2) | (isNaN(byte3) ? 0 : byte3 >> 6);
+            b4 = isNaN(byte3) ? 64 : byte3 & 63;
+
+            encoded += chars.charAt(b1) + chars.charAt(b2) + chars.charAt(b3) + chars.charAt(b4);
+        }
+
+        return encoded;
+    } catch (e) {
+        console.log("[BASE64ENCODE Error]:", e.message || e);
+        return "";
     }
+}
+function checkRaw(scriptStr, returnFixed) {
+  try {
+    if (!scriptStr || typeof scriptStr !== 'string') {
+      console.log("[Lỗi escape runJS]\r\n\t Dữ liệu đầu vào không phải là chuỗi hợp lệ!");
+      return scriptStr || "";
+    }
 
-    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
-    return returnFixed ? fixedLines.join('\n') : scriptStr;
+    var lines = scriptStr.split('\n');
+    var fixedLines = [];
+    var hasError = false;
 
-  } catch (e) {
-    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
-    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
-  }
+    for (var i = 0; i < lines.length; i++) {
+      var currentLine = lines[i];
+      var lineNum = i + 1;
+      var lineErrorFound = false;
+
+      // 1. Kiểm tra lỗi escape newline/tab nguy hiểm nằm trần trong chuỗi quote
+      // Trường hợp chưa được escape dạng '\\n' hoặc '\\t' trong chuỗi ghép
+      if (/([^\\]|^)(\r\n|\r|\n)/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện xuống dòng chưa escape ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 2. Kiểm tra lỗi quên escape ký tự Tab trần không hợp lệ
+      if (/\t/.test(currentLine) && !/\\t/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Phát hiện ký tự Tab trần ở Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      // 3. Kiểm tra dấu xược ngược single trailing backlash ở cuối dòng (dễ làm gãy chuỗi)
+      if (/([^\\])\\$/.test(currentLine)) {
+        console.log("[Lỗi escape runJS]\r\n\t Dấu Backslash (\\) cô đơn ở cuối Dòng " + lineNum + ": " + currentLine.trim());
+        lineErrorFound = true;
+      }
+
+      if (lineErrorFound) {
+        hasError = true;
+      }
+
+      // Tiến hành SỬA LỖI tự động nếu tham số returnFixed = true
+      var fixedLine = currentLine;
+      if (returnFixed) {
+        // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
+        fixedLine = fixedLine
+          .replace(/\r/g, "")
+          .replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
+      }
+
+      fixedLines.push(fixedLine);
+    }
+
+    // 4. Kiểm tra cú pháp nhanh xem toàn bộ chuỗi có parse được JS không
+    try {
+      new Function(scriptStr);
+    } catch (syntaxErr) {
+      hasError = true;
+      console.log("[Lỗi escape runJS]\r\n\t 💥 LỖI CÚ PHÁP (SyntaxError) toàn cục: " + syntaxErr.message);
+    }
+
+    if (!hasError) {
+      console.log("[checkRaw] 🟢 Chuỗi Raw JS hoàn toàn sạch lỗi!");
+    }
+
+    // Trả về bản đã fix hoặc bản gốc theo tham số returnFixed
+    return returnFixed ? fixedLines.join('\n') : scriptStr;
+
+  } catch (e) {
+    console.log("[Lỗi escape runJS]\r\n\t Lỗi ngoại lệ trong hàm checkRaw: " + e.message);
+    return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
+  }
 }
 
 /**
- * Hàm Decode sạch các HTML entities trong URL
- */
+ * Hàm Decode sạch các HTML entities trong URL
+ */
 function decodeHtmlEntities(str) {
-  if (!str) return str;
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function parseMovieDetail(html, url) {
-  console.log("parseMovieDetail [videoUrl]: " + url);
-  try {  
-    var cleanUrl = decodeHtmlEntities(url);
-    var title = "Chưa rõ tên phim";
-    var year = "2026";
-    var des = html;
-    var img = "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png";
-    
-    // Giữ nguyên chuỗi cleanUrl ban đầu cho tập phim
-    var episodes = [{ id: cleanUrl, name: "Xem Ngay", slug: "full" }]; 
-    
-    return JSON.stringify({
-      "id": cleanUrl,
-      "title": title,
-      "posterUrl": img,
-      "backdropUrl": img,
-      "description": des,
-      "year": year,
-      "rating": 10,
-      "quality": "HD",
-      "servers": [{ "name": "Server Vietsub", "episodes": episodes }]
-    });
+  console.log("parseMovieDetail [videoUrl]: " + url);
+  try {  
+    var title = "Chưa rõ tên phim";
+    var year = "2026";
+    var des = html;
+    var img = "https://img-cdn.phimhayok.net/filmhayok/1782912263995/20260701/ChatGPT-Image-19_29_49-1-thg-7-2026_a20d108246f140ad8be82acb9bca2606.png";
+    
+    // Giữ nguyên chuỗi cleanUrl ban đầu cho tập phim
+    var episodes = [{ id: url, name: "Xem Ngay", slug: "full" }]; 
+    
+    return JSON.stringify({
+      "id": url,
+      "title": title,
+      "posterUrl": img,
+      "backdropUrl": img,
+      "description": des,
+      "year": year,
+      "rating": 10,
+      "quality": "HD",
+      "servers": [{ "name": "Server Vietsub", "episodes": episodes }]
+    });
 
-  } catch (e) {
-    console.log("parseMovieDetail Error: " + e);
-    return JSON.stringify({ "id": "error", "title": "Lỗi tải dữ liệu", "servers": [] });
-  }
+  } catch (e) {
+    console.log("parseMovieDetail Error: " + e);
+    return JSON.stringify({ "id": "error", "title": "Lỗi tải dữ liệu", "servers": [] });
+  }
 }
 
 /**
- * 🚀 HÀM WATERFALL TỪNG BƯỚC (STEP-BY-STEP)
- * Chỉ bóc tách ĐÚNG 1 TẦNG fetchUrl tiếp theo để App Fetch tiếp.
- */
+ * 🚀 HÀM WATERFALL TỪNG BƯỚC (STEP-BY-STEP)
+ * Chỉ bóc tách ĐÚNG 1 TẦNG fetchUrl tiếp theo để App Fetch tiếp.
+ */
 
 function decodeHtmlEntities(str) {
-  if (!str) return str;
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 /**
- * 🚀 HÀM WATERFALL ĐA NĂNG (GÉNÉRIC FOR ALL SERVERS)
- * Tự động gom đúng tất cả các token/param đi kèm về đúng fetchUrl tương ứng.
- */
-function getNextFetchStep(url) {
-  var cleanUrl = decodeHtmlEntities(url);
-  try { cleanUrl = decodeURIComponent(cleanUrl); } catch (e) {}
-  cleanUrl = decodeHtmlEntities(cleanUrl);
+ * 🚀 HÀM WATERFALL ĐA NĂNG (GÉNÉRIC FOR ALL SERVERS)
+ * Tự động gom đúng tất cả các token/param đi kèm về đúng fetchUrl tương ứng.
+ */
 
-  var qIndex = cleanUrl.indexOf('?');
-  if (qIndex === -1) {
-    return { nextUrl: cleanUrl, isEmbed: false };
-  }
-
-  var baseUrl = cleanUrl.substring(0, qIndex);
-  var queryString = cleanUrl.substring(qIndex + 1);
-
-  // Trích xuất tất cả fetchUrl kèm theo toàn bộ Token/Param của nó
-  var fetchUrls = [];
-  var parts = queryString.split(/(?:^|&)fetchUrl=/i);
-
-  // phần [0] là param của Base URL, từ [1] trở đi là các fetchUrl
-  for (var i = 1; i < parts.length; i++) {
-    var rawItem = parts[i];
-    if (!rawItem) continue;
-
-    // Làm sạch ký tự mã hóa dư thừa
-    var decodedItem = rawItem;
-    try {
-      if (decodedItem.indexOf('%3A') !== -1 || decodedItem.indexOf('%2F') !== -1) {
-        decodedItem = decodeURIComponent(decodedItem);
-      }
-    } catch (e) {}
-
-    decodedItem = decodeHtmlEntities(decodedItem);
-    decodedItem = decodedItem.replace(/^[&?]+|[&?]+$/g, '');
-
-    if (decodedItem && fetchUrls.indexOf(decodedItem) === -1) {
-      fetchUrls.push(decodedItem);
-    }
-  }
-
-  // 1. Nếu không còn fetchUrl nào -> ĐÃ LÀ TẦNG CUỐI!
-  if (fetchUrls.length === 0) {
-    return {
-      nextUrl: cleanUrl,
-      isEmbed: false
-    };
-  }
-
-  // 2. Lấy fetchUrl ĐẦU TIÊN làm Target cho tầng tiếp theo
-  var targetUrl = fetchUrls.shift();
-
-  // 3. Nếu KHÔNG CÒN fetchUrl nào phía sau -> TẮT EMBED (Trả về False để bật CustomJS)
-  if (fetchUrls.length === 0) {
-    return {
-      nextUrl: targetUrl,
-      isEmbed: false // 🎯 HOÀN THÀNH WATERFALL
-    };
-  }
-
-  // 4. Nếu VẪN CÒN các fetchUrl phía sau -> Nối lại nguyên vẹn cho các tầng tiếp theo
-  var remainingParams = fetchUrls
-    .map(function(item) {
-      return "fetchUrl=" + encodeURIComponent(item);
-    })
-    .join("&");
-
-  var joinChar = targetUrl.indexOf('?') !== -1 ? '&' : '?';
-  targetUrl = targetUrl + joinChar + remainingParams;
-
-  return {
-    nextUrl: targetUrl,
-    isEmbed: true // 🎯 Tiếp tục Waterfall sang tầng kế
-  };
+function getNextFetchStep(urlsplit){
+  try{
+    var split = urlsplit.split("split=");
+    var nexturl = "";
+    var furl = "";
+    var path = "";
+    if(split && split[1]){
+        var stringurl = BASE64DECODE(split[1]);
+        var strSplit = stringurl.split("###");
+        // có link đằng sau fetch tiếp.
+        
+        if(strSplit.length > 1){
+           for(var $j = 0;$j < strSplit.length;$j++){
+                furl = strSplit[0];
+                if($j > 0){
+                    path += strSplit[$j] + "###"
+                }
+            }
+            path = BASE64ENCODE(path.replace(/###$/,""))
+            if(furl.indexOf("?") > -1){
+                furl += "&split=" + path
+            }
+            else{
+                furl += "?split=" + path
+            }       
+            log("fetch tiếp: " + furl)
+            return {
+                nextUrl: furl,
+                isEmbed: true // Nếu vẫn còn fetchUrl phía sau -> Tiếp tục bật isEmbed để chạy tiếp tầng tiếp theo
+            };
+        }
+        else{
+            furl = strSplit[0];
+            log("link cuối ko fetch: " + furl)
+              return {
+                nextUrl: strSplit[0],
+                isEmbed: false // Nếu vẫn còn fetchUrl phía sau -> Tiếp tục bật isEmbed để chạy tiếp tầng tiếp theo
+              };
+        }
+    }
+  } catch(e){
+    console.log(e);
+  }
 }
 
 /**
- * 🛡️ REFERER ĐỘNG ĐA NĂNG
- * Tự động cắt lấy Base URL của tầng hiện tại làm Referer hợp lệ cho tầng sau.
- */
+ * 🛡️ REFERER ĐỘNG ĐA NĂNG
+ * Tự động cắt lấy Base URL của tầng hiện tại làm Referer hợp lệ cho tầng sau.
+ */
 function getCleanReferer(url) {
-  try {
-    var clean = decodeHtmlEntities(url);
-    var qIndex = clean.indexOf('?');
-    if (qIndex !== -1) {
-      return clean.substring(0, qIndex);
-    }
-    return clean;
-  } catch(e) {
-    return url;
-  }
+  try {
+    var clean = decodeHtmlEntities(url);
+    var qIndex = clean.indexOf('?');
+    if (qIndex !== -1) {
+      return clean.substring(0, qIndex);
+    }
+    return clean;
+  } catch(e) {
+    return url;
+  }
 }
 
 function parseDetailResponse(html, url) {
-  console.log("parseDetailResponse [Tầng 1]: " + url);
-  //console.log("parseDetailResponse [Raw]: " + html);
-  try {
-    var rawJS = checkRaw(runJS(), true);
-    var result = getNextFetchStep(url);
+  console.log("parseDetailResponse [Tầng 1]: " + url);
+  //console.log("parseDetailResponse [Raw]: " + html);
+  try {
+    var rawJS = checkRaw(runJS(), true);
+    var result = getNextFetchStep(url);
 
-    console.log("parseDetailResponse [Next URL]: " + result.nextUrl);
-    console.log("parseDetailResponse [isEmbed]: " + result.isEmbed);
-    if(result.isEmbed == true){
-      console.log("Gọi hàm embed với link: " + result.nextUrl);
-      return JSON.stringify({
-        "url": result.nextUrl,
-        "isEmbed": result.isEmbed,
-        "headers": {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": getCleanReferer(url)
-        }
-      });
-    }
-    
-    return JSON.stringify({
-      "url": result.nextUrl,
-      "isEmbed": result.isEmbed,
-      "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": getCleanReferer(url),
-        "Custom-Js": rawJS
-      }
-    });
-  } catch (e) {
-    console.log("[Lỗi parseDetailResponse]", e);
-    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
-  }
+    console.log("parseDetailResponse [Next URL]: " + result.nextUrl);
+    console.log("parseDetailResponse [isEmbed]: " + result.isEmbed);
+    if(result.isEmbed == true){
+      console.log("Gọi hàm embed với link: " + result.nextUrl);
+      return JSON.stringify({
+        "url": result.nextUrl,
+        "isEmbed": result.isEmbed,
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": getCleanReferer(url)
+        }
+      });
+    }
+    
+    return JSON.stringify({
+      "url": result.nextUrl,
+      "isEmbed": result.isEmbed,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": getCleanReferer(url),
+        "Custom-Js": rawJS
+      }
+    });
+  } catch (e) {
+    console.log("[Lỗi parseDetailResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
 }
 
 function parseEmbedResponse(html, url) {
-  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
-  //console.log("parseEmbedResponse [Raw]: " + html);
-  try {
-    var rawJS = checkRaw(runJS(), true);
-    var result = getNextFetchStep(url);
+  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
+  //console.log("parseEmbedResponse [Raw]: " + html);
+  try {
+    var rawJS = checkRaw(runJS(), true);
+    var result = getNextFetchStep(url);
 
-    console.log("parseEmbedResponse [Next URL]: " + result.nextUrl);
-    console.log("parseEmbedResponse [isEmbed]: " + result.isEmbed);
+    console.log("parseEmbedResponse [Next URL]: " + result.nextUrl);
+    console.log("parseEmbedResponse [isEmbed]: " + result.isEmbed);
 
-    return JSON.stringify({
-      "url": result.nextUrl,
-      "isEmbed": result.isEmbed, // Tự động trả về false khi đã bóc tới tầng cuối!
-      "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": getCleanReferer(url),
-        "Block-Ads": false,
-        "Block-Css": "html,body,*",
-        "Custom-Js": rawJS
-      }
-    });
-  } catch (e) {
-    console.log("[Lỗi parseEmbedResponse]", e);
-    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
-  }
+    return JSON.stringify({
+      "url": result.nextUrl,
+      "isEmbed": result.isEmbed, // Tự động trả về false khi đã bóc tới tầng cuối!
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": getCleanReferer(url),
+        "Block-Ads": false,
+        "Block-Css": "",
+        "Custom-Js": rawJS
+      }
+    });
+  } catch (e) {
+    console.log("[Lỗi parseEmbedResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
 }
+
  /**
      * =====================================================================================================
      * 📖 HƯỚNG DẪN CẤU HÌNH HỆ THỐNG SNIFFER (GLOBAL CONFIGURATION GUIDE)
@@ -441,8 +519,99 @@ function parseEmbedResponse(html, url) {
 // https://script.google.com/macros/s/AKfycbxo8zZaqIcehS3s1P-NGGJrrUp0kVzzbzybuFptH1DZqNI5oc8tqZ1r1ZA4aDdWe4L-/exec
 
 
+
 function runJS() {
     return `
+HTMLRAW = 1;
+BODYRAW = 1;
+CSSBLOCK = 0;
+VIDEOEND = 0;
+NUMBERRAW = 0;
+
+(function() {
+    'use strict';
+    
+    console.log("[Anti-Redirect] Đã kích hoạt bảo vệ!");
+
+    // 1. Chặn window.open (chặn mở tab/popup mới)
+    window.open = function(url, target, features) {
+        console.log("[Anti-Redirect] Đã chặn window.open ->", url);
+        return null; // Trả về null để vô hiệu hóa
+    };
+
+    // 2. Chặn các phương thức chuyển hướng location
+    try {
+        // Lưu lại origin ban đầu để so sánh
+        var initialOrigin = window.location.origin;
+
+        // Ghi đè location.assign và location.replace
+        window.location.assign = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.assign ->", url);
+        };
+        
+        window.location.replace = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.replace ->", url);
+        };
+
+        // Chặn ghi đè location.href trực tiếp bằng Property Descriptor
+        var originalLocation = window.location;
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+                return originalLocation;
+            },
+            set: function(val) {
+                console.log("[Anti-Redirect] Đã chặn đổi location.href ->", val);
+                return originalLocation.href;
+            }
+        });
+    } catch (e) {
+        console.log("[Anti-Redirect Warning] Không thể khóa location descriptor:", e.message);
+    }
+
+    // 3. Chặn sự kiện перед/khi chuyển trang (beforeunload & unload trap)
+    window.addEventListener('beforeunload', function(e) {
+        // Vô hiệu hóa các script cố tình trigger chuyển hướng bằng unload
+        e.stopPropagation();
+    }, true);
+
+    // 4. Bắt và chặn click vào thẻ <a> có target="_blank" hoặc link nhảy ra ngoài domain
+    document.addEventListener('click', function(e) {
+        var target = e.target;
+        
+        // Tìm thẻ <a> gần nhất nếu click vào phần tử con bên trong
+        while (target && target.tagName !== 'A') {
+            target = target.parentNode;
+        }
+
+        if (target && target.tagName === 'A') {
+            var href = target.getAttribute('href');
+            var targetAttr = target.getAttribute('target');
+
+            // Chặn nếu link mở tab mới (_blank) hoặc link chứa javascript:
+            if (targetAttr === '_blank' || (href && href.startsWith('javascript:'))) {
+                console.log("[Anti-Redirect] Đã chặn click thẻ A nguy hiểm ->", href);
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+    }, true);
+
+    // 5. Chặn tự động submit Form nhảy trang quảng cáo
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form && form.getAttribute('target') === '_blank') {
+            console.log("[Anti-Redirect] Đã chặn Form submit _blank");
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
+
+})();
+
+
 function bridgeLog(msg, check) {
     try {
       if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
@@ -455,6 +624,13 @@ function bridgeLog(msg, check) {
       }
     } catch(e) {}
   }
+
+function envideo(){
+  if(VIDEOEND == 1){
+    window.SnifferBridge.play("https://google.com", "");
+  }
+}
+  
 (function injectCSS() {
   try {
     // 1. Khai báo nội dung CSS của bạn ở đây
@@ -470,20 +646,40 @@ function bridgeLog(msg, check) {
       styleElement.styleSheet.cssText = cssStyle;
     } else {
       // Dành cho trình duyệt hiện đại
-      styleElement.appendChild(document.createTextNode(cssStyle));
+      if(CSSBLOCK == 1){
+        styleElement.appendChild(document.createTextNode(cssStyle));
+      }
     }
 
     // 3. Tìm vị trí để chèn (ưu tiên <head>, nếu chưa có head thì lấy documentElement)
     const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
 
     if (targetNode) {
-      targetNode.appendChild(styleElement);
-      bridgeLog("Chèn css ngay lập tức.")
+      if(CSSBLOCK == 1){
+        targetNode.appendChild(styleElement);
+        bridgeLog("Chèn css ngay lập tức.")
+      }
     } else {
       // Fallback: Nếu DOM chưa sẵn sàng, chờ DOMContentLoaded rồi mới chèn
       document.addEventListener('DOMContentLoaded', function () {
         (document.head || document.documentElement).appendChild(styleElement);
+        setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            
+          }
+        },2000)
         bridgeLog("Chèn Css sau khi load xong")
+
+       
       });
     }
   } catch (error) {
@@ -515,7 +711,7 @@ function bridgeLog(msg, check) {
       
       // Fallback khi không tìm thấy
       if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
-        window.SnifferBridge.play("https://google.com", "");
+        envideo();
       }
     }
   }, 20000); // 10,000 ms = 10 giây
@@ -594,6 +790,20 @@ function bridgeLog(msg, check) {
       };
       
       bridgeLog('🚀 [INIT] Đã Hook thành công.');
+      setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            
+          }
+        },2000)
     }
   } catch (e) {
     bridgeLog('❌ [INIT-ERROR]: ' + e.message);

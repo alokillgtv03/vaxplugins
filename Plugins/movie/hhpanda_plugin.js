@@ -1,4 +1,4 @@
-var BASEURL = "https://hhpanda.st"; 
+var BASEURL = "http://vkey.vn/hhpanda"; 
 var LOGGER = false;
 // https://www.whoreshub.com/categories/4k-porn/
 function getManifest() {
@@ -8,8 +8,8 @@ function getManifest() {
       "description": "Anime siêu hay.",
       "version": "1.2.1",
       "info": "Nguồn phim hoạt hình chất lượng cao, tuy nhiên cơ chế chiếu phát của nó rất khó chịu. Chỉ phát được trên máy chủ của họ còn phát qua app sẽ bị mất góc không tràn viền.\r\nVì thế đã tích hợp bộ chỉnh kích cỡ video vào bên trong video. Bạn có thể chỉnh sao cho vừa màn hình. Chỉ cần chỉnh 1 lần là các lần sau sẽ dùng như vậy.",
-      "baseUrl": "https://hhpanda.st",
-      "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp",
+      "baseUrl": "http://vkey.vn/hhpanda",
+      "iconUrl": "http://vkey.vn/hhpanda/wp-content/uploads/2024/10/logo.webp",
       "isEnabled": true,
       "layoutType": "HORIZONTAL",
       "adblock": false,

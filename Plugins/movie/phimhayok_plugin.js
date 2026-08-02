@@ -2,14 +2,14 @@
 // VAAPP Plugin-Crophim Pro (Đồng bộ cấu trúc 100% theo chuẩn RophimFake)
 // Tên file bắt buộc khi lưu:s crophim_plugin.js
 // =============================================================================
-BASEURL = "https://ayam.ws";
+BASEURL = "http://vkey.vn/phimhayok";
 function getManifest() {
     return JSON.stringify({
         "id": "phimhayok",          
         "name": "phimhayok",
         "description": "Nguồn xem phim Online ổn định",
         "version": "1.1.3",             
-        "baseUrl": "https://ayam.ws",
+        "baseUrl": "http://vkey.vn/phimhayok",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/phimhayok.jpg",
         "isEnabled": true,
         "layoutType": "HORIZONTAL",

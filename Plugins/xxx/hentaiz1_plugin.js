@@ -6,7 +6,7 @@ function getManifest() {
     id: "hentaiz1",
     name: "Nguồn HentaiVN",
     description: "Nguồn phim Hentai mới.",
-    "version": "1.2.3",
+    "version": "1.2.4",
     info: "Nguồn phim hentai vietsub của VN. Nguồn này dùng server của họ nên đôi lúc loading khá là chậm, ráng chờ nha.",
     baseUrl: "https://hentaiz1.com",
     iconUrl: "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
@@ -461,6 +461,8 @@ maxEpi = Number(maxEpi);
 var servers = [];
 var episodes = [];
 var maxMovie = (maxEpi + 1);
+var episodeNumber = result.episodeNumber;
+    
 for(var $j = 1;$j < maxMovie;$j++){
     episodes.push({
         id: BASEURL + "/watch/" + vslug + $j + "?current=" + $j + "&maxEpi=" + maxEpi,
@@ -555,15 +557,21 @@ function sortEpisodesByName(data) {
 function parseDetailResponse(html, url) {
   try {
     log("[parseDetailResponse Đang xử lý]: " + url);
-    var customJS = rawJS();
+    var json = "";
+    var match = html.match(/episode[^"']+id[^"']+["']([^"']+)["']/);
+    if(match && match[1]){
+      json = `[["__skrao",1],{"episodeId":2},"${match[1]}"]`;
+      json = BASEURL + "/_app/remote/1edhnia/getEpisodeEmbedUrl?payload=" + BASE64ENCODE(json);
+      console.log("key: " + json);
+      // https://hentaiz1.com/_app/remote/1edhnia/getEpisodeEmbedUrl?payload=W1siX19za3JhbyIsMV0seyJlcGlzb2RlSWQiOjJ9LCJzYjhsUkVRWC1NWCJd
+    }
     return JSON.stringify({
-      url: url,
-      isEmbed: false,
+      url: json,
+      isEmbed: true,
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: url,
-        "Custom-Js": customJS
+        Referer: url
       },
       subtitles: [],
     });
@@ -578,752 +586,331 @@ function parseDetailResponse(html, url) {
   }
 }
 
-function rawJS() {
-
-  return `
-(function () {
-    var LOGGER = true;
-
-    function log(msg) {
-        if (!LOGGER) return;
-        try {
-            var strMsg = String(msg);
-            var logMessage = '[CustomJS] ' + strMsg;
-            if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
-                window.SnifferBridge.log(logMessage);
-            } else if (typeof console !== 'undefined' && console.log) {
-                console.log(logMessage);
-            }
-        } catch (e) {}
-    }
-
-    function getSafeContainer() {
-        var topBar = document.getElementById('v-top-bar');
-        if (topBar) return topBar;
-        return document.body || document.documentElement;
-    }
-
-    function showToast(msg, timer = 5000) {
-        log('[Toast] ' + msg);
-        try {
-            if (window.SnifferBridge && typeof window.SnifferBridge.toast === 'function') {
-                window.SnifferBridge.toast(String(msg),timer);
-            }
-        } catch (e) {}
-
-        try {
-            var parent = getSafeContainer();
-            if (!parent) return;
-
-            var oldToast = document.getElementById('v-safe-notice');
-            if (oldToast) oldToast.remove();
-
-            var toast = document.createElement('div');
-            toast.id = 'v-safe-notice';
-            toast.style.cssText = 
-                'position: fixed !important; top: 20px !important; left: 50% !important; ' +
-                'transform: translateX(-50%) !important; z-index: 2147483647 !important; ' +
-                'background: rgba(18, 18, 18, 0.95) !important; color: #fff !important; ' +
-                'padding: 10px 18px !important; border-radius: 20px !important; ' +
-                'font-family: sans-serif !important; font-size: 13px !important; font-weight: 600 !important; ' +
-                'box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important; border: 1px solid rgba(229,9,20,0.8) !important; ' +
-                'pointer-events: none !important; backdrop-filter: blur(8px) !important; text-align: center !important; ' +
-                'white-space: nowrap !important; transition: opacity 0.4s ease !important;';
-            
-            toast.textContent = String(msg);
-            parent.appendChild(toast);
-
-            setTimeout(function() {
-                if (toast && toast.parentNode) {
-                    toast.style.opacity = '0';
-                    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 400);
-                }
-            }, 3000);
-        } catch(e) {}
-    }
-
-    function ensureDOMReady(callback) {
-        if (document && (document.body || document.documentElement)) {
-            callback();
-        } else {
-            var checkTimer = setInterval(function () {
-                if (document && (document.body || document.documentElement)) {
-                    clearInterval(checkTimer);
-                    callback();
-                }
-            }, 50);
+function parseEmbedResponse(html, url) {
+  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
+  //console.log("parseEmbedResponse [Raw]: " + html);
+  
+  try {
+      var embedUrl = "";
+      var match = html.match(/https?:\/\/[^\s"\\]+/);
+      var rawJS = runJS();
+        if (match) {
+            var embedUrl = match[0];
+            console.log("URL bóc được:", embedUrl);
+           return JSON.stringify({
+                url: embedUrl,
+                isEmbed: false,
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                  Referer: url,
+                  "Block-Ads": false,
+                  "Block-Css": "",
+                  "Custom-Js": rawJS
+                },
+                subtitles: [],
+              });
+            // Kết quả: https://x.haiten.org/watch?v=d635d67c-8f2b-47b5-a61a-b61d22f5fafd
         }
+        console.log("parseEmbedResponse [Next URL]: " + embedUrl);
+      
+  } catch (e) {
+    console.log("[Lỗi parseEmbedResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
+}
+
+
+function runJS() {
+    return `
+HTMLRAW = 0;
+BODYRAW = 0;
+CSSBLOCK = 0;
+VIDEOEND = 0;
+NUMBERRAW = 0;
+
+(function() {
+    'use strict';
+    
+    console.log("[Anti-Redirect] Đã kích hoạt bảo vệ!");
+
+    // 1. Chặn window.open (chặn mở tab/popup mới)
+    window.open = function(url, target, features) {
+        console.log("[Anti-Redirect] Đã chặn window.open ->", url);
+        return null; // Trả về null để vô hiệu hóa
+    };
+
+    // 2. Chặn các phương thức chuyển hướng location
+    try {
+        // Lưu lại origin ban đầu để so sánh
+        var initialOrigin = window.location.origin;
+
+        // Ghi đè location.assign và location.replace
+        window.location.assign = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.assign ->", url);
+        };
+        
+        window.location.replace = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.replace ->", url);
+        };
+
+        // Chặn ghi đè location.href trực tiếp bằng Property Descriptor
+        var originalLocation = window.location;
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+                return originalLocation;
+            },
+            set: function(val) {
+                console.log("[Anti-Redirect] Đã chặn đổi location.href ->", val);
+                return originalLocation.href;
+            }
+        });
+    } catch (e) {
+        console.log("[Anti-Redirect Warning] Không thể khóa location descriptor:", e.message);
     }
 
-    var SmartStorage = (function() {
-        var memCache = {};
+    // 3. Chặn sự kiện перед/khi chuyển trang (beforeunload & unload trap)
+    window.addEventListener('beforeunload', function(e) {
+        // Vô hiệu hóa các script cố tình trigger chuyển hướng bằng unload
+        e.stopPropagation();
+    }, true);
 
-        function isStorageSupported(type) {
-            try {
-                var storage = window[type];
-                if (!storage) return false;
-                var testKey = '__test_stg__';
-                storage.setItem(testKey, '1');
-                storage.removeItem(testKey);
-                return true;
-            } catch (e) {
+    // 4. Bắt và chặn click vào thẻ <a> có target="_blank" hoặc link nhảy ra ngoài domain
+    document.addEventListener('click', function(e) {
+        var target = e.target;
+        
+        // Tìm thẻ <a> gần nhất nếu click vào phần tử con bên trong
+        while (target && target.tagName !== 'A') {
+            target = target.parentNode;
+        }
+
+        if (target && target.tagName === 'A') {
+            var href = target.getAttribute('href');
+            var targetAttr = target.getAttribute('target');
+
+            // Chặn nếu link mở tab mới (_blank) hoặc link chứa javascript:
+            if (targetAttr === '_blank' || (href && href.startsWith('javascript:'))) {
+                console.log("[Anti-Redirect] Đã chặn click thẻ A nguy hiểm ->", href);
+                e.preventDefault();
+                e.stopPropagation();
                 return false;
             }
         }
-
-        var hasLocal = isStorageSupported('localStorage');
-        var hasSession = isStorageSupported('sessionStorage');
-
-        function getCookie(name) {
-            try {
-                var nameEQ = encodeURIComponent(name) + "=";
-                var ca = document.cookie.split(';');
-                for (var i = 0; i < ca.length; i++) {
-                    var c = ca[i].trim();
-                    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length));
-                }
-            } catch(e) { log('[Storage Error] Lỗi đọc Cookie: ' + e.message); }
-            return null;
-        }
-
-        function setCookie(name, value, days) {
-            try {
-                var expires = "";
-                if (days) {
-                    var date = new Date();
-                    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                    expires = "; expires=" + date.toUTCString();
-                }
-                document.cookie = encodeURIComponent(name) + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax";
-                return true;
-            } catch(e) { 
-                log('[Storage Error] Lỗi ghi Cookie: ' + e.message);
-                return false; 
-            }
-        }
-
-        function getWinNameData() {
-            try {
-                if (window.name && window.name.indexOf('{') === 0) {
-                    return JSON.parse(window.name);
-                }
-            } catch(e) {}
-            return {};
-        }
-
-        function setWinNameData(key, val) {
-            try {
-                var data = getWinNameData();
-                data[key] = val;
-                window.name = JSON.stringify(data);
-                return true;
-            } catch(e) { return false; }
-        }
-
-        return {
-            getItem: function(key, defaultVal) {
-                var val = null;
-                var src = '';
-                if (hasLocal) { try { val = localStorage.getItem(key); if (val !== null) src = 'localStorage'; } catch(e) {} }
-                if (val === null && hasSession) { try { val = sessionStorage.getItem(key); if (val !== null) src = 'sessionStorage'; } catch(e) {} }
-                if (val === null) { val = getCookie(key); if (val !== null) src = 'cookie'; }
-                if (val === null) {
-                    var wData = getWinNameData();
-                    if (wData[key] !== undefined) { val = wData[key]; src = 'window.name'; }
-                }
-                if (val === null && memCache[key] !== undefined) { val = memCache[key]; src = 'memCache'; }
-                
-                log('[Storage Get] Key=' + key + ' | Nguồn=' + (src || 'Không có') + ' | Val=' + val);
-                return val !== null ? val : defaultVal;
-            },
-
-            setItem: function(key, val) {
-                memCache[key] = val;
-                var savedSources = [];
-                if (hasLocal) { try { localStorage.setItem(key, val); savedSources.push('localStorage'); } catch(e) { log('[Storage Err] LocalStorage full/blocked'); } }
-                if (hasSession) { try { sessionStorage.setItem(key, val); savedSources.push('sessionStorage'); } catch(e) {} }
-                if (setCookie(key, val, 30)) savedSources.push('cookie');
-                if (setWinNameData(key, val)) savedSources.push('window.name');
-                
-                log('[Storage Set] Key=' + key + ' | Val=' + val + ' | Đã lưu vào: [' + savedSources.join(', ') + ']');
-            }
-        };
-    })();
-
-    (function applyAntiPopupShield() {
-        try {
-            var dummyWin = { focus: function () {}, blur: function () {}, close: function () {}, closed: true, postMessage: function () {} };
-            
-            window.open = function (url) {
-                log('[Anti-Popup] Chặn window.open: ' + url);
-                return dummyWin;
-            };
-
-            try {
-                window.location.assign = function (url) { log('[Anti-Redirect] Chặn assign: ' + url); };
-                window.location.replace = function (url) { log('[Anti-Redirect] Chặn replace: ' + url); };
-            } catch (e) {}
-
-            var blockHandler = function (e) {
-                var target = e.target;
-                while (target && target !== document) {
-                    if (target.tagName === 'A') {
-                        var href = target.getAttribute('href');
-                        var attrTarget = target.getAttribute('target');
-                        
-                        if (attrTarget === '_blank' || target.target === '_blank' || (href && href.startsWith('http') && !href.includes(window.location.hostname))) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            log('[Anti-Popup] Đã chặn click chuyển hướng/quảng cáo từ thẻ A: ' + href);
-                            return false;
-                        }
-                    }
-                    target = target.parentNode;
-                }
-            };
-
-            window.addEventListener('click', blockHandler, true);
-            window.addEventListener('touchstart', blockHandler, true);
-
-        } catch (e) {}
-    })();
-
-    const TARGET_PATTERN = 'haiten.org';
-    const CHECK_SPEED = 200;
-    var urlInfo = null;
-
-    function injectStyles() {
-        try {
-            if (document.getElementById('v-style-block')) return;
-            const style = document.createElement('style');
-            style.id = 'v-style-block';
-            style.textContent = 
-                '#v-top-bar { position: fixed !important; top: 12px !important; right: 12px !important; z-index: 2147483647 !important; display: flex !important; gap: 8px !important; align-items: center !important; font-family: sans-serif !important; transition: opacity 0.4s ease !important; opacity: 1; }' +
-                '.v-btn-act { background: rgba(15, 15, 15, 0.9) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.3) !important; padding: 8px 14px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: bold !important; cursor: pointer !important; backdrop-filter: blur(8px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important; }' +
-                '.v-btn-act:active { background: #e50914 !important; }' +
-                
-                '#v-box-list, #v-hist-dropdown { display: none; position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 6px !important; background: rgba(15, 15, 15, 0.95) !important; padding: 10px !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.2) !important; z-index: 2147483647 !important; backdrop-filter: blur(10px) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important; }' +
-                '#v-box-list { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)) !important; gap: 6px !important; width: 230px !important; max-height: 220px !important; overflow-y: auto !important; }' +
-                '#v-hist-dropdown { width: 260px !important; max-width: 80vw !important; flex-direction: column !important; gap: 8px !important; }' +
-                
-                '#v-box-list.closed, #v-hist-dropdown.closed { display: none !important; }' +
-                '#v-box-list.open { display: grid !important; }' +
-                '#v-hist-dropdown.open { display: flex !important; }' +
-                
-                '.v-item-node { background: #222 !important; color: #fff !important; border: 1px solid #444 !important; border-radius: 5px !important; padding: 6px 0 !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; text-align: center !important; }' +
-                '.v-item-node.active { background: #e50914 !important; border-color: #ff333d !important; }' +
-                '.v-arrow-btn { position: fixed !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 2147483647 !important; background: rgba(0,0,0,0.6) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.3) !important; width: 42px !important; height: 42px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 18px !important; cursor: pointer !important; user-select: none !important; transition: opacity 0.4s ease !important; opacity: 1; }' +
-                '#v-arrow-prev { left: 12px !important; } #v-arrow-next { right: 12px !important; }';
-
-            (document.head || document.documentElement).appendChild(style);
-        } catch (e) {}
-    }
-
-    function applyMobileViewport() {
-        try {
-            var meta = document.querySelector('meta[name="viewport"]');
-            if (!meta) {
-                meta = document.createElement('meta');
-                meta.name = 'viewport';
-                (document.head || document.documentElement).appendChild(meta);
-            }
-            if (meta) meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-        } catch (e) {}
-    }
-
-    function showLoadingScreen() {
-        var parent = document.body || document.documentElement;
-        if (!parent || document.getElementById('v-stage-layer')) return;
-
-        var loadingDiv = document.createElement('div');
-        loadingDiv.id = 'v-stage-layer';
-        loadingDiv.style.cssText = 
-            'position: fixed !important; top: 0 !important; left: 0 !important;' +
-            'width: 100vw !important; height: 100vh !important; background-color: #0d0d0d !important;' +
-            'display: flex !important; flex-direction: column !important; justify-content: center !important;' +
-            'align-items: center !important; z-index: 2147483646 !important; font-family: sans-serif !important; cursor: pointer !important;';
-
-        loadingDiv.innerHTML = 
-            '<div class="v-ring-spin"></div>' +
-            '<div style="color:#ccc; margin-top:16px; font-size:14px; text-align:center;">Đang tải trình phát...<br><small style="color:#777; font-size:11px;">(Chạm vào màn hình để đóng nếu bị treo)</small></div>' +
-            '<style>' +
-            '.v-ring-spin { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #e50914; border-radius: 50%; animation: v-spin 0.8s linear infinite; }' +
-            '@keyframes v-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }' +
-            '</style>';
-
-        loadingDiv.onclick = function() { hideLoadingScreen(); };
-        parent.appendChild(loadingDiv);
-    }
-
-    function hideLoadingScreen() {
-        try {
-            var elem = document.getElementById('v-stage-layer');
-            if (elem) elem.remove();
-        } catch (e) {}
-    }
-
-    ensureDOMReady(function() {
-        applyMobileViewport();
-        showLoadingScreen();
-    });
-
-    function parseUrlInfo() {
-        try {
-            const url = new URL(window.location.href);
-            const pathParts = url.pathname.split('/').filter(Boolean);
-            const lastSlug = pathParts[pathParts.length - 1] || '';
-
-            var currentParam = url.searchParams.get('current');
-            var current = currentParam ? parseInt(currentParam) : null;
-
-            if (!current || isNaN(current)) {
-                var match = lastSlug.match(/(?:tap|episode|ep)[-_]?(\\d+)/i) || lastSlug.match(/-(\\d+)$/);
-                if (match) {
-                    current = parseInt(match[1]);
-                }
-            }
-
-            if (!current) current = 1;
-
-            const maxEpi = parseInt(url.searchParams.get('maxEpi')) || Math.max(current, 1);
-            const baseSlug = lastSlug.replace(/(?:[-_]tap|[-_]ep)?[-_]\\d+$/i, '');
-            const seriesKey = baseSlug || 'default_series';
-
-            const getEpiUrl = function (epiNum) {
-                var newPath = url.pathname;
-                if (lastSlug.match(/-\\d+$/)) {
-                    newPath = url.pathname.replace(lastSlug, baseSlug + '-' + epiNum);
-                }
-                return url.origin + newPath + '?current=' + epiNum + '&maxEpi=' + maxEpi;
-            };
-
-            log('[Parse URL] SeriesKey=' + seriesKey + ' | Tập hiện tại=' + current + ' | MaxEpi=' + maxEpi);
-            return { current: current, maxEpi: maxEpi, baseSlug: baseSlug, seriesKey: seriesKey, getEpiUrl: getEpiUrl, fullUrl: url.href };
-        } catch (e) {
-            log('[Parse URL Error]: ' + e.message);
-            return { current: 1, maxEpi: 1, baseSlug: '', seriesKey: 'default', getEpiUrl: function () { return window.location.href; } };
-        }
-    }
-
-    function getHistory(seriesKey) {
-        var raw = SmartStorage.getItem('watch_hist_' + seriesKey, null);
-        if (!raw) return null;
-        try {
-            return typeof raw === 'string' ? JSON.parse(raw) : raw;
-        } catch (e) {
-            log('[Get History Err] JSON Parse lỗi: ' + e.message);
-            return null;
-        }
-    }
-
-    function saveHistory(seriesKey, epiNum) {
-        log('[Save History] Đang lưu lịch sử phim [' + seriesKey + '] -> Tập ' + epiNum);
-        var data = JSON.stringify({
-            lastEpi: parseInt(epiNum),
-            time: Date.now()
-        });
-        SmartStorage.setItem('watch_hist_' + seriesKey, data);
-    }
-
-    var FIT_MODES = [
-        { key: 'fill', label: '↔️ Co giãn' },
-        { key: 'contain', label: '📐 Vừa khung' },
-        { key: 'cover', label: '🔍 Phóng to' }
-    ];
-
-    var currentFitIndex = -1;
-
-    function getCurrentFitIndex() {
-        if (currentFitIndex === -1) {
-            var savedFitKey = SmartStorage.getItem('watch_player_fit_mode', 'fill');
-            currentFitIndex = FIT_MODES.findIndex(function(m) { return m.key === savedFitKey; });
-            if (currentFitIndex === -1) currentFitIndex = 0;
-        }
-        return currentFitIndex;
-    }
-
-    function getScreenSize() {
-        var w = Math.max(document.documentElement ? document.documentElement.clientWidth : 0, window.innerWidth || 0, screen.width || 0);
-        var h = Math.max(document.documentElement ? document.documentElement.clientHeight : 0, window.innerHeight || 0, screen.height || 0);
-        return { width: w, height: h };
-    }
-
-    function updatePlayerDimensions() {
-        var player = document.getElementById('v-media-frame');
-        if (!player) return;
-
-        var sz = getScreenSize();
-        var mode = FIT_MODES[getCurrentFitIndex()].key;
-
-        player.style.position = 'fixed';
-        player.style.margin = '0px';
-        player.style.padding = '0px';
-        player.style.border = '0px none';
-        player.style.zIndex = '1';
-
-        if (mode === 'fill') {
-            player.style.top = '0px';
-            player.style.left = '0px';
-            player.style.width = sz.width + 'px';
-            player.style.height = sz.height + 'px';
-            player.style.transform = 'none';
-        } else if (mode === 'contain' || mode === 'cover') {
-            var targetRatio = 16 / 9;
-            var currentRatio = sz.width / sz.height;
-            var finalW, finalH;
-
-            var isContain = (mode === 'contain');
-            if ((currentRatio > targetRatio && isContain) || (currentRatio <= targetRatio && !isContain)) {
-                finalH = sz.height;
-                finalW = sz.height * targetRatio;
-            } else {
-                finalW = sz.width;
-                finalH = sz.width / targetRatio;
-            }
-
-            player.style.width = Math.round(finalW) + 'px';
-            player.style.height = Math.round(finalH) + 'px';
-            player.style.top = Math.round((sz.height - finalH) / 2) + 'px';
-            player.style.left = Math.round((sz.width - finalW) / 2) + 'px';
-            player.style.transform = 'none';
-        }
-    }
-
-    function applyFitMode(index) {
-        currentFitIndex = index % FIT_MODES.length;
-        var mode = FIT_MODES[currentFitIndex];
-
-        SmartStorage.setItem('watch_player_fit_mode', mode.key);
-
-        var fitBtn = document.getElementById('v-btn-mode');
-        if (fitBtn) fitBtn.innerHTML = mode.label;
-
-        updatePlayerDimensions();
-    }
-
-    window.addEventListener('resize', function() { updatePlayerDimensions(); });
-    window.addEventListener('orientationchange', function() { setTimeout(updatePlayerDimensions, 300); });
-
-    var idleTimer = null;
-    const IDLE_TIMEOUT = 10000;
-
-    function resetIdleTimer() {
-        var topBar = document.getElementById('v-top-bar');
-        var prevBtn = document.getElementById('v-arrow-prev');
-        var nextBtn = document.getElementById('v-arrow-next');
-
-        if (topBar) topBar.style.opacity = '1';
-        if (prevBtn) prevBtn.style.opacity = '1';
-        if (nextBtn) nextBtn.style.opacity = '1';
-
-        if (idleTimer) clearTimeout(idleTimer);
-
-        idleTimer = setTimeout(function () {
-            var gridDiv = document.getElementById('v-box-list');
-            var histDiv = document.getElementById('v-hist-dropdown');
-            if (gridDiv) gridDiv.className = 'closed';
-            if (histDiv) histDiv.className = 'closed';
-
-            if (topBar) topBar.style.opacity = '0.2';
-            if (prevBtn) prevBtn.style.opacity = '0.2';
-            if (nextBtn) nextBtn.style.opacity = '0.2';
-        }, IDLE_TIMEOUT);
-    }
-
-    function setupIdleEvents() {
-        var events = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'click', 'keydown', 'scroll'];
-        events.forEach(function (evt) {
-            window.addEventListener(evt, resetIdleTimer, { passive: true });
-        });
-        resetIdleTimer();
-    }
-
-    function switchEpisode(targetUrl) {
-        showLoadingScreen();
-        var bgFrame = document.createElement('iframe');
-        bgFrame.style.display = 'none';
-        bgFrame.id = 'bg-fetch-frame';
-        bgFrame.src = targetUrl;
-
-        var oldFrame = document.getElementById('bg-fetch-frame');
-        if (oldFrame) oldFrame.remove();
-
-        (document.body || document.documentElement).appendChild(bgFrame);
-
-        var attempts = 0;
-        var maxAttempts = 50;
-        
-        var bgTimer = setInterval(function () {
-            attempts++;
-            try {
-                var doc = bgFrame.contentDocument || bgFrame.contentWindow.document;
-                if (doc) {
-                    var iframes = doc.querySelectorAll('iframe');
-                    for (var i = 0; i < iframes.length; i++) {
-                        var realSrc = iframes[i].src || iframes[i].getAttribute('data-src') || iframes[i].getAttribute('data-lazy-src');
-                        if (realSrc && realSrc.includes(TARGET_PATTERN)) {
-                            clearInterval(bgTimer);
-                            var mainPlayer = document.getElementById('v-media-frame');
-                            if (mainPlayer) mainPlayer.src = realSrc;
-                            bgFrame.remove();
-                            
-                            window.history.pushState({}, '', targetUrl);
-                            urlInfo = parseUrlInfo();
-                            
-                            buildUI(false);
-                            hideLoadingScreen();
-                            showToast('Đã chuyển sang Tập ' + urlInfo.current);
-                            return;
-                        }
-                    }
-                }
-            } catch (e) {}
-
-            if (attempts >= maxAttempts) {
-                clearInterval(bgTimer);
-                bgFrame.remove();
-                hideLoadingScreen();
-                alert('Không thể tải tự động tập này!');
-            }
-        }, CHECK_SPEED);
-    }
-
-    // -------------------------------------------------------------
-    // DỰNG GIAO DIỆN UI
-    // -------------------------------------------------------------
-    function buildUI(isInitialLoad) {
-        log('[Build UI] Tiến hành dựng giao diện... (isInitialLoad=' + isInitialLoad + ')');
-        injectStyles();
-        applyMobileViewport();
-
-        var parent = document.body || document.documentElement;
-        if (!parent) return;
-
-        var oldHeader = document.getElementById('v-top-bar');
-        if (oldHeader) oldHeader.remove();
-        var oldPrev = document.getElementById('v-arrow-prev');
-        if (oldPrev) oldPrev.remove();
-        var oldNext = document.getElementById('v-arrow-next');
-        if (oldNext) oldNext.remove();
-
-        // 1. ĐỌC LỊCH SỬ CŨ TRƯỚC KHI LƯU TẬP MỚI
-        var prevHist = getHistory(urlInfo.seriesKey);
-        var oldEpi = (prevHist && prevHist.lastEpi !== undefined) ? parseInt(prevHist.lastEpi) : null;
-
-        // 2. LUÔN LUÔN LƯU TẬP HIỆN TẠI VÀO LỊCH SỬ
-        saveHistory(urlInfo.seriesKey, urlInfo.current);
-
-        const headerDiv = document.createElement('div');
-        headerDiv.id = 'v-top-bar';
-
-        const fitBtn = document.createElement('button');
-        fitBtn.id = 'v-btn-mode';
-        fitBtn.className = 'v-btn-act';
-        fitBtn.innerHTML = FIT_MODES[getCurrentFitIndex()].label;
-        fitBtn.onclick = function (e) {
+    }, true);
+
+    // 5. Chặn tự động submit Form nhảy trang quảng cáo
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form && form.getAttribute('target') === '_blank') {
+            console.log("[Anti-Redirect] Đã chặn Form submit _blank");
+            e.preventDefault();
             e.stopPropagation();
-            applyFitMode(getCurrentFitIndex() + 1);
-            resetIdleTimer();
-        };
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.id = 'v-btn-epi';
-        toggleBtn.className = 'v-btn-act';
-        toggleBtn.innerHTML = 'Tập ' + urlInfo.current + ' &#9660;';
-
-        const gridDiv = document.createElement('div');
-        gridDiv.id = 'v-box-list';
-        gridDiv.className = 'closed';
-
-        for (let i = 1; i <= urlInfo.maxEpi; i++) {
-            (function (epiNum) {
-                const btn = document.createElement('button');
-                btn.className = 'v-item-node' + (epiNum === urlInfo.current ? ' active' : '');
-                btn.textContent = 'Tập ' + epiNum;
-                btn.onclick = function (e) {
-                    e.stopPropagation();
-                    gridDiv.className = 'closed';
-                    histDiv.className = 'closed';
-                    if (epiNum !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(epiNum));
-                };
-                gridDiv.appendChild(btn);
-            })(i);
         }
+    }, true);
 
-        const epiWrapper = document.createElement('div');
-        epiWrapper.style.position = 'relative';
-        epiWrapper.appendChild(toggleBtn);
-        epiWrapper.appendChild(gridDiv);
-
-        const histBtn = document.createElement('button');
-        histBtn.id = 'v-btn-hist';
-        histBtn.className = 'v-btn-act';
-        histBtn.innerHTML = '📜 Lịch sử';
-
-        const histDiv = document.createElement('div');
-        histDiv.id = 'v-hist-dropdown';
-        histDiv.className = 'closed';
-
-        // Tính toán tập để gợi ý trong menu Lịch Sử
-        var targetHistEpi = (oldEpi !== null && oldEpi !== urlInfo.current) ? oldEpi : urlInfo.current;
-        var nextEpi = (targetHistEpi < urlInfo.maxEpi) ? targetHistEpi + 1 : targetHistEpi;
-
-        if (oldEpi !== null) {
-            histDiv.innerHTML = 
-                '<div style="font-size: 12px; line-height: 1.4; color: #eee; font-weight: 500;">' +
-                'Lần trước xem đến <b>Tập ' + oldEpi + '</b>.' +
-                '</div>' +
-                '<div style="display: flex; gap: 6px; flex-direction: column; margin-top: 2px;">' +
-                    '<button id="v-btn-hist-prev" style="background: #e50914; color: #fff; border: none; padding: 7px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">Phát Tập ' + targetHistEpi + '</button>' +
-                    '<button id="v-btn-hist-next" style="background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 7px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">Phát Tập ' + nextEpi + '</button>' +
-                '</div>';
-        } else {
-            histDiv.innerHTML = '<div style="font-size: 12px; color: #aaa; text-align: center;">Chưa có lịch sử tập cũ.</div>';
-        }
-
-        const histWrapper = document.createElement('div');
-        histWrapper.style.position = 'relative';
-        histWrapper.appendChild(histBtn);
-        histWrapper.appendChild(histDiv);
-
-        toggleBtn.onclick = function (e) {
-            e.stopPropagation();
-            histDiv.className = 'closed';
-            gridDiv.className = gridDiv.classList.contains('open') ? 'closed' : 'open';
-            resetIdleTimer();
-        };
-
-        histBtn.onclick = function (e) {
-            e.stopPropagation();
-            gridDiv.className = 'closed';
-            histDiv.className = histDiv.classList.contains('open') ? 'closed' : 'open';
-            resetIdleTimer();
-        };
-
-        document.addEventListener('click', function (e) {
-            if (e.target.closest && e.target.closest('#v-top-bar')) {
-                return;
-            }
-            if (gridDiv) gridDiv.className = 'closed';
-            if (histDiv) histDiv.className = 'closed';
-        });
-
-        var btnPrev = histDiv.querySelector('#v-btn-hist-prev');
-        if (btnPrev) {
-            btnPrev.onclick = function(e) {
-                e.stopPropagation();
-                histDiv.className = 'closed';
-                if (targetHistEpi !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(targetHistEpi));
-            };
-        }
-
-        var btnNext = histDiv.querySelector('#v-btn-hist-next');
-        if (btnNext) {
-            btnNext.onclick = function(e) {
-                e.stopPropagation();
-                histDiv.className = 'closed';
-                if (nextEpi !== urlInfo.current) switchEpisode(urlInfo.getEpiUrl(nextEpi));
-            };
-        }
-
-        headerDiv.appendChild(fitBtn);
-        headerDiv.appendChild(epiWrapper);
-        headerDiv.appendChild(histWrapper);
-        parent.appendChild(headerDiv);
-
-        if (urlInfo.current > 1) {
-            const prevBtn = document.createElement('div');
-            prevBtn.className = 'v-arrow-btn';
-            prevBtn.id = 'v-arrow-prev';
-            prevBtn.innerHTML = '❮';
-            prevBtn.onclick = function () { 
-                gridDiv.className = 'closed';
-                histDiv.className = 'closed';
-                switchEpisode(urlInfo.getEpiUrl(urlInfo.current - 1)); 
-            };
-            parent.appendChild(prevBtn);
-        }
-
-        if (urlInfo.current < urlInfo.maxEpi) {
-            const nextBtn = document.createElement('div');
-            nextBtn.className = 'v-arrow-btn';
-            nextBtn.id = 'v-arrow-next';
-            nextBtn.innerHTML = '❯';
-            nextBtn.onclick = function () { 
-                gridDiv.className = 'closed';
-                histDiv.className = 'closed';
-                switchEpisode(urlInfo.getEpiUrl(urlInfo.current + 1)); 
-            };
-            parent.appendChild(nextBtn);
-        }
-
-        updatePlayerDimensions();
-
-        if (isInitialLoad) {
-            if (oldEpi !== null && oldEpi !== urlInfo.current) {
-                histDiv.className = 'open';
-                showToast('Lần trước xem: Tập ' + oldEpi + '\\n\\nNếu video load hoài hãy nhấn tua nhanh 10s để phát tiếp nha bạn.', 10000);
-                
-            } else {
-                showToast('Đang phát Tập ' + urlInfo.current + '\\n\\nNếu video load hoài hãy nhấn tua nhanh 10s để phát tiếp nha bạn.', 10000);
-            }
-        }
-
-        setupIdleEvents();
-    }
-
-    ensureDOMReady(function() {
-        var initAttempts = 0;
-        var maxInitAttempts = 50;
-
-        const initTimer = setInterval(function () {
-            initAttempts++;
-            try {
-                if (document && document.querySelectorAll) {
-                    const iframes = document.querySelectorAll('iframe');
-
-                    for (let i = 0; i < iframes.length; i++) {
-                        const iframe = iframes[i];
-                        const realSrc = iframe.src || iframe.getAttribute('data-src') || iframe.getAttribute('data-lazy-src');
-
-                        if (realSrc && realSrc.includes(TARGET_PATTERN)) {
-                            clearInterval(initTimer);
-
-                            log('[Found Player]: ' + realSrc);
-                            
-                            document.body.style.cssText = 'margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #000 !important;';
-                            document.body.innerHTML = '';
-                            
-                            var mainIframe = document.createElement('iframe');
-                            mainIframe.id = 'v-media-frame';
-                            mainIframe.src = realSrc;
-                            mainIframe.setAttribute('allowfullscreen', 'true');
-                            mainIframe.setAttribute('frameborder', '0');
-                            mainIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
-                            document.body.appendChild(mainIframe);
-
-                            urlInfo = parseUrlInfo();
-                            
-                            buildUI(true);
-                            hideLoadingScreen();
-
-                            return;
-                        }
-                    }
-                }
-            } catch (e) {
-                log('[Init Loop Error]: ' + e.message);
-            }
-
-            if (initAttempts >= maxInitAttempts) {
-                clearInterval(initTimer);
-                hideLoadingScreen();
-                log('[Init Timeout] Không tìm thấy iframe player!');
-            }
-        }, CHECK_SPEED);
-    });
 })();
-`;
+
+
+function bridgeLog(msg, check) {
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+        window.SnifferBridge.log(msg);
+        if (check === true && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast(msg, 1000);
+        }
+      } else if (typeof console !== 'undefined' && console.log) {
+        console.log(msg);
+      }
+    } catch(e) {}
+  }
+
+function envideo(){
+  if(VIDEOEND == 1){
+    window.SnifferBridge.play("https://google.com", "");
+  }
+}
+  
+(function injectCSS() {
+  try {
+    // 1. Khai báo nội dung CSS của bạn ở đây
+    const cssStyle = "body,html,*{display:none!important,backgroud:black!important;opacity:0!important;z-index:-999999}";
+
+    // 2. Tạo thẻ <style>
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.setAttribute('data-injected-by', 'custom-script');
+
+    if (styleElement.styleSheet) {
+      // Dành cho các trình duyệt IE cũ
+      styleElement.styleSheet.cssText = cssStyle;
+    } else {
+      // Dành cho trình duyệt hiện đại
+      if(CSSBLOCK == 1){
+        styleElement.appendChild(document.createTextNode(cssStyle));
+      }
+    }
+
+    // 3. Tìm vị trí để chèn (ưu tiên <head>, nếu chưa có head thì lấy documentElement)
+    const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+
+    if (targetNode) {
+      if(CSSBLOCK == 1){
+        targetNode.appendChild(styleElement);
+        bridgeLog("Chèn css ngay lập tức.")
+      }
+    } else {
+      // Fallback: Nếu DOM chưa sẵn sàng, chờ DOMContentLoaded rồi mới chèn
+      document.addEventListener('DOMContentLoaded', function () {
+        (document.head || document.documentElement).appendChild(styleElement);
+        setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            
+          }
+        },2000)
+        bridgeLog("Chèn Css sau khi load xong")
+
+       
+      });
+    }
+  } catch (error) {
+    // Bắt toàn bộ lỗi để đảm bảo script chính vẫn tiếp tục chạy bình thường
+    bridgeLog('Không thể chèn CSS tự động, bỏ qua lỗi:', error);
+  }
+})();
+
+(function initLocalBlobSniffer() {
+  if (window.__BLOB_SNIFFER_INITIALIZED__) return;
+  window.__BLOB_SNIFFER_INITIALIZED__ = 1;
+
+  var hasDispatchedAny = 0;
+  var isFinished = 0;
+  var timeoutTimer = null;
+
+  
+
+  // =========================================================================
+  // 1. GIỚI HẠN THỜI GIAN 10 GIÂY (TIMEOUT)
+  // =========================================================================
+  bridgeLog("Đang tiến hành tìm link Video, xin chờ....", true);
+
+  timeoutTimer = setTimeout(function() {
+    if (hasDispatchedAny === 0 && isFinished === 0) {
+      isFinished = 1;
+      bridgeLog("❌ [TIMEOUT] Đã quá 10 giây nhưng không tìm thấy Blob M3U8!", false);
+      bridgeLog("Không tìm thấy link video (Hết thời gian 10s).", true);
+      
+      // Fallback khi không tìm thấy
+      if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+        envideo();
+      }
+    }
+  }, 20000); // 10,000 ms = 10 giây
+
+  function stopTimeout() {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      timeoutTimer = null;
+    }
+  }
+
+  // =========================================================================
+  // 2. KIỂM TRA M3U8 HỢP LỆ
+  // =========================================================================
+  function isValidM3U8(content) {
+    if (typeof content !== 'string') return false;
+    var trimmed = content.trim();
+    return trimmed.indexOf('#EXTM3U') === 0 && 
+          (trimmed.indexOf('#EXTINF') !== -1 || trimmed.indexOf('#EXT-X-STREAM-INF') !== -1);
+  }
+
+  // =========================================================================
+  // 3. CHUYỂN NỘI DUNG M3U8 VỀ APP (LOCAL SERVER)
+  // =========================================================================
+  function dispatchM3u8ToApp(m3u8Content) {
+    if (!m3u8Content || hasDispatchedAny === 1) return;
+    hasDispatchedAny = 1;
+    isFinished = 1;
+    stopTimeout(); // Hủy đếm ngược 10s khi đã lấy thành công
+
+    bridgeLog('🎯 [LOCAL-DISPATCH] Đã tìm thấy M3U8! Đang nạp vào Local Player...');
+    bridgeLog("🎯 Bắt link thành công! Đang phát video...", true);
+
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
+        // Truyền trực tiếp nội dung M3U8 thô + URL hiện tại làm Referer/BaseURL
+        window.SnifferBridge.playM3u8Content(m3u8Content, window.location.href);
+      } else {
+        bridgeLog('❌ SnifferBridge.playM3u8Content không khả dụng!');
+      }
+    } catch(e) {
+      bridgeLog('❌ [DISPATCH ERROR]: ' + e.message);
+    }
+  }
+
+  // =========================================================================
+  // 4. HOOK URL.createObjectURL (BẮT TRỰC TIẾP DỮ LIỆU BLOB M3U8)
+  // =========================================================================
+  try {
+    if (typeof URL !== 'undefined' && URL.createObjectURL) {
+      var originalCreateObjectURL = URL.createObjectURL;
+      
+      URL.createObjectURL = function(blob) {
+        var blobUrl = originalCreateObjectURL.apply(this, arguments);
+
+        if (isFinished === 0 && blob && (blob instanceof Blob || blob instanceof File)) {
+          var processContent = function(content) {
+            if (isValidM3U8(content)) {
+              //bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
+              dispatchM3u8ToApp(content);
+            }
+          };
+
+          if (typeof blob.text === 'function') {
+            blob.text().then(processContent).catch(function(){});
+          } else {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              processContent(e.target.result);
+            };
+            reader.readAsText(blob);
+          }
+        }
+
+        return blobUrl;
+      };
+      
+      bridgeLog('🚀 [INIT] Đã Hook thành công.');
+      setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            
+          }
+        },2000)
+    }
+  } catch (e) {
+    bridgeLog('❌ [INIT-ERROR]: ' + e.message);
+  }
+})();
+  `;
 }
 
 
@@ -1350,6 +937,52 @@ function parseYearsResponse(html) {
   return "[]";
 }
 
+function BASE64ENCODE(str) {
+    try {
+        if (!str) return "";
+
+        // 1. Encode String ra mảng UTF-8 Bytes trước
+        var utf8Bytes = [];
+        for (var i = 0; i < str.length; i++) {
+            var code = str.charCodeAt(i);
+            if (code < 128) {
+                utf8Bytes.push(code);
+            } else if (code < 2048) {
+                utf8Bytes.push((code >> 6) | 192, (code & 63) | 128);
+            } else if ((code & 0xFC00) === 0xD800 && i + 1 < str.length && (str.charCodeAt(i + 1) & 0xFC00) === 0xDC00) {
+                // Ký tự Surrogate Pair
+                code = 0x10000 + ((code & 0x03FF) << 10) + (str.charCodeAt(++i) & 0x03FF);
+                utf8Bytes.push((code >> 18) | 240, ((code >> 12) & 63) | 128, ((code >> 6) & 63) | 128, (code & 63) | 128);
+            } else {
+                utf8Bytes.push((code >> 12) | 224, ((code >> 6) & 63) | 128, (code & 63) | 128);
+            }
+        }
+
+        // 2. Chuyển mảng UTF-8 Bytes thành chuỗi Base64
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        var encoded = '';
+        var byte1, byte2, byte3;
+        var b1, b2, b3, b4;
+
+        for (var j = 0; j < utf8Bytes.length; j += 3) {
+            byte1 = utf8Bytes[j];
+            byte2 = j + 1 < utf8Bytes.length ? utf8Bytes[j + 1] : NaN;
+            byte3 = j + 2 < utf8Bytes.length ? utf8Bytes[j + 2] : NaN;
+
+            b1 = byte1 >> 2;
+            b2 = ((byte1 & 3) << 4) | (isNaN(byte2) ? 0 : byte2 >> 4);
+            b3 = isNaN(byte2) ? 64 : ((byte2 & 15) << 2) | (isNaN(byte3) ? 0 : byte3 >> 6);
+            b4 = isNaN(byte3) ? 64 : byte3 & 63;
+
+            encoded += chars.charAt(b1) + chars.charAt(b2) + chars.charAt(b3) + chars.charAt(b4);
+        }
+
+        return encoded;
+    } catch (e) {
+        console.log("[BASE64ENCODE Error]:", e.message || e);
+        return "";
+    }
+}
 /*
 {\"link\":\"/the-loai/phim-cap-nhat-1\",\"name\":\"Phim Mới\"},
 {\"link\":\"/the-loai/phim-le-1\",\"name\":\"Phim Lẻ\"},

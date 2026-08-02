@@ -1,5 +1,5 @@
 // https://bilutv.asia
-BASEURL = "https://motchillw.blue";
+BASEURL = "http://vkey.vn/motchill";
 
 function getManifest() {
     return JSON.stringify({
@@ -7,9 +7,9 @@ function getManifest() {
         "name": "Nguồn Phim Motchill",
         "description": "Mochill Trang Xem Phim.",
       	"info": "Nguồn phim xịn của Motchill.",
-        "version": "1.1",
-        "baseUrl": BASEURL,
-        "iconUrl": "https://motchille.cx/motchill.png",
+        "version": "1.2",
+        "baseUrl": "http://vkey.vn/motchill",
+        "iconUrl": "http://vkey.vn/motchill/motchill.png",
         "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "type": "MOVIE",
