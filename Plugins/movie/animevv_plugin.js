@@ -4,7 +4,7 @@ function getManifest() {
   return JSON.stringify({
     id: "animevv",
     name: "Nguồn Animevv",
-    description: "Nguồn phim Animevv...",
+    description: "Nguồn phim Animevv....",
     "version": "1.3",
     info: "Nguồn phim Animevv, nguồn này dùng servers riêng của họ nên cũng khá mượt mà..",
     baseUrl: "http://vkey.vn/animevv",
