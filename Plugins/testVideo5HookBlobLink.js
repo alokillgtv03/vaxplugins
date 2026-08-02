@@ -443,6 +443,18 @@ function parseEmbedResponse(html, url) {
 
 function runJS() {
     return `
+function bridgeLog(msg, check) {
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+        window.SnifferBridge.log(msg);
+        if (check === true && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast(msg, 1000);
+        }
+      } else if (typeof console !== 'undefined' && console.log) {
+        console.log(msg);
+      }
+    } catch(e) {}
+  }
 (function injectCSS() {
   try {
     // 1. Khai báo nội dung CSS của bạn ở đây
@@ -488,18 +500,7 @@ function runJS() {
   var isFinished = 0;
   var timeoutTimer = null;
 
-  function bridgeLog(msg, check) {
-    try {
-      if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
-        window.SnifferBridge.log(msg);
-        if (check === true && typeof window.SnifferBridge.toast === 'function') {
-          window.SnifferBridge.toast(msg, 1000);
-        }
-      } else if (typeof console !== 'undefined' && console.log) {
-        console.log(msg);
-      }
-    } catch(e) {}
-  }
+  
 
   // =========================================================================
   // 1. GIỚI HẠN THỜI GIAN 10 GIÂY (TIMEOUT)
@@ -573,7 +574,7 @@ function runJS() {
         if (isFinished === 0 && blob && (blob instanceof Blob || blob instanceof File)) {
           var processContent = function(content) {
             if (isValidM3U8(content)) {
-              bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
+              //bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
               dispatchM3u8ToApp(content);
             }
           };
@@ -592,7 +593,7 @@ function runJS() {
         return blobUrl;
       };
       
-      bridgeLog('🚀 [INIT] Đã Hook thành công URL.createObjectURL (Chế độ Local M3U8).');
+      bridgeLog('🚀 [INIT] Đã Hook thành công.');
     }
   } catch (e) {
     bridgeLog('❌ [INIT-ERROR]: ' + e.message);
@@ -600,6 +601,7 @@ function runJS() {
 })();
   `;
 }
+
 
 
 
