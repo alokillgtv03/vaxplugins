@@ -8,7 +8,7 @@ function getManifest() {
     description: "Nguồn phim Animevv...",
     "version": "1.1",
     "author": "Alokillgtv",
-    info: "Nguồn phim XXX khá nhiều video được vietsub.\n Nguồn này có server riêng nên chạy khá mượt..",
+    info: "Nguồn phim XXX khá nhiều video được vietsub.\n Nguồn này có server riêng nên chạy khá mượt..\nTuy nhiên có vài phim vẫn không xem được do lỗi nguồn nhé.",
     baseUrl: "http://vkey.vn/sxvietsubs",
     iconUrl: "http://vkey.vn/sxvietsubs/logo.png?v=20260718-1540",
     isEnabled: true,
