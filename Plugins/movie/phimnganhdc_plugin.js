@@ -5,13 +5,13 @@ function getManifest() {
         "id": "phimnganhdc",
         "name": "Phim Ngắn HDC",
         "description": "Phim ngắn trung quốc.",
-        "version": "1.4",
+        "version": "1.6",
         "baseUrl": "https://phimnganhdc.com",
       	"info":"Nguồn phim ngắn, hãy xem màn hình dọc cho thuận mắt hơn nhé.",
         "iconUrl": "https://phimnganhdc.com/storage/files/logo-phimnganhdc.png",
         "isEnabled": true,
-        "type": "MOVIE",
-        "playerType": "embed"
+        "type": "shortfilm",
+        "playerType": "embedtoexoplay"
     });
 }
 
@@ -229,6 +229,12 @@ function parseMovieDetail(html,url) {
             var epi = [];
             var tap = 0;
             var nameserver = _$(el).find(".server-episode-block").text(); 
+            if(nameserver.match(/vietsub/i)){
+              nameserver = "Vietsub"
+            }
+            if(nameserver.match(/thuyết minh/i)){
+              nameserver = "Thuyết Minh"
+            }
             this.find(".list-episode").find("a").each(function(index, Bl) {
                 tap += 1;
                 var ahref = this.attr("href"); 
@@ -286,47 +292,433 @@ function parseMovieDetail(html,url) {
 
 // https://phimnganhdc.com/dem-kinh-thanh-nho-em-xuyen-thanh-ban-gai-cu-doc-ac-cua-cau-chu-pha-san-35032
 // https://phimnganhdc.com/dem-kinh-thanh-nho-em-xuyen-thanh-ban-gai-cu-doc-ac-cua-cau-chu-pha-san/tap-1-811897
+
+function getCleanReferer(url) {
+  try {
+    var clean = decodeHtmlEntities(url);
+    var qIndex = clean.indexOf('?');
+    if (qIndex !== -1) {
+      return clean.substring(0, qIndex);
+    }
+    return clean;
+  } catch(e) {
+    return url;
+  }
+}
+
 function parseDetailResponse(html, url) {
     try {
+        var rawJS = runJS();
         var stream = "";
         var server = [];
+        var isembed = true;
         _$(html).find(".tip-change-server").find(".streaming-server").each(function() {
             // Lúc này 'this' chính là thực thể của từng thẻ <a> riêng biệt
             var ahref = this.attr("data-link");
             var name = this.text();
             if (name === "HDC") {
-                stream = ahref
+                stream = ahref;
+                isembed = false;
             }
-            var $item = { link: ahref, name: name };
-            server.push($item);
+            server.push(ahref);
         });
-        if (stream == "") {
-            stream = server[0].link;
+        if(isembed == true){
+            stream = server[0];
+            console.log("Đang fetch tiếp sang: " + stream)
+            return JSON.stringify({
+              "url": stream,
+              "isEmbed": true,
+              "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": getCleanReferer(url)
+              }
+            });
         }
-        var customjs = textJS(server);
-        return JSON.stringify({
-            "url": stream,
-            "headers": {
-                "Referer": BASEURL,
-                "Origin": BASEURL,
-                "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-                // Đánh lừa thuật toán Client Hints của tường lửa
-                "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-                "Sec-Ch-Ua-Mobile": "?1",
-                "Sec-Ch-Ua-Platform": '"Android"',
-                
-                // Khai báo kiểu dữ liệu được chấp nhận giống như trình duyệt thật
-                "Accept": "*/*",
-                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-                "X-Requested-With": "com.android.chrome",
-                "Custom-Js": customjs.trim()
-            },
-            "subtitles": []
-        });
-        
+        else{
+          console.log("Đây là trang chứa link video: " + stream)
+          return JSON.stringify({
+            "url":  stream,
+            "isEmbed": false,
+            "headers": {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              "Referer": getCleanReferer(url),
+              "Block-Ads": false,
+              "Block-Css": "",
+              "Custom-Js": rawJS
+            }
+          });
+        }
     } catch (e) {
         return JSON.stringify({ "url": "", "headers": {} });
     }
+}
+
+function parseEmbedResponse(html, url) {
+  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
+  //console.log("parseEmbedResponse [Raw]: " + html);
+  try {
+    var rawJS = runJS();
+    var origin = url.replace(/^(https?:\/\/[^\/]+).*/, "$1");
+    var frame = _$(html).find("iframe").attr("src");
+    var stream = origin + decodeHTMLEntities(frame);
+    console.log("stream hàm embed: " + stream);
+    return JSON.stringify({
+      "url": stream,
+      "isEmbed": false, // Tự động trả về false khi đã bóc tới tầng cuối!
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": getCleanReferer(url),
+        "Block-Ads": false,
+        "Block-Css": "",
+        "Custom-Js": rawJS
+      }
+    });
+  } catch (e) {
+    console.log("[Lỗi parseEmbedResponse]", e);
+    return JSON.stringify({ "url": "", "isEmbed": false, "headers": {} });
+  }
+}
+
+
+
+function runJS() {
+    return `
+HTMLRAW = 0; // Lấy html raw để coi thử
+BODYRAW = 0; //lấy body để coi thử
+CSSBLOCK = 1; // bật tắt css block
+VIDEOEND = 0; // ngưng phát video nếu ko có link
+NUMBERRAW = 0; // Số lần cho in html
+HOOK_NETWORK_AND_DOM = 1; // Hook bằng xhr hoặc dom
+
+(function() {
+    'use strict';
+    
+    console.log("[Anti-Redirect] Đã kích hoạt bảo vệ!");
+
+    // 1. Chặn window.open (chặn mở tab/popup mới)
+    window.open = function(url, target, features) {
+        console.log("[Anti-Redirect] Đã chặn window.open ->", url);
+        return null; // Trả về null để vô hiệu hóa
+    };
+
+    // 2. Chặn các phương thức chuyển hướng location
+    try {
+        var initialOrigin = window.location.origin;
+
+        window.location.assign = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.assign ->", url);
+        };
+        
+        window.location.replace = function(url) {
+            console.log("[Anti-Redirect] Đã chặn location.replace ->", url);
+        };
+
+        var originalLocation = window.location;
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+                return originalLocation;
+            },
+            set: function(val) {
+                console.log("[Anti-Redirect] Đã chặn đổi location.href ->", val);
+                return originalLocation.href;
+            }
+        });
+    } catch (e) {
+        console.log("[Anti-Redirect Warning] Không thể khóa location descriptor:", e.message);
+    }
+
+    // 3. Chặn sự kiện trước/khi chuyển trang (beforeunload trap)
+    window.addEventListener('beforeunload', function(e) {
+        e.stopPropagation();
+    }, true);
+
+    // 4. Bắt và chặn click vào thẻ <a> mở tab mới
+    document.addEventListener('click', function(e) {
+        var target = e.target;
+        while (target && target.tagName !== 'A') {
+            target = target.parentNode;
+        }
+
+        if (target && target.tagName === 'A') {
+            var href = target.getAttribute('href');
+            var targetAttr = target.getAttribute('target');
+
+            if (targetAttr === '_blank' || (href && href.startsWith('javascript:'))) {
+                console.log("[Anti-Redirect] Đã chặn click thẻ A nguy hiểm ->", href);
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+    }, true);
+
+    // 5. Chặn tự động submit Form nhảy trang quảng cáo
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form && form.getAttribute('target') === '_blank') {
+            console.log("[Anti-Redirect] Đã chặn Form submit _blank");
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
+
+})();
+
+
+function bridgeLog(msg, check) {
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.log === 'function') {
+        window.SnifferBridge.log(msg);
+        if (check === true && typeof window.SnifferBridge.toast === 'function') {
+          window.SnifferBridge.toast(msg, 1000);
+        }
+      } else if (typeof console !== 'undefined' && console.log) {
+        console.log(msg);
+      }
+    } catch(e) {}
+}
+
+function envideo(){
+  if(VIDEOEND == 1){
+    window.SnifferBridge.play("https://google.com", "");
+  }
+}
+  
+(function injectCSS() {
+  try {
+    const cssStyle = "body,html,*{display:none!important,backgroud:black!important;opacity:0!important;z-index:-999999}";
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.setAttribute('data-injected-by', 'custom-script');
+
+    if (styleElement.styleSheet) {
+      styleElement.styleSheet.cssText = cssStyle;
+    } else {
+      if(CSSBLOCK == 1){
+        styleElement.appendChild(document.createTextNode(cssStyle));
+      }
+    }
+
+    const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+
+    if (targetNode) {
+      if(CSSBLOCK == 1){
+        targetNode.appendChild(styleElement);
+        bridgeLog("Chèn css ngay lập tức.")
+      }
+    } else {
+      document.addEventListener('DOMContentLoaded', function () {
+        (document.head || document.documentElement).appendChild(styleElement);
+        setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+          }
+        },2000)
+        bridgeLog("Chèn Css sau khi load xong")
+      });
+    }
+  } catch (error) {
+    bridgeLog('Không thể chèn CSS tự động, bỏ qua lỗi:', error);
+  }
+})();
+
+(function initLocalBlobSniffer() {
+  if (window.__BLOB_SNIFFER_INITIALIZED__) return;
+  window.__BLOB_SNIFFER_INITIALIZED__ = 1;
+
+  var hasDispatchedAny = 0;
+  var isFinished = 0;
+  var timeoutTimer = null;
+  var domScanInterval = null;
+
+  bridgeLog("Đang tiến hành tìm link Video, xin chờ....", true);
+
+  timeoutTimer = setTimeout(function() {
+    if (hasDispatchedAny === 0 && isFinished === 0) {
+      isFinished = 1;
+      if (domScanInterval) clearInterval(domScanInterval);
+      bridgeLog("❌ [TIMEOUT] Đã quá 20 giây nhưng không tìm thấy M3U8/Blob!", false);
+      bridgeLog("Không tìm thấy link video (Hết thời gian 20s).", true);
+      
+      if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+        envideo();
+      }
+    }
+  }, 20000);
+
+  function stopTimeout() {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      timeoutTimer = null;
+    }
+    if (domScanInterval) {
+      clearInterval(domScanInterval);
+      domScanInterval = null;
+    }
+  }
+
+  function isValidM3U8(content) {
+    if (typeof content !== 'string') return false;
+    var trimmed = content.trim();
+    return trimmed.indexOf('#EXTM3U') === 0 && 
+          (trimmed.indexOf('#EXTINF') !== -1 || trimmed.indexOf('#EXT-X-STREAM-INF') !== -1);
+  }
+
+  function dispatchM3u8ToApp(m3u8Content) {
+    if (!m3u8Content || hasDispatchedAny === 1) return;
+    hasDispatchedAny = 1;
+    isFinished = 1;
+    stopTimeout();
+
+    bridgeLog('🎯 [LOCAL-DISPATCH] Đã tìm thấy M3U8! Đang nạp vào Local Player...');
+    bridgeLog("🎯 Bắt link thành công! Đang phát video...", true);
+
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
+        window.SnifferBridge.playM3u8Content(m3u8Content, window.location.href);
+      } else {
+        bridgeLog('❌ SnifferBridge.playM3u8Content không khả dụng!');
+      }
+    } catch(e) {
+      bridgeLog('❌ [DISPATCH ERROR]: ' + e.message);
+    }
+  }
+
+  // =========================================================================
+  // HOOK NETWORK (FETCH / XHR) VÀ SCAN DOM KHI HOOK_NETWORK_AND_DOM = 1
+  // =========================================================================
+  if (HOOK_NETWORK_AND_DOM === 1) {
+    // 1. Hook Fetch API để chặn và bắt tập tin .m3u8 được tải qua Fetch
+    try {
+      if (typeof window.fetch !== 'undefined') {
+        var originalFetch = window.fetch;
+        window.fetch = function() {
+          var args = arguments;
+          return originalFetch.apply(this, args).then(function(response) {
+            if (isFinished === 0 && response && response.clone) {
+              var url = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+              var clone = response.clone();
+              clone.text().then(function(text) {
+                if (isValidM3U8(text)) {
+                  bridgeLog('🎯 [NETWORK-FETCH] Tìm thấy M3U8 từ Fetch Request: ' + url);
+                  dispatchM3u8ToApp(text);
+                }
+              }).catch(function(){});
+            }
+            return response;
+          });
+        };
+        bridgeLog('🚀 [INIT] Đã Hook Fetch thành công.');
+      }
+    } catch (e) {
+      bridgeLog('❌ [HOOK-FETCH-ERROR]: ' + e.message);
+    }
+
+    // 2. Hook XMLHttpRequest (XHR) để bắt tập tin .m3u8 được tải qua AJAX
+    try {
+      if (typeof XMLHttpRequest !== 'undefined') {
+        var originalXHR = XMLHttpRequest.prototype.open;
+        var originalSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function(method, url) {
+          this._url = url;
+          return originalXHR.apply(this, arguments);
+        };
+
+        XMLHttpRequest.prototype.send = function() {
+          this.addEventListener('load', function() {
+            if (isFinished === 0 && this.responseText) {
+              if (isValidM3U8(this.responseText)) {
+                bridgeLog('🎯 [NETWORK-XHR] Tìm thấy M3U8 từ XHR Request: ' + (this._url || ''));
+                dispatchM3u8ToApp(this.responseText);
+              }
+            }
+          });
+          return originalSend.apply(this, arguments);
+        };
+        bridgeLog('🚀 [INIT] Đã Hook XHR thành công.');
+      }
+    } catch (e) {
+      bridgeLog('❌ [HOOK-XHR-ERROR]: ' + e.message);
+    }
+
+    // 3. Đọc DOM định kỳ để tìm thẻ <video> đã gán link Blob sẵn
+    domScanInterval = setInterval(function() {
+      if (isFinished === 1) return;
+      var videos = document.getElementsByTagName('video');
+      for (var i = 0; i < videos.length; i++) {
+        var src = videos[i].src || videos[i].currentSrc;
+        if (src && src.startsWith('blob:')) {
+          bridgeLog('🔍 [DOM-SCAN] Đã phát hiện thẻ Video chứa Blob URL: ' + src);
+          // Lưu ý: Nếu muốn gửi trực tiếp URL blob này về App phát lại trong WebView
+          // bạn có thể thêm hàm gọi SnifferBridge tương ứng ở đây.
+        }
+      }
+    }, 1000);
+  }
+
+  // =========================================================================
+  // HOOK URL.createObjectURL (GIỮ NGUYÊN TỪ SCRIPT CŨ)
+  // =========================================================================
+  try {
+    if (typeof URL !== 'undefined' && URL.createObjectURL) {
+      var originalCreateObjectURL = URL.createObjectURL;
+      
+      URL.createObjectURL = function(blob) {
+        var blobUrl = originalCreateObjectURL.apply(this, arguments);
+
+        if (isFinished === 0 && blob && (blob instanceof Blob || blob instanceof File)) {
+          var processContent = function(content) {
+            if (isValidM3U8(content)) {
+              bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
+              dispatchM3u8ToApp(content);
+            }
+          };
+
+          if (typeof blob.text === 'function') {
+            blob.text().then(processContent).catch(function(){});
+          } else {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              processContent(e.target.result);
+            };
+            reader.readAsText(blob);
+          }
+        }
+
+        return blobUrl;
+      };
+      
+      bridgeLog('🚀 [INIT] Đã Hook URL.createObjectURL thành công.');
+      setTimeout(function(){
+          if(HTMLRAW == 1 && NUMBERRAW == 0){
+            NUMBERRAW = 1;
+            if(BODYRAW == 1){
+              var rawhtml = document.getElementsByTagName("body")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+            else{
+              var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
+              bridgeLog("RAWHTML: " + rawhtml)
+            }
+          }
+        },2000)
+    }
+  } catch (e) {
+    bridgeLog('❌ [INIT-ERROR]: ' + e.message);
+  }
+})();
+  `;
 }
 
 //BASEURL = "https://phimnganhdc.com";
@@ -335,269 +727,51 @@ function parseDetailResponse(html, url) {
 //JSON.parse(parseDetailResponse(html, url))
 
 function sortEpisodesByName(data) {
+    if (!Array.isArray(data)) return data;
+
+    // 1. Sắp xếp lại danh sách server: Server có tên chứa "vietsub" xuống dưới cùng
+    data.sort((a, b) => {
+        const nameA = (a.name || "").toLowerCase();
+        const nameB = (b.name || "").toLowerCase();
+
+        const isVietsubA = nameA.includes("vietsub");
+        const isVietsubB = nameB.includes("vietsub");
+
+        if (isVietsubA && !isVietsubB) return 1;  // a chứa vietsub -> đẩy xuống dưới
+        if (!isVietsubA && isVietsubB) return -1; // b chứa vietsub -> đẩy b xuống dưới (a lên trên)
+        return 0; // Nếu cả 2 cùng chứa hoặc cùng không chứa thì giữ nguyên vị trí
+    });
+
+    // 2. Sắp xếp danh sách tập theo số tập (như cũ)
     data.forEach(server => {
         if (server.episodes && Array.isArray(server.episodes)) {
             server.episodes.sort((a, b) => {
-                // Sử dụng Regex để tìm số đứng ngay sau chữ "Tập" (Không phân biệt hoa thường)
-                const matchA = a.name.match(/Tập\s*(\d+)/i);
-                const matchB = b.name.match(/Tập\s*(\d+)/i);
+                const matchA = (a.name || "").match(/Tập\s*(\d+)/i);
+                const matchB = (b.name || "").match(/Tập\s*(\d+)/i);
                 
-                // Nếu tìm thấy số thì chuyển thành kiểu Int, nếu không thấy thì mặc định là 0
                 const numA = matchA ? parseInt(matchA[1], 10) : 0;
                 const numB = matchB ? parseInt(matchB[1], 10) : 0;
                 
-                // Sắp xếp tăng dần: Số nhỏ xếp trước (lên trên), số lớn xếp sau (xuống dưới)
                 return numA - numB;
             });
         }
     });
+
     return data;
 }
 
-function textJS($links) {
-    return `
-LINKVIDEO = ${JSON.stringify($links)};
 
-const style = document.createElement('style');
-var customcss = 'body { background: black; overflow: hidden; }body * {background: black;display:none!important}';
-style.innerHTML = customcss;
-//document.head.appendChild(style);
 
-/* Build Video Begin */
-function initVideoOverlay() {
-    // 1. Dữ liệu bộ các server phim
-    const serverData = LINKVIDEO;
-    
-    let isRotated = false;
-    
-    // Tạo thẻ wrapper chính để bọc nội dung phục vụ việc xoay màn hình
-    const wrapper = document.createElement('div');
-    wrapper.className = 'page-main-wrapper';
-    
-    // Di chuyển toàn bộ cấu trúc cũ của trang web vào trong wrapper
-    while (document.body.firstChild) {
-        wrapper.appendChild(document.body.firstChild);
-    }
-    document.body.appendChild(wrapper);
-    
-    // ================= DOM PROXY PATCHES (VÁ LỖI HỆ THỐNG) =================
-    const originalAppendChild = document.body.appendChild;
-    const originalRemoveChild = document.body.removeChild;
-    const originalInsertBefore = document.body.insertBefore;
-    
-    document.body.appendChild = function(child) {
-        // Chỉ để Loading và Style ở ngoài body gốc
-        if (child === loadingEl || child.tagName === 'STYLE') {
-            return originalAppendChild.call(this, child);
-        }
-        return wrapper.appendChild(child);
-    };
-    
-    document.body.removeChild = function(child) {
-        if (wrapper.contains(child)) {
-            return wrapper.removeChild(child);
-        }
-        if (child.parentNode === this) {
-            return originalRemoveChild.call(this, child);
-        }
-        if (child.parentNode) {
-            return child.parentNode.removeChild(child);
-        }
-        return child;
-    };
-    
-    document.body.insertBefore = function(newChild, refChild) {
-        if (refChild && wrapper.contains(refChild)) {
-            return wrapper.insertBefore(newChild, refChild);
-        }
-        if (!refChild || refChild.parentNode === this) {
-            return originalInsertBefore.call(this, newChild, refChild);
-        }
-        if (refChild && refChild.parentNode) {
-            return refChild.parentNode.insertBefore(newChild, refChild);
-        }
-        return originalInsertBefore.call(this, newChild, refChild);
-    };
-    // =============================================================================
-    
-    // 2. Tiêm cấu trúc CSS động vào thẻ Head
-    const style = document.createElement('style');
-    style.textContent = 'html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden;}.page-main-wrapper {width: 100%;height: 100%;position: relative;}/* Xoay wrapper -90deg để khớp hướng màn hình ngang */.page-main-wrapper.force-rotate {position: fixed !important;top: 50% !important;left: 50% !important;width: 100vh !important;  height: 100vw !important; transform: translate(-50%, -50%) rotate(-90deg) !important;transform-origin: center !important;z-index: 9996 !important;background: #000 !important;overflow: hidden !important;}/* Giao diện nút bấm (Bây giờ nằm TRONG wrapper nên sẽ tự động xoay theo video) */.server-container { position: fixed; top: 15px; right: 15px; z-index: 10000; font-family: Arial, sans-serif; display: flex; flex-direction: row!important; gap: 8px; align-items: center;font-size:12px}.server-btn-wrapper { position: relative;}.server-main-btn, .server-rotate-btn {background: rgba(0, 0, 0, 0.6); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 4px!important; border-radius: 4px; cursor: pointer; backdrop-filter: blur(5px); font-weight: bold; min-width: 60px!important; text-align: center; box-sizing: border-box;}.server-main-btn:hover, .server-rotate-btn:hover { background: rgba(0, 0, 0, 0.8); border-color: rgba(255, 255, 255, 0.6);}.server-dropdown { display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; background: rgba(20, 20, 20, 0.95); border: 1px solid #444; border-radius: 4px; min-width: 160px; overflow: hidden;}.server-dropdown.show { display: block;}.server-item { padding: 12px 15px; color: #ccc; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 14px; border-left: 4px solid transparent;}.server-item:hover { background: #333; color: #fff;}.server-item.active { color: #fff; background: rgba(0, 255, 0, 0.15); border-left: 4px solid #00ff00; font-weight: bold;}.overlay-black { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: #000 !important; z-index: 9990 !important; display: none;}.iframe-wrapper { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 9991 !important; border: none !important; display: none; background: #000 !important;}/* Hiệu ứng Loading giữ nguyên thẳng màn hình */.server-loading-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; display: none; text-align: center; color: #fff; pointer-events: none; font-family: Arial, sans-serif;}.server-spinner { width: 45px; height: 45px; border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid #00ff00; border-radius: 50%; margin: 0 auto 12px auto; animation: server-spin 0.8s linear infinite;}@keyframes server-spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);}}';
-    document.head.appendChild(style);
-    
-    // 3. Khởi tạo Loading ở body gốc
-    const loadingEl = document.createElement('div');
-    loadingEl.className = 'server-loading-box';
-    loadingEl.innerHTML = '<div class="server-spinner"></div><div>Đang tải server...</div>';
-    originalAppendChild.call(document.body, loadingEl);
-    
-    // Khởi tạo các thành phần giao diện điều khiển nằm TRONG wrapper để xoay đồng bộ
-    const container = document.createElement('div');
-    container.className = 'server-container';
-    
-    const overlay = document.createElement('div');
-    overlay.className = 'overlay-black';
-    wrapper.appendChild(overlay);
-    
-    const iframeCache = {};
-    
-    function pauseAllVideos() {
-        wrapper.querySelectorAll('video').forEach(v => v.pause());
-    }
-    
-    function toggleRotation() {
-        isRotated = !isRotated;
-        btnRotate.innerText = isRotated ? 'Xoay' : 'Xoay';
-        wrapper.classList.toggle('force-rotate', isRotated);
-    }
-    
-    function switchServer(targetLink) {
-        const isCurrentPage = window.location.href.includes(targetLink) || targetLink.includes(window.location.href);
-        
-        if (isCurrentPage) {
-            overlay.style.display = 'none';
-            loadingEl.style.display = 'none';
-            wrapper.querySelectorAll('.iframe-wrapper').forEach(el => el.style.display = 'none');
-            updateButtons(targetLink);
-            return;
-        }
-        
-        pauseAllVideos();
-        overlay.style.display = 'block';
-        wrapper.querySelectorAll('.iframe-wrapper').forEach(el => el.style.display = 'none');
-        
-        if (!iframeCache[targetLink]) {
-            loadingEl.style.display = 'block';
-            
-            const iframe = document.createElement('iframe');
-            iframe.className = 'iframe-wrapper';
-            iframe.src = targetLink;
-            iframe.allowFullscreen = true;
-            iframe.allow = "autoplay; encrypted-media";
-            
-            iframe.onload = function() {
-                loadingEl.style.display = 'none';
-            };
-            
-            wrapper.appendChild(iframe);
-            iframeCache[targetLink] = iframe;
-        } else {
-            loadingEl.style.display = 'none';
-        }
-        
-        iframeCache[targetLink].style.display = 'block';
-        updateButtons(targetLink);
-    }
-    
-    function updateButtons(activeLink) {
-        document.querySelectorAll('.server-item').forEach(el => {
-            const link = el.getAttribute('data-link');
-            el.classList.toggle('active', link === activeLink);
-        });
-    }
-    
-    // 4. Dựng nút bấm điều khiển
-    const btnWrapper = document.createElement('div');
-    btnWrapper.className = 'server-btn-wrapper';
-    
-    const btnMain = document.createElement('button');
-    btnMain.className = 'server-main-btn';
-    btnMain.innerText = 'Server';
-    
-    const dropdown = document.createElement('div');
-    dropdown.className = 'server-dropdown';
-    
-    serverData.forEach(s => {
-        const item = document.createElement('div');
-        item.className = 'server-item';
-        item.innerText = s.name;
-        item.setAttribute('data-link', s.link);
-        item.onclick = () => {
-            switchServer(s.link);
-            dropdown.classList.remove('show');
-        };
-        dropdown.appendChild(item);
-    });
-    
-    btnMain.onclick = (e) => { e.stopPropagation();
-        dropdown.classList.toggle('show'); };
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
-    
-    btnWrapper.appendChild(btnMain);
-    btnWrapper.appendChild(dropdown);
-    
-    const btnRotate = document.createElement('button');
-    btnRotate.className = 'server-rotate-btn';
-    btnRotate.innerText = 'Xoay';
-    btnRotate.onclick = (e) => {
-        e.stopPropagation();
-        toggleRotation();
-    };
-    
-    container.appendChild(btnWrapper);
-    container.appendChild(btnRotate);
-    
-    // Đưa container nút bấm vào wrapper
-    wrapper.appendChild(container);
-    
-    const currentUrl = window.location.href;
-    const initialMatch = serverData.find(s => currentUrl.includes(s.link) || s.link.includes(currentUrl));
-    if (initialMatch) {
-        updateButtons(initialMatch.link);
-    }
+function decodeHTMLEntities(text) {
+    if (!text) return "";
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'");
 }
-
-var DEVELOPE = false;
-
-// ─── HÀM TOAST DÙNG CHUNG ───
-function showToast(message, duration, check) {
-    if (typeof duration === 'undefined') duration = 7000;
-    if (typeof check === 'undefined') check = true;
-    if (check === false) return;
-    var container = document.getElementById('global-toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'global-toast-container';
-        container.style.cssText =
-            'position:fixed;bottom:20px;right:20px;z-index:9999999;display:flex;flex-direction:column;gap:10px;';
-        document.body.appendChild(container);
-    }
-    var toastEl = document.createElement('div');
-    toastEl.innerHTML = message;
-    toastEl.style.cssText =
-        'background:rgba(50,50,50,0.95);color:#fff;padding:12px 24px;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;min-width:200px;transition:all 0.3s ease;transform:translateX(120%);opacity:0;';
-    container.appendChild(toastEl);
-    setTimeout(function() {
-        toastEl.style.transform = 'translateX(0)';
-        toastEl.style.opacity = '1';
-    }, 10);
-    setTimeout(function() {
-        toastEl.style.transform = 'translateX(120%)';
-        toastEl.style.opacity = '0';
-        setTimeout(function() {
-            toastEl.remove();
-            if (container.childElementCount === 0) container.remove();
-        }, 300);
-    }, duration);
-}
-
-/* Build Video End */
-
-// Kích hoạt chạy script sau khi website hoàn tất tải (load) 10 giây
-function startDelayedScript() {
-    setTimeout(function() {
-        initVideoOverlay();
-    }, 10000);
-}
-
-if (document.readyState === 'complete') {
-    startDelayedScript();
-} else {
-    window.addEventListener('load', startDelayedScript);
-}
-`;
-}
-
 
 function parseCategoriesResponse(apiResponseJson) {
     var listurl = getLISTmenu();

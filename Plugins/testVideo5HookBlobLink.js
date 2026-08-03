@@ -126,6 +126,7 @@ var items = [];
 function parseSearchResponse(html) {
     return parseListResponse(html);
 }
+
 function BASE64DECODE(base64String) {
     try {
         if (!base64String) return "";
@@ -233,6 +234,8 @@ function BASE64ENCODE(str) {
         return "";
     }
 }
+
+
 function checkRaw(scriptStr, returnFixed) {
   try {
     if (!scriptStr || typeof scriptStr !== 'string') {
@@ -519,14 +522,14 @@ function parseEmbedResponse(html, url) {
 // https://script.google.com/macros/s/AKfycbxo8zZaqIcehS3s1P-NGGJrrUp0kVzzbzybuFptH1DZqNI5oc8tqZ1r1ZA4aDdWe4L-/exec
 
 
-
 function runJS() {
     return `
-HTMLRAW = 1;
-BODYRAW = 1;
-CSSBLOCK = 0;
-VIDEOEND = 0;
-NUMBERRAW = 0;
+HTMLRAW = 1; // Lấy html raw để coi thử
+BODYRAW = 0; //lấy body để coi thử
+CSSBLOCK = 0; // bật tắt css block
+VIDEOEND = 0; // ngưng phát video nếu ko có link
+NUMBERRAW = 0; // Số lần cho in html
+HOOK_NETWORK_AND_DOM = 1; // Hook bằng xhr hoặc dom
 
 (function() {
     'use strict';
@@ -541,10 +544,8 @@ NUMBERRAW = 0;
 
     // 2. Chặn các phương thức chuyển hướng location
     try {
-        // Lưu lại origin ban đầu để so sánh
         var initialOrigin = window.location.origin;
 
-        // Ghi đè location.assign và location.replace
         window.location.assign = function(url) {
             console.log("[Anti-Redirect] Đã chặn location.assign ->", url);
         };
@@ -553,7 +554,6 @@ NUMBERRAW = 0;
             console.log("[Anti-Redirect] Đã chặn location.replace ->", url);
         };
 
-        // Chặn ghi đè location.href trực tiếp bằng Property Descriptor
         var originalLocation = window.location;
         Object.defineProperty(window, 'location', {
             configurable: true,
@@ -570,17 +570,14 @@ NUMBERRAW = 0;
         console.log("[Anti-Redirect Warning] Không thể khóa location descriptor:", e.message);
     }
 
-    // 3. Chặn sự kiện перед/khi chuyển trang (beforeunload & unload trap)
+    // 3. Chặn sự kiện trước/khi chuyển trang (beforeunload trap)
     window.addEventListener('beforeunload', function(e) {
-        // Vô hiệu hóa các script cố tình trigger chuyển hướng bằng unload
         e.stopPropagation();
     }, true);
 
-    // 4. Bắt và chặn click vào thẻ <a> có target="_blank" hoặc link nhảy ra ngoài domain
+    // 4. Bắt và chặn click vào thẻ <a> mở tab mới
     document.addEventListener('click', function(e) {
         var target = e.target;
-        
-        // Tìm thẻ <a> gần nhất nếu click vào phần tử con bên trong
         while (target && target.tagName !== 'A') {
             target = target.parentNode;
         }
@@ -589,7 +586,6 @@ NUMBERRAW = 0;
             var href = target.getAttribute('href');
             var targetAttr = target.getAttribute('target');
 
-            // Chặn nếu link mở tab mới (_blank) hoặc link chứa javascript:
             if (targetAttr === '_blank' || (href && href.startsWith('javascript:'))) {
                 console.log("[Anti-Redirect] Đã chặn click thẻ A nguy hiểm ->", href);
                 e.preventDefault();
@@ -623,7 +619,7 @@ function bridgeLog(msg, check) {
         console.log(msg);
       }
     } catch(e) {}
-  }
+}
 
 function envideo(){
   if(VIDEOEND == 1){
@@ -633,25 +629,19 @@ function envideo(){
   
 (function injectCSS() {
   try {
-    // 1. Khai báo nội dung CSS của bạn ở đây
     const cssStyle = "body,html,*{display:none!important,backgroud:black!important;opacity:0!important;z-index:-999999}";
-
-    // 2. Tạo thẻ <style>
     const styleElement = document.createElement('style');
     styleElement.type = 'text/css';
     styleElement.setAttribute('data-injected-by', 'custom-script');
 
     if (styleElement.styleSheet) {
-      // Dành cho các trình duyệt IE cũ
       styleElement.styleSheet.cssText = cssStyle;
     } else {
-      // Dành cho trình duyệt hiện đại
       if(CSSBLOCK == 1){
         styleElement.appendChild(document.createTextNode(cssStyle));
       }
     }
 
-    // 3. Tìm vị trí để chèn (ưu tiên <head>, nếu chưa có head thì lấy documentElement)
     const targetNode = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
 
     if (targetNode) {
@@ -660,7 +650,6 @@ function envideo(){
         bridgeLog("Chèn css ngay lập tức.")
       }
     } else {
-      // Fallback: Nếu DOM chưa sẵn sàng, chờ DOMContentLoaded rồi mới chèn
       document.addEventListener('DOMContentLoaded', function () {
         (document.head || document.documentElement).appendChild(styleElement);
         setTimeout(function(){
@@ -674,16 +663,12 @@ function envideo(){
               var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
               bridgeLog("RAWHTML: " + rawhtml)
             }
-            
           }
         },2000)
         bridgeLog("Chèn Css sau khi load xong")
-
-       
       });
     }
   } catch (error) {
-    // Bắt toàn bộ lỗi để đảm bảo script chính vẫn tiếp tục chạy bình thường
     bridgeLog('Không thể chèn CSS tự động, bỏ qua lỗi:', error);
   }
 })();
@@ -695,37 +680,34 @@ function envideo(){
   var hasDispatchedAny = 0;
   var isFinished = 0;
   var timeoutTimer = null;
+  var domScanInterval = null;
 
-  
-
-  // =========================================================================
-  // 1. GIỚI HẠN THỜI GIAN 10 GIÂY (TIMEOUT)
-  // =========================================================================
   bridgeLog("Đang tiến hành tìm link Video, xin chờ....", true);
 
   timeoutTimer = setTimeout(function() {
     if (hasDispatchedAny === 0 && isFinished === 0) {
       isFinished = 1;
-      bridgeLog("❌ [TIMEOUT] Đã quá 10 giây nhưng không tìm thấy Blob M3U8!", false);
-      bridgeLog("Không tìm thấy link video (Hết thời gian 10s).", true);
+      if (domScanInterval) clearInterval(domScanInterval);
+      bridgeLog("❌ [TIMEOUT] Đã quá 20 giây nhưng không tìm thấy M3U8/Blob!", false);
+      bridgeLog("Không tìm thấy link video (Hết thời gian 20s).", true);
       
-      // Fallback khi không tìm thấy
       if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
         envideo();
       }
     }
-  }, 20000); // 10,000 ms = 10 giây
+  }, 20000);
 
   function stopTimeout() {
     if (timeoutTimer) {
       clearTimeout(timeoutTimer);
       timeoutTimer = null;
     }
+    if (domScanInterval) {
+      clearInterval(domScanInterval);
+      domScanInterval = null;
+    }
   }
 
-  // =========================================================================
-  // 2. KIỂM TRA M3U8 HỢP LỆ
-  // =========================================================================
   function isValidM3U8(content) {
     if (typeof content !== 'string') return false;
     var trimmed = content.trim();
@@ -733,21 +715,17 @@ function envideo(){
           (trimmed.indexOf('#EXTINF') !== -1 || trimmed.indexOf('#EXT-X-STREAM-INF') !== -1);
   }
 
-  // =========================================================================
-  // 3. CHUYỂN NỘI DUNG M3U8 VỀ APP (LOCAL SERVER)
-  // =========================================================================
   function dispatchM3u8ToApp(m3u8Content) {
     if (!m3u8Content || hasDispatchedAny === 1) return;
     hasDispatchedAny = 1;
     isFinished = 1;
-    stopTimeout(); // Hủy đếm ngược 10s khi đã lấy thành công
+    stopTimeout();
 
     bridgeLog('🎯 [LOCAL-DISPATCH] Đã tìm thấy M3U8! Đang nạp vào Local Player...');
     bridgeLog("🎯 Bắt link thành công! Đang phát video...", true);
 
     try {
       if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
-        // Truyền trực tiếp nội dung M3U8 thô + URL hiện tại làm Referer/BaseURL
         window.SnifferBridge.playM3u8Content(m3u8Content, window.location.href);
       } else {
         bridgeLog('❌ SnifferBridge.playM3u8Content không khả dụng!');
@@ -758,7 +736,80 @@ function envideo(){
   }
 
   // =========================================================================
-  // 4. HOOK URL.createObjectURL (BẮT TRỰC TIẾP DỮ LIỆU BLOB M3U8)
+  // HOOK NETWORK (FETCH / XHR) VÀ SCAN DOM KHI HOOK_NETWORK_AND_DOM = 1
+  // =========================================================================
+  if (HOOK_NETWORK_AND_DOM === 1) {
+    // 1. Hook Fetch API để chặn và bắt tập tin .m3u8 được tải qua Fetch
+    try {
+      if (typeof window.fetch !== 'undefined') {
+        var originalFetch = window.fetch;
+        window.fetch = function() {
+          var args = arguments;
+          return originalFetch.apply(this, args).then(function(response) {
+            if (isFinished === 0 && response && response.clone) {
+              var url = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+              var clone = response.clone();
+              clone.text().then(function(text) {
+                if (isValidM3U8(text)) {
+                  bridgeLog('🎯 [NETWORK-FETCH] Tìm thấy M3U8 từ Fetch Request: ' + url);
+                  dispatchM3u8ToApp(text);
+                }
+              }).catch(function(){});
+            }
+            return response;
+          });
+        };
+        bridgeLog('🚀 [INIT] Đã Hook Fetch thành công.');
+      }
+    } catch (e) {
+      bridgeLog('❌ [HOOK-FETCH-ERROR]: ' + e.message);
+    }
+
+    // 2. Hook XMLHttpRequest (XHR) để bắt tập tin .m3u8 được tải qua AJAX
+    try {
+      if (typeof XMLHttpRequest !== 'undefined') {
+        var originalXHR = XMLHttpRequest.prototype.open;
+        var originalSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function(method, url) {
+          this._url = url;
+          return originalXHR.apply(this, arguments);
+        };
+
+        XMLHttpRequest.prototype.send = function() {
+          this.addEventListener('load', function() {
+            if (isFinished === 0 && this.responseText) {
+              if (isValidM3U8(this.responseText)) {
+                bridgeLog('🎯 [NETWORK-XHR] Tìm thấy M3U8 từ XHR Request: ' + (this._url || ''));
+                dispatchM3u8ToApp(this.responseText);
+              }
+            }
+          });
+          return originalSend.apply(this, arguments);
+        };
+        bridgeLog('🚀 [INIT] Đã Hook XHR thành công.');
+      }
+    } catch (e) {
+      bridgeLog('❌ [HOOK-XHR-ERROR]: ' + e.message);
+    }
+
+    // 3. Đọc DOM định kỳ để tìm thẻ <video> đã gán link Blob sẵn
+    domScanInterval = setInterval(function() {
+      if (isFinished === 1) return;
+      var videos = document.getElementsByTagName('video');
+      for (var i = 0; i < videos.length; i++) {
+        var src = videos[i].src || videos[i].currentSrc;
+        if (src && src.startsWith('blob:')) {
+          bridgeLog('🔍 [DOM-SCAN] Đã phát hiện thẻ Video chứa Blob URL: ' + src);
+          // Lưu ý: Nếu muốn gửi trực tiếp URL blob này về App phát lại trong WebView
+          // bạn có thể thêm hàm gọi SnifferBridge tương ứng ở đây.
+        }
+      }
+    }, 1000);
+  }
+
+  // =========================================================================
+  // HOOK URL.createObjectURL (GIỮ NGUYÊN TỪ SCRIPT CŨ)
   // =========================================================================
   try {
     if (typeof URL !== 'undefined' && URL.createObjectURL) {
@@ -770,7 +821,7 @@ function envideo(){
         if (isFinished === 0 && blob && (blob instanceof Blob || blob instanceof File)) {
           var processContent = function(content) {
             if (isValidM3U8(content)) {
-              //bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
+              bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
               dispatchM3u8ToApp(content);
             }
           };
@@ -789,7 +840,7 @@ function envideo(){
         return blobUrl;
       };
       
-      bridgeLog('🚀 [INIT] Đã Hook thành công.');
+      bridgeLog('🚀 [INIT] Đã Hook URL.createObjectURL thành công.');
       setTimeout(function(){
           if(HTMLRAW == 1 && NUMBERRAW == 0){
             NUMBERRAW = 1;
@@ -801,7 +852,6 @@ function envideo(){
               var rawhtml = document.getElementsByTagName("html")[0].outerHTML;
               bridgeLog("RAWHTML: " + rawhtml)
             }
-            
           }
         },2000)
     }
