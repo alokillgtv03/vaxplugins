@@ -10,7 +10,7 @@ function getManifest() {
     "author": "Alokillgtv",
     info: "Nguồn phim XXX khá nhiều video được vietsub.\n Nguồn này có server riêng nên chạy khá mượt..",
     baseUrl: "http://vkey.vn/sxvietsubs",
-    iconUrl: "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/animevv.png",
+    iconUrl: "http://vkey.vn/sxvietsubs/logo.png?v=20260718-1540",
     isEnabled: true,
     "adblock": false,
     "layoutType": "HORIZONTAL",
