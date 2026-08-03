@@ -2,6 +2,14 @@
     "version": 1,
     "plugins": [
         {
+            "id": "animevv",
+            "name": "Nguồn Animevv",
+            "version": "1.2",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1a7864df3ee9b33de716dae3dd08a0e9208bec63/Plugins/movie/animevv_plugin.js",
+            "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/animevv.png",
+            "info": "Nguồn phim Animevv, nguồn này dùng servers riêng của họ nên cũng khá mượt mà..."
+        },
+        {
             "id": "animehay",
             "name": "Nguồn Anime Hay",
             "version": "1.0.4",
@@ -37,7 +45,7 @@
             "id": "hhpanda",
             "name": "Nguồn HH Panda",
             "version": "1.2.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/hhpanda_plugin.js",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/hhpanda_plugin.js",
             "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp",
             "info": "Nguồn phim hoạt hình chất lượng cao, tuy nhiên cơ chế chiếu phát của nó rất khó chịu. Chỉ phát được trên máy chủ của họ còn phát qua app sẽ bị mất góc không tràn viền. Vì thế đã tích hợp bộ chỉnh kích cỡ video vào bên trong video. Bạn có thể chỉnh sao cho vừa màn hình. Chỉ cần chỉnh 1 lần là các lần sau sẽ dùng như vậy."
         },
@@ -52,8 +60,8 @@
         {
             "id": "motchill",
             "name": "Nguồn Motchill",
-            "version": "1.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/motchill_plugin.js",
+            "version": "1.2",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/motchill_plugin.js",
             "iconUrl": "https://motchille.cx/motchill.png",
             "info": "Phim hay, xem mượt. Nếu nguồn không vào được hãy thử truy cập bằng nút đăng nhập ở kho plugin để xem họ đổi domain gì và bạn tự đổi lại trên app và báo cho tác giả biết."
         },
@@ -108,8 +116,8 @@
         {
             "id": "phimchill",
             "name": "Phim Chill",
-            "version": "3.8.2",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimchill_plugin.js",
+            "version": "3.8.3",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/phimchill_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimchill.ico",
             "info": "Phim hay, xem mượt. Nếu nguồn không vào được hãy thử truy cập bằng nút đăng nhập ở kho plugin để xem họ đổi domain gì và bạn tự đổi lại trên app và báo cho tác giả biết."
         },
@@ -125,7 +133,7 @@
             "id": "phimhayok",
             "name": "Phim Hay Ok",
             "version": "1.1.3",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimhayok_plugin.js",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/phimhayok_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimhayok.jpg",
             "info": "Phim hay, xem mượt. Nếu nguồn không vào được hãy thử truy cập bằng nút đăng nhập ở kho plugin để xem họ đổi domain gì và bạn tự đổi lại trên app và báo cho tác giả biết."
         },
@@ -140,8 +148,8 @@
         {
             "id": "phimnganhdc",
             "name": "Phim Ngắn HDC",
-            "version": "1.4",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimnganhdc_plugin.js",
+            "version": "1.6",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/997a66db56f480d4a7ea9541ddb84b1b5942ad16/Plugins/movie/phimnganhdc_plugin.js",
             "iconUrl": "https://phimnganhdc.com/storage/files/logo-phimnganhdc.png",
             "info": "Phim hay, xem mượt. Nếu nguồn không vào được hãy thử truy cập bằng nút đăng nhập ở kho plugin để xem họ đổi domain gì và bạn tự đổi lại trên app và báo cho tác giả biết."
         },
@@ -164,8 +172,8 @@
         {
             "id": "vicdn",
             "name": "Nguồn Vicdn",
-            "version": "1.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/vicdn_plugin.js",
+            "version": "1.4",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/06e9946102b4fe89c6d31001f9cd5f8ec4b59377/Plugins/movie/vicdn_plugin.js",
             "iconUrl": "https://vicdn.cc/vicdn.png",
             "info": "Nguồn phim siêu xịn có chất lưowjng cao.
 Hỗ trợ nhiều luồng phát từ vietsub tới thuyết minh và lồng tiếng,
@@ -195,14 +203,6 @@ Hỗ trợ anh em chuyển tập và lưu lịch sử lại ngay khi đang xem."
             "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/xem20_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimchill.ico",
             "info": "Nguồn phim Xem20, có lẽ là tiền thân của nó là rophim.\nNguồn phim cũng khá là chất lượng.\nĐể sử dụng, các bạn cần vào ô đăng nhập ở plugin.\nCác bạn cần phải đăng ký tài khoản và dăng nhập mới có thể sử dụng."
-        },
-        {
-            "id": "animevv",
-            "name": "Nguồn Animevv",
-            "version": "1.2",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1a7864df3ee9b33de716dae3dd08a0e9208bec63/Plugins/movie/animevv_plugin.js",
-            "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/animevv.png",
-            "info": "Nguồn phim Animevv, nguồn này dùng servers riêng của họ nên cũng khá mượt mà.."
         },
         {
             "id": "vietanhtv",
