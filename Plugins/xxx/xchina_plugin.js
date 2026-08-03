@@ -12,6 +12,7 @@ function getManifest() {
     iconUrl: "https://xchina.co/images/sites/logo/1.png",
     isEnabled: true,
     "adblock": false,
+    "isAdult": true,
     "layoutType": "HORIZONTAL",
     type: "VIDEO",
     playerType: "exoplayer"
