@@ -2,6 +2,13 @@
     "version": 1,
     "plugins": [
         {
+            "id": "animevv",
+            "name": "Nguồn Animevv",
+            "version": "1.2",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1a7864df3ee9b33de716dae3dd08a0e9208bec63/Plugins/movie/animevv_plugin.js",
+            "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/animevv.png"
+        },
+        {
             "id": "animehay",
             "name": "Nguồn Anime Hay",
             "version": "1.0.4",
@@ -33,7 +40,7 @@
             "id": "hhpanda",
             "name": "Nguồn HH Panda",
             "version": "1.2.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/hhpanda_plugin.js",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/hhpanda_plugin.js",
             "iconUrl": "https://hhpanda.st/wp-content/uploads/2024/10/logo.webp"
         },
         {
@@ -46,8 +53,8 @@
         {
             "id": "motchill",
             "name": "Nguồn Motchill",
-            "version": "1.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/motchill_plugin.js",
+            "version": "1.2",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/motchill_plugin.js",
             "iconUrl": "https://motchille.cx/motchill.png"
         },
         {
@@ -95,8 +102,8 @@
         {
             "id": "phimchill",
             "name": "Phim Chill",
-            "version": "3.8.2",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimchill_plugin.js",
+            "version": "3.8.3",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/phimchill_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimchill.ico"
         },
         {
@@ -110,7 +117,7 @@
             "id": "phimhayok",
             "name": "Phim Hay Ok",
             "version": "1.1.3",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimhayok_plugin.js",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/movie/phimhayok_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimhayok.jpg"
         },
         {
@@ -123,8 +130,8 @@
         {
             "id": "phimnganhdc",
             "name": "Phim Ngắn HDC",
-            "version": "1.4",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/phimnganhdc_plugin.js",
+            "version": "1.6",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/997a66db56f480d4a7ea9541ddb84b1b5942ad16/Plugins/movie/phimnganhdc_plugin.js",
             "iconUrl": "https://phimnganhdc.com/storage/files/logo-phimnganhdc.png"
         },
         {
@@ -144,8 +151,8 @@
         {
             "id": "vicdn",
             "name": "Nguồn Vicdn",
-            "version": "1.1",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/vicdn_plugin.js",
+            "version": "1.4",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/06e9946102b4fe89c6d31001f9cd5f8ec4b59377/Plugins/movie/vicdn_plugin.js",
             "iconUrl": "https://vicdn.cc/vicdn.png"
         },
         {
@@ -168,13 +175,6 @@
             "version": "1.2",
             "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/movie/xem20_plugin.js",
             "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimchill.ico"
-        },
-        {
-            "id": "animevv",
-            "name": "Nguồn Animevv",
-            "version": "1.2",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1a7864df3ee9b33de716dae3dd08a0e9208bec63/Plugins/movie/animevv_plugin.js",
-            "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/animevv.png"
         },
         {
             "id": "vietanhtv",
@@ -261,17 +261,10 @@
             "iconUrl": "https://phimsexsuong3x.net/wp-content/uploads/2023/07/haysex3x-logo.png"
         },
         {
-            "id": "hentaivietsub",
-            "name": "Nguồn Hentaivietsub",
-            "version": "1.0",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/hentaivietsub_plugin.js",
-            "iconUrl": "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png"
-        },
-        {
             "id": "hentaiz1",
             "name": "Nguồn Hentaiz1",
-            "version": "1.2.3",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/hentaiz1_plugin.js",
+            "version": "1.2.4",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/xxx/hentaiz1_plugin.js",
             "iconUrl": "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png"
         },
         {
@@ -305,8 +298,8 @@
         {
             "id": "krx18",
             "name": "Phim 18+",
-            "version": "1.1.8",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/krx18_plugin.js",
+            "version": "1.2.1",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/58ba3bae70d97154919eb5d56eec1517289a0331/Plugins/xxx/krx18_plugin.js",
             "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png"
         },
         {
@@ -476,6 +469,13 @@
             "version": "1.1",
             "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/xchina_plugin.js",
             "iconUrl": "https://xchina.co/images/sites/logo/1.png"
+        },
+        {
+            "id": "sexvietsub",
+            "name": "Nguồn Sexvietsub",
+            "version": "1.0",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1e453b25768c7ed5b4e5df5d3b37512a94a6e1d3/Plugins/xxx/sexvietsub_plugin.js",
+            "iconUrl": "http://vkey.vn/sxvietsubs/logo.png?v=20260718-1540"
         }
     ]
 }
