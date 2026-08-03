@@ -4,7 +4,7 @@ if (typeof window === 'undefined') {
     var window = this;
 }
 
-window.BASE64DECODE function(base64String) {
+window.BASE64DECODE = function(base64String) {
     try {
         if (!base64String) return "";
 
@@ -65,7 +65,7 @@ window.BASE64DECODE function(base64String) {
         return "";
     }
 }
-window.BASE64ENCODE function(str) {
+window.BASE64ENCODE = function(str) {
     try {
         if (!str) return "";
 
