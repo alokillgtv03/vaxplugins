@@ -66,18 +66,10 @@
             "info": "XXX dành để tu luyện. Xem ít thôi."
         },
         {
-            "id": "hentaivietsub",
-            "name": "Nguồn Hentaivietsub",
-            "version": "1.0",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/hentaivietsub_plugin.js",
-            "iconUrl": "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
-            "info": "Nguồn dự phòng của HentaiZ1"
-        },
-        {
             "id": "hentaiz1",
             "name": "Nguồn Hentaiz1",
-            "version": "1.2.3",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/hentaiz1_plugin.js",
+            "version": "1.2.4",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/6ae6e1bb503b88e1ab558b950994298a971653e3/Plugins/xxx/hentaiz1_plugin.js",
             "iconUrl": "https://storage.haiten.org/2026/01/fe9f7b29-bb66-48eb-8a6f-ddc42efa00a5.png",
             "info": "Nguồn phim Hentai vietsub siêu dồi dào."
         },
@@ -116,8 +108,8 @@
         {
             "id": "krx18",
             "name": "Phim 18+",
-            "version": "1.1.8",
-            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/krx18_plugin.js",
+            "version": "1.2.1",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/58ba3bae70d97154919eb5d56eec1517289a0331/Plugins/xxx/krx18_plugin.js",
             "iconUrl": "https://krx18.com/wp-content/uploads/2022/10/krx18B.png",
             "info": "XXX dành để tu luyện. Xem ít thôi."
         },
@@ -312,6 +304,14 @@
             "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/3f22d788a87035e38da29ec892a3164107d8f407/Plugins/xxx/xchina_plugin.js",
             "iconUrl": "https://xchina.co/images/sites/logo/1.png",
             "info": "Nguồn XXX china, hơi bị chât lượng đó nha"
+        },
+        {
+            "id": "sexvietsub",
+            "name": "Nguồn Sexvietsub",
+            "version": "1.0",
+            "scriptUrl": "https://rawcdn.githack.com/alokillgtv03/vaxplugins/1e453b25768c7ed5b4e5df5d3b37512a94a6e1d3/Plugins/xxx/sexvietsub_plugin.js",
+            "iconUrl": "http://vkey.vn/sxvietsubs/logo.png?v=20260718-1540",
+            "info": "Nguồn phim XXX khá nhiều video được vietsub.\n Nguồn này có server riêng nên chạy khá mượt..""
         }
     ]
 }
