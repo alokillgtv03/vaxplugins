@@ -126,7 +126,6 @@ var items = [];
 function parseSearchResponse(html) {
     return parseListResponse(html);
 }
-
 function BASE64DECODE(base64String) {
     try {
         if (!base64String) return "";
@@ -234,7 +233,6 @@ function BASE64ENCODE(str) {
         return "";
     }
 }
-
 
 function checkRaw(scriptStr, returnFixed) {
   try {
@@ -522,27 +520,30 @@ function parseEmbedResponse(html, url) {
 // https://script.google.com/macros/s/AKfycbxo8zZaqIcehS3s1P-NGGJrrUp0kVzzbzybuFptH1DZqNI5oc8tqZ1r1ZA4aDdWe4L-/exec
 
 
+
 function runJS() {
     return `
-HTMLRAW = 1; // Lấy html raw để coi thử
-BODYRAW = 0; //lấy body để coi thử
+HTMLRAW = 0; // Lấy html raw để coi thử
+BODYRAW = 0; // lấy body để coi thử
 CSSBLOCK = 0; // bật tắt css block
 VIDEOEND = 0; // ngưng phát video nếu ko có link
 NUMBERRAW = 0; // Số lần cho in html
-HOOK_NETWORK_AND_DOM = 1; // Hook bằng xhr hoặc dom
+HOOK_NETWORK_AND_DOM = 0; // Hook bằng xhr hoặc dom
+ENABLE_PRIORITY_FILTER = 0; // 1 = Bật luồng ưu tiên quét Raw HTML (chờ 5s), 0 = Tắt (phát ngay khi bắt được M3U8)
+FILTER_KEYWORDS = ["google", "playlist", "mp4", "m3u8", "hls","master", "master.txt"]; // Các từ khóa lọc link trong Raw HTML
 
 (function() {
     'use strict';
     
     console.log("[Anti-Redirect] Đã kích hoạt bảo vệ!");
 
-    // 1. Chặn window.open (chặn mở tab/popup mới)
+    // 1. Chặn window.open
     window.open = function(url, target, features) {
         console.log("[Anti-Redirect] Đã chặn window.open ->", url);
-        return null; // Trả về null để vô hiệu hóa
+        return null;
     };
 
-    // 2. Chặn các phương thức chuyển hướng location
+    // 2. Chặn chuyển hướng location
     try {
         var initialOrigin = window.location.origin;
 
@@ -570,12 +571,12 @@ HOOK_NETWORK_AND_DOM = 1; // Hook bằng xhr hoặc dom
         console.log("[Anti-Redirect Warning] Không thể khóa location descriptor:", e.message);
     }
 
-    // 3. Chặn sự kiện trước/khi chuyển trang (beforeunload trap)
+    // 3. Chặn beforeunload
     window.addEventListener('beforeunload', function(e) {
         e.stopPropagation();
     }, true);
 
-    // 4. Bắt và chặn click vào thẻ <a> mở tab mới
+    // 4. Chặn thẻ A
     document.addEventListener('click', function(e) {
         var target = e.target;
         while (target && target.tagName !== 'A') {
@@ -595,7 +596,7 @@ HOOK_NETWORK_AND_DOM = 1; // Hook bằng xhr hoặc dom
         }
     }, true);
 
-    // 5. Chặn tự động submit Form nhảy trang quảng cáo
+    // 5. Chặn Form submit
     document.addEventListener('submit', function(e) {
         var form = e.target;
         if (form && form.getAttribute('target') === '_blank') {
@@ -682,20 +683,95 @@ function envideo(){
   var timeoutTimer = null;
   var domScanInterval = null;
 
+  var stagedM3u8Content = null; 
+  var priorityScanCompleted = false; 
+
   bridgeLog("Đang tiến hành tìm link Video, xin chờ....", true);
 
+  // =========================================================================
+  // XỬ LÝ UNESCAPE CHUỖI & TÌM LINK TỪ KHÓA TRONG RAW HTML
+  // =========================================================================
+  function unescapeUrl(str) {
+    if (!str) return '';
+    return str
+      .replace(/\\\\\\\\\\//g, '/')
+      .replace(/\\\\\\\\/g, '')
+      .replace(/\\\\\\\\u002F/gi, '/')
+      .replace(/\\\\\\\\u0026/gi, '&')
+      .replace(/&amp;/g, '&');
+  }
+
+  function scanPriorityKeywordsInHtml() {
+    bridgeLog("⚡ [PRIORITY] Đang tiến hành quét HTML Raw theo bộ lọc...");
+    try {
+      var rawHtml = document.documentElement ? document.documentElement.outerHTML : '';
+      if (!rawHtml) return null;
+
+      var urlRegex = /(https?:[\\\\\\\\\\/A-Za-z0-9_\\.\\-\\~\\%\\?\\&=\\+\\#\\:\\@]+)/gi;
+      var matches = rawHtml.match(urlRegex) || [];
+
+      for (var i = 0; i < matches.length; i++) {
+        var cleanUrl = unescapeUrl(matches[i]);
+        
+        var isMatched = FILTER_KEYWORDS.some(function(keyword) {
+          return cleanUrl.toLowerCase().indexOf(keyword.toLowerCase()) !== -1;
+        });
+
+        if (isMatched) {
+          cleanUrl = cleanUrl.replace(/[\\"'>]+$/, '');
+          return cleanUrl;
+        }
+      }
+    } catch(e) {
+      bridgeLog("❌ [PRIORITY ERROR]: " + e.message);
+    }
+    return null;
+  }
+
+  // =========================================================================
+  // KÍCH HOẠT LUỒNG ƯU TIÊN KHI ENABLE_PRIORITY_FILTER = 1
+  // =========================================================================
+  if (ENABLE_PRIORITY_FILTER === 1) {
+    function triggerPriorityScan() {
+      setTimeout(function() {
+        if (isFinished === 1) return;
+
+        var foundPriorityUrl = scanPriorityKeywordsInHtml();
+        priorityScanCompleted = true;
+
+        if (foundPriorityUrl) {
+          bridgeLog("🎯 [PRIORITY-MATCH] Bắt thành công link ưu tiên từ Raw HTML: " + foundPriorityUrl);
+          dispatchDirectLinkToApp(foundPriorityUrl);
+        } else {
+          bridgeLog("⚠️ [PRIORITY] Không tìm thấy link khớp bộ lọc trong Raw HTML.");
+          if (stagedM3u8Content) {
+            bridgeLog("🔄 [FALLBACK] Phát lại M3U8 đã lưu từ luồng song song...");
+            dispatchM3u8ToApp(stagedM3u8Content, true);
+          }
+        }
+      }, 5000);
+    }
+
+    if (document.readyState === 'complete') {
+      triggerPriorityScan();
+    } else {
+      window.addEventListener('load', triggerPriorityScan);
+    }
+  }
+
+  // Timeout tổng thể 25s
   timeoutTimer = setTimeout(function() {
     if (hasDispatchedAny === 0 && isFinished === 0) {
       isFinished = 1;
       if (domScanInterval) clearInterval(domScanInterval);
-      bridgeLog("❌ [TIMEOUT] Đã quá 20 giây nhưng không tìm thấy M3U8/Blob!", false);
-      bridgeLog("Không tìm thấy link video (Hết thời gian 20s).", true);
+      bridgeLog("❌ [TIMEOUT] Đã quá thời gian chờ nhưng không tìm thấy link phù hợp!", false);
+      bridgeLog("Không tìm thấy link video.", true);
       
       if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
         envideo();
       }
     }
-  }, 20000);
+  }, 25000);
 
   function stopTimeout() {
     if (timeoutTimer) {
@@ -715,17 +791,44 @@ function envideo(){
           (trimmed.indexOf('#EXTINF') !== -1 || trimmed.indexOf('#EXT-X-STREAM-INF') !== -1);
   }
 
-  function dispatchM3u8ToApp(m3u8Content) {
-    if (!m3u8Content || hasDispatchedAny === 1) return;
+  function dispatchDirectLinkToApp(directUrl) {
+    if (!directUrl || hasDispatchedAny === 1) return;
     hasDispatchedAny = 1;
     isFinished = 1;
     stopTimeout();
 
-    bridgeLog('🎯 [LOCAL-DISPATCH] Đã tìm thấy M3U8! Đang nạp vào Local Player...');
+    bridgeLog("🎯 Bắt link trực tiếp thành công! Đang phát...", true);
+    try {
+      if (window.SnifferBridge && typeof window.SnifferBridge.play === 'function') {
+        window.SnifferBridge.play(directUrl, window.location.href);
+      } else {
+        bridgeLog('❌ SnifferBridge.play không khả dụng!');
+      }
+    } catch(e) {
+      bridgeLog('❌ [DISPATCH DIRECT ERROR]: ' + e.message);
+    }
+  }
+
+  function dispatchM3u8ToApp(m3u8Content, forceDispatch) {
+    if (!m3u8Content || hasDispatchedAny === 1) return;
+
+    // Nếu BẬT bộ lọc ưu tiên VÀ luồng ưu tiên CHƯA chạy xong -> tạm thời lưu lại
+    if (ENABLE_PRIORITY_FILTER === 1 && !priorityScanCompleted && !forceDispatch) {
+      bridgeLog('⏳ [STAGING] Đã bắt được M3U8 từ luồng song song, đang chờ luồng ưu tiên (5s) quét xong...');
+      stagedM3u8Content = m3u8Content;
+      return;
+    }
+
+    hasDispatchedAny = 1;
+    isFinished = 1;
+    stopTimeout();
+
+    bridgeLog('🎯 [LOCAL-DISPATCH] Đang nạp M3U8 vào Local Player...');
     bridgeLog("🎯 Bắt link thành công! Đang phát video...", true);
 
     try {
       if (window.SnifferBridge && typeof window.SnifferBridge.playM3u8Content === 'function') {
+        bridgeLog(m3u8Content);
         window.SnifferBridge.playM3u8Content(m3u8Content, window.location.href);
       } else {
         bridgeLog('❌ SnifferBridge.playM3u8Content không khả dụng!');
@@ -736,10 +839,9 @@ function envideo(){
   }
 
   // =========================================================================
-  // HOOK NETWORK (FETCH / XHR) VÀ SCAN DOM KHI HOOK_NETWORK_AND_DOM = 1
+  // HOOK NETWORK (FETCH / XHR) VÀ SCAN DOM
   // =========================================================================
   if (HOOK_NETWORK_AND_DOM === 1) {
-    // 1. Hook Fetch API để chặn và bắt tập tin .m3u8 được tải qua Fetch
     try {
       if (typeof window.fetch !== 'undefined') {
         var originalFetch = window.fetch;
@@ -751,8 +853,8 @@ function envideo(){
               var clone = response.clone();
               clone.text().then(function(text) {
                 if (isValidM3U8(text)) {
-                  bridgeLog('🎯 [NETWORK-FETCH] Tìm thấy M3U8 từ Fetch Request: ' + url);
-                  dispatchM3u8ToApp(text);
+                  bridgeLog('🎯 [NETWORK-FETCH] Bắt được M3U8 từ Fetch Request: ' + url);
+                  dispatchM3u8ToApp(text, false);
                 }
               }).catch(function(){});
             }
@@ -765,7 +867,6 @@ function envideo(){
       bridgeLog('❌ [HOOK-FETCH-ERROR]: ' + e.message);
     }
 
-    // 2. Hook XMLHttpRequest (XHR) để bắt tập tin .m3u8 được tải qua AJAX
     try {
       if (typeof XMLHttpRequest !== 'undefined') {
         var originalXHR = XMLHttpRequest.prototype.open;
@@ -780,8 +881,8 @@ function envideo(){
           this.addEventListener('load', function() {
             if (isFinished === 0 && this.responseText) {
               if (isValidM3U8(this.responseText)) {
-                bridgeLog('🎯 [NETWORK-XHR] Tìm thấy M3U8 từ XHR Request: ' + (this._url || ''));
-                dispatchM3u8ToApp(this.responseText);
+                bridgeLog('🎯 [NETWORK-XHR] Bắt được M3U8 từ XHR Request: ' + (this._url || ''));
+                dispatchM3u8ToApp(this.responseText, false);
               }
             }
           });
@@ -793,7 +894,6 @@ function envideo(){
       bridgeLog('❌ [HOOK-XHR-ERROR]: ' + e.message);
     }
 
-    // 3. Đọc DOM định kỳ để tìm thẻ <video> đã gán link Blob sẵn
     domScanInterval = setInterval(function() {
       if (isFinished === 1) return;
       var videos = document.getElementsByTagName('video');
@@ -801,15 +901,13 @@ function envideo(){
         var src = videos[i].src || videos[i].currentSrc;
         if (src && src.startsWith('blob:')) {
           bridgeLog('🔍 [DOM-SCAN] Đã phát hiện thẻ Video chứa Blob URL: ' + src);
-          // Lưu ý: Nếu muốn gửi trực tiếp URL blob này về App phát lại trong WebView
-          // bạn có thể thêm hàm gọi SnifferBridge tương ứng ở đây.
         }
       }
     }, 1000);
   }
 
   // =========================================================================
-  // HOOK URL.createObjectURL (GIỮ NGUYÊN TỪ SCRIPT CŨ)
+  // HOOK URL.createObjectURL
   // =========================================================================
   try {
     if (typeof URL !== 'undefined' && URL.createObjectURL) {
@@ -822,7 +920,7 @@ function envideo(){
           var processContent = function(content) {
             if (isValidM3U8(content)) {
               bridgeLog('🎯 [FOUND-BLOB]: Phát hiện M3U8 từ Blob RAM!');
-              dispatchM3u8ToApp(content);
+              dispatchM3u8ToApp(content, false);
             }
           };
 
@@ -853,7 +951,7 @@ function envideo(){
               bridgeLog("RAWHTML: " + rawhtml)
             }
           }
-        },2000)
+        },2000);
     }
   } catch (e) {
     bridgeLog('❌ [INIT-ERROR]: ' + e.message);
@@ -861,7 +959,6 @@ function envideo(){
 })();
   `;
 }
-
 
 
 
