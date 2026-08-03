@@ -6,10 +6,11 @@ function getManifest() {
         "id": "cnporn",
         "name": "Porn Gái Trung",
         "info": "Nguồn XXX Trung Quốc Hay.",
-        "version": "1.8.3",
+        "version": "1.8.4",
         "baseUrl": "https://cnporn.org",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/cnporn.jpg",
         "isEnabled": true,
+      debug: true,
         "layoutType": "HORIZONTAL",
         "isAdult": true,
         "type": "VIDEO",
@@ -210,7 +211,7 @@ alt="([^"]+)"
         
         var totalPages = 999;
         var currentPage = 1;
-        
+        console.log(JSON.stringify(items))
         return JSON.stringify({
             "items": items,
             "pagination": { "currentPage": currentPage, "totalPages": totalPages }
@@ -260,7 +261,7 @@ function parseMovieDetail(html, $url) {
         var stream3 = "";
         const regex = /data-server\s*=\s*["']([^"']+)["']/g;
         const servers = Array.from(html.matchAll(regex), match => match[1]);
-        
+        /*
         if (servers[0]) {
             stream1 = BASEURL + servers[0];
             epi.push({ id: stream1, name: "Server Full", slug: "full" });
@@ -273,7 +274,11 @@ function parseMovieDetail(html, $url) {
             stream3 = BASEURL + servers[2];
             epi.push({ id: stream3, name: "Server 3", slug: "full" });
         }
-
+*/
+        if (servers[0]) {
+            stream1 = BASEURL + servers[0];
+            epi.push({ id: $url, name: "Server Full", slug: "full" });
+        }
         var $return = {
             id: $url,
             title: lname,
