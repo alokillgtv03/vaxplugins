@@ -6,7 +6,7 @@ function getManifest() {
     id: "vicdn",
     name: "Nguồn Vicdn",
     description: "Nguồn phim Vicdn.",
-    "version": "1.1",
+    "version": "1.2",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vicdn.cc",
     iconUrl: "https://vicdn.cc/vicdn.png",
