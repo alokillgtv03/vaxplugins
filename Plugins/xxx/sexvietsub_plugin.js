@@ -6,7 +6,7 @@ function getManifest() {
     id: "sexvietsub",
     name: "Nguồn Sex Vietsub",
     description: "Nguồn phim Animevv...",
-    "version": "1.0",
+    "version": "1.1",
     "author": "Alokillgtv",
     info: "Nguồn phim XXX khá nhiều video được vietsub.\n Nguồn này có server riêng nên chạy khá mượt..",
     baseUrl: "http://vkey.vn/sxvietsubs",
