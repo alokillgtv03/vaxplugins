@@ -1,5 +1,5 @@
 // Global scope definition
-// "version": "1.5"
+// "version": "1.6"
 if (typeof window === 'undefined') {
     var window = this;
 }
