@@ -6,7 +6,7 @@ function getManifest() {
     id: "xchina",
     name: "Nguồn Xchina",
     description: "Nguồn phim Vsmov...",
-    "version": "1.0",
+    "version": "1.3",
     info: "Nguồn phim XXX trung quốc.",
     baseUrl: "https://xchina.co",
     iconUrl: "https://xchina.co/images/sites/logo/1.png",
