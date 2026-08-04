@@ -6,7 +6,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "nguoncnew",
         "name": "Phim NguonC VIP",
-        "version": "1.5.3",
+        "version": "1.5.4",
         "baseUrl": "https://phim.nguonc.com",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/nguonC.png",
         "isEnabled": true,
