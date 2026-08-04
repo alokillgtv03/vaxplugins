@@ -15,7 +15,6 @@ function getManifest() {
     isEnabled: true,
     "adblock": false,
     "layoutType": "HORIZONTAL",
-    "debug": true,
     type: "MOVIE",
     "subtitleCat": true,
     playerType: "exoplayer"
