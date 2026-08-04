@@ -7,6 +7,8 @@ function getManifest() {
         "description": "XXX Hay",
         "version": "1.5.5",             
         "baseUrl": "https://viet69z.me",
+        "info": "Nguồn XXX của việt nam rất chất lượng.",
+        "author": "Alokillgtv",
         "iconUrl": "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/viet69.png", 
         "isEnabled": true,
         "isAdult": true,
