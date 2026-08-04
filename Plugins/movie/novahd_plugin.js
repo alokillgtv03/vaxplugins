@@ -7,7 +7,7 @@ function getManifest() {
     id: "novahd",
     name: "Nguồn NovaHD",
     description: "Nguồn phim NovaHD",
-    "version": "1.0",
+    "version": "1.1",
     "author": "Alokillgtv",
     info: "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này có subtitle riêng nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát",
     baseUrl: "http://vkey.vn/novahd",
@@ -16,6 +16,7 @@ function getManifest() {
     "adblock": false,
     "layoutType": "HORIZONTAL",
     type: "MOVIE",
+    debug: true,
     "subtitleCat": true,
     playerType: "exoplayer"
   });
@@ -29,6 +30,7 @@ function log(msg) {
 
 
 function getHomeSections() {
+    localStorage.clear();
     return JSON.stringify([
         {"slug": "/trending?type=all","title": "Xu Hướng","type": "Horizontal"},
         {"slug": "/shows?sort=popularity","title": "TV Show Thịnh Hành","type": "Horizontal"},
@@ -221,7 +223,7 @@ function getUrlYears() {
 function getLanguageName(langCode) {
     // 1. Kiểm tra nếu không phải string hoặc chuỗi rỗng
     if (typeof langCode !== "string" || !langCode.trim()) {
-        return "Không xác định";
+        return "";
     }
     const languageMap = { en: "Anh", vi: "Việt", ja: "Nhật", jp: "Nhật", ko: "Hàn", zh: "Trung", cn: "Trung", th: "Thái", fr: "Pháp", de: "Đức", ru: "Nga", es: "Tây Ban Nha", it: "Ý", pt: "Bồ Đào Nha", hi: "Ấn Độ", id: "Indonesia", tl: "Thái" };
 
@@ -234,10 +236,13 @@ function getLanguageName(langCode) {
 
 function parseListResponse(html, $url) {
     try {
+        if(localStorage.getItem("typeMovie")){
+          localStorage.removeItem("typeMovie");
+        }
         var tags = "shows";
         var $data = JSON.parse(html);
         var results = $data.results;
-        if($url.indexOf("movies") > -1){
+        if($url.indexOf("movie") > -1){
             tags = "movies"
         }
         else{
@@ -245,7 +250,7 @@ function parseListResponse(html, $url) {
         }
         var items = [];
         results.forEach(function(item){
-            if($url.indexOf("search") > -1){
+            if(item.type){
                 tags = item.type + "s";
             }
             var id = BASEAPI + "/"+tags+"/" + item.tmdbId;
@@ -274,7 +279,7 @@ function parseListResponse(html, $url) {
                 });     
             }
         })
-        //console.log(JSON.stringify(items))
+        console.log("List item ["+$url+"]: \n" + JSON.stringify(items))
         return JSON.stringify({
             "items": items,
             "pagination": {
@@ -527,8 +532,6 @@ function parseMovieDetail(html, url) {
 // https://novahd.cc/api/shows/1413
 //var html = sourceHTML;
 //JSON.parse(parseMovieDetail(sourceHTML, url))
-
-
 function parseDetailResponse(html, url) {
   try {
     console.log("parseDetailResponse dang xu ly: " + url);
@@ -547,6 +550,8 @@ function parseDetailResponse(html, url) {
     });
 
     var stream = "";
+    var streamType = "";
+
     if (validSources.length > 0) {
       var currentIndex = -1;
 
@@ -554,14 +559,13 @@ function parseDetailResponse(html, url) {
       var serverMatch = url.match(/[?&]server=(\d+)/i);
       if (serverMatch) {
         var serverIndex = parseInt(serverMatch[1], 10);
-        // Kiểm tra xem index từ server param có nằm trong khoảng danh sách nguồn không
         if (serverIndex >= 0 && serverIndex < validSources.length) {
           currentIndex = serverIndex;
           console.log("Lấy nguồn theo tham số server=" + currentIndex);
         }
       }
 
-      // 3. Nếu trên URL không có server param hợp lệ, fallback về cơ chế xoay vòng localStorage
+      // 3. Fallback xoay vòng localStorage nếu không có tham số server
       var storageKey = "stream_index_" + url;
       if (currentIndex === -1) {
         var savedIndex = parseInt(localStorage.getItem(storageKey), 10);
@@ -571,20 +575,55 @@ function parseDetailResponse(html, url) {
           currentIndex = 0;
         }
 
-        // Tăng index sẵn cho lần retry/gọi tiếp theo
         var nextIndex = (currentIndex + 1) % validSources.length;
         localStorage.setItem(storageKey, nextIndex.toString());
       }
 
-      // Lấy link stream tương ứng
-      stream = validSources[currentIndex].url;
+      var selectedSource = validSources[currentIndex];
+      stream = selectedSource.url;
+      streamType = selectedSource.type ? String(selectedSource.type).toLowerCase() : "";
+
       console.log("Đang thử nguồn (" + (currentIndex + 1) + "/" + validSources.length + "): " + stream);
 
     } else {
       console.log("Không tìm thấy bất kỳ nguồn stream nào.");
     }
 
-    // 4. Xử lý Subtitle
+    // --- 4. TỐI ƯU BẮT MIMETYPE & ĐIǸH DẠNG LOG ---
+    var mimeType = "";
+    var detectedFormat = "UNKNOWN";
+
+    // Kiểm tra theo field type
+    if (streamType === "mp4" || streamType === "file") {
+      mimeType = "video/mp4";
+      detectedFormat = "MP4";
+    } else if (streamType === "hls" || streamType === "m3u8") {
+      mimeType = "application/x-mpegURL";
+      detectedFormat = "HLS (m3u8)";
+    } 
+    
+    // Nếu type từ API không rõ ràng, soi tiếp theo đuôi URL
+    if (!mimeType && stream) {
+      var cleanStreamUrl = stream.split('?')[0].toLowerCase();
+      if (cleanStreamUrl.endsWith(".mp4")) {
+        mimeType = "video/mp4";
+        detectedFormat = "MP4 (nhận diện qua URL)";
+      } else if (cleanStreamUrl.endsWith(".m3u8")) {
+        mimeType = "application/x-mpegURL";
+        detectedFormat = "HLS (nhận diện qua URL)";
+      }
+    }
+
+    // Mặc định nếu vẫn không xác định được
+    if (!mimeType) {
+      mimeType = "application/x-mpegURL";
+      detectedFormat = "HLS (Mặc định Fallback)";
+    }
+
+    // IN LOG RÕ RÀNG ĐỊNH DẠNG VÀ MIMETYPE
+    console.log("🎬 Định dạng File: [" + detectedFormat + "] | MimeType: " + mimeType);
+
+    // 5. Xử lý Subtitle
     var subtitleList = [];
     var baseUrlStr = typeof BASEURL !== "undefined" ? BASEURL : "";
 
@@ -605,11 +644,11 @@ function parseDetailResponse(html, url) {
 
     return JSON.stringify({
       url: stream,
-      mimeType: "application/x-mpegURL",
+      mimeType: mimeType,
       isEmbed: false,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://novahd.cc/",
+        "Referer": "https://novahd.cc",
         "Origin": "https://novahd.cc"
       },
       subtitles: subtitleList,
@@ -618,13 +657,13 @@ function parseDetailResponse(html, url) {
     console.log("parseDetailResponse[err]:\n " + e);
     return JSON.stringify({
       url: "",
+      mimeType: "",
       isEmbed: false,
       headers: {},
       subtitles: [],
     });
   }
 }
-
 
 /**
  * HÀM BỔ SUNG: Báo lỗi khi Video Player không phát được.
