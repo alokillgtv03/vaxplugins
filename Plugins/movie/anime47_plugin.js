@@ -11,7 +11,7 @@ function getManifest() {
       "description": "Nguồn phim Anime47",
       "version": "1.0",
       "author": "Alokillgtv",
-      "info": "Nguồn phim Anime của VN.\nĐể sử dụng được nguồn này các bạn phải có tài khoản trên trang này.\nSau đó các bạn vào phần cài đặt trong app VAX, tìm đến plugin Anime47 này.\nNhấn vào nút đăng nhập, nó sẽ trỏ bạn đến website chính của plugin.\nNhập đủ thông tin đăng nhập rồi đăng nhập và quay lại trang chính plugin, nhấn vào nút tải lại sẽ sử dụng được như bình thường.",
+      "info": "Nguồn phim Anime của VN.\nNguồn có server riêng nên xem video rất nhanh và mượt.",
       "baseUrl": "https://anime47.best",
       "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/anime47.png",
       "playerType": "exoplayer",
