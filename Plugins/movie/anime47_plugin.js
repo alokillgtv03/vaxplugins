@@ -162,7 +162,7 @@ function getManifest() {
 } // getUrlList, getUrlSearch
 // http://vkey.vn/animevv
 // /quoc-gia/M%E1%BB%B9
-// /top
+// /
 //filtersJson = "{page:5}"
 //getUrlList("/top", filtersJson)
 //getUrlSearch("girl", filtersJson)
@@ -172,12 +172,25 @@ function getManifest() {
 function parseListResponse(html, $url) {
     try {
         var $data = JSON.parse(html);
-        var $list = $data.data.posts;
+        var check = "";
+        if($url.indexOf("search") > -1){
+          var $list = $data.results;
+          check = true;
+        }
+        else{
+          var $list = $data.data.posts;
+          check = false;
+        }
         var items = [];
         $list.forEach(function(item) {
             var id = BASEHOST + "/anime/info/" + item.id + "?lang=vi";
-            var title = item.title;
-            var poster = item.poster;
+            var title = item.title;         
+            if(check == true){
+              var poster = item.image;
+            }
+            else{
+              var poster = item.poster;
+            }
             var background = poster;
             var quality = item.type;
             var status = item.status;
