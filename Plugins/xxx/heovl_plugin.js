@@ -4,13 +4,14 @@ function getManifest() {
         "id": "heovl",
         "name": "Heovl",
         "description": "XXX Hay",
-        "version": "1.7.4",
+        "version": "1.7.5",
       	"info": "Nguồn sex Việt. Nguồn này hay bị chặn bởi nhà mạng. Nếu không xem được hãy thử cài APP 1.1.1.1 hoặc dùng DNS và DPI có sẵn trên app để xem tiếp.",
         "baseUrl": "https://heovl.im",
         "iconUrl": "https://static.cdnsolutions.media/xh-desktop/images/favicon/favicon-v2-256x256.ico",
         "layoutType": "HORIZONTAL",
         "isEnabled": true,
         "isAdult": true,
+        "debug": true,
         "type": "VIDEO",
         "playerType": "embedtoexoplay"
     });
@@ -254,9 +255,13 @@ function parseMovieDetail(html,ourl) {
     try {
         // 1. Parse Meta Tags
         var rmatch;
+        rmatch = html.match(/meta\s+property="og:url"\s+content="([^"]+)"/i);
+        if (rmatch && rmatch[1]) { lurl = rmatch[1]; }
+
+        var rmatch;
         rmatch = html.match(/meta\s+property="og:image"\s+content="([^"]+)"/i);
         if (rmatch && rmatch[1]) { limg = rmatch[1]; }
-        
+      
         rmatch = html.match(/meta\s+property="og:title"\s+content="([^"]+)"/i);
         if (rmatch && rmatch[1]) { lname = rmatch[1]; }
         
@@ -280,7 +285,7 @@ function parseMovieDetail(html,ourl) {
                     //console.log(sourceUrl[1])
 									if(sourceUrl[1].indexOf("zabitcdn.name") > -1){
                     episodes.push({
-                        id: sourceUrl[1],
+                        id: lurl,
                         name: "Server " + (j + 1),
                         slug: "tap-" + (j + 1)
                     });
@@ -439,6 +444,7 @@ console.log("parseDetailResponse[Raw]: " + html)
                 $stream = iframeMatch[1];
             }
         }        
+        console.log("parseDetailResponse[stream]: " + $stream)
         return JSON.stringify({
             url: $stream,
             isEmbed: true // Vẫn cần fetch tiếp
@@ -450,8 +456,8 @@ console.log("parseDetailResponse[Raw]: " + html)
 }
 
 function parseEmbedResponse(html,url) {
-console.log("parseDetailResponse[Đang xử lý]: " + url)
-console.log("parseDetailResponse[Raw]: " + html)
+console.log("parseEmbedResponse[Đang xử lý]: " + url)
+console.log("parseEmbedResponse[Raw]: " + html)
     try {
 
     // Đọc trực tiếp từ thuộc tính của BaseJSON đã lưu ở bước đầu tiên
@@ -461,7 +467,7 @@ console.log("parseDetailResponse[Raw]: " + html)
         if(iframeMatch && iframeMatch[1]){
             $stream = iframeMatch[1];
         }
-        console.log("parseDetailResponse[Đang Fetch]: " + $stream)
+        console.log("parseEmbedResponse[Đang Fetch]: " + $stream)
         var customjs = checkRaw(runjS(), true);
         return JSON.stringify({
             url: $stream,

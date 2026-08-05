@@ -1,0 +1,225 @@
+0 verbose cli /usr/bin/node /usr/bin/npm
+1 info using npm@10.9.1
+2 info using node@v22.23.0
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/public/.npmrc
+5 silly config load:file:/etc/npmrc
+6 verbose title npm install @typescript/native@npm:typescript@^7.0.2
+7 verbose argv "install" "--global" "@typescript/native@npm:typescript@^7.0.2"
+8 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-05T04_11_03_849Z-
+9 verbose logfile /public/.npm/_logs/2026-08-05T04_11_03_849Z-debug-0.log
+10 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+11 silly logfile done cleaning log files
+12 silly idealTree buildDeps
+13 silly fetch manifest @typescript/native@npm:typescript@^7.0.2
+14 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+15 http fetch GET 200 https://registry.npmjs.org/typescript 812ms (cache miss)
+16 silly packumentCache full:https://registry.npmjs.org/typescript set size:undefined disposed:false
+17 silly placeDep ROOT @typescript/native@7.0.2 OK for:  want: npm:typescript@^7.0.2
+18 silly fetch manifest @typescript/typescript-aix-ppc64@7.0.2
+19 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-aix-ppc64 cache-miss
+20 silly fetch manifest @typescript/typescript-linux-arm@7.0.2
+21 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-arm cache-miss
+22 silly fetch manifest @typescript/typescript-linux-x64@7.0.2
+23 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-x64 cache-miss
+24 silly fetch manifest @typescript/typescript-sunos-x64@7.0.2
+25 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-sunos-x64 cache-miss
+26 silly fetch manifest @typescript/typescript-win32-x64@7.0.2
+27 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-win32-x64 cache-miss
+28 silly fetch manifest @typescript/typescript-darwin-x64@7.0.2
+29 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-darwin-x64 cache-miss
+30 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-x64 113ms (cache miss)
+31 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-x64 set size:undefined disposed:false
+32 silly fetch manifest @typescript/typescript-netbsd-x64@7.0.2
+33 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-netbsd-x64 cache-miss
+34 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-netbsd-x64 102ms (cache miss)
+35 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-netbsd-x64 set size:undefined disposed:false
+36 silly fetch manifest @typescript/typescript-freebsd-x64@7.0.2
+37 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-freebsd-x64 cache-miss
+38 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-aix-ppc64 260ms (cache miss)
+39 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-aix-ppc64 set size:undefined disposed:false
+40 silly fetch manifest @typescript/typescript-linux-arm64@7.0.2
+41 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-arm64 cache-miss
+42 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-arm 264ms (cache miss)
+43 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-arm set size:undefined disposed:false
+44 silly fetch manifest @typescript/typescript-linux-ppc64@7.0.2
+45 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-ppc64 cache-miss
+46 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-win32-x64 268ms (cache miss)
+47 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-win32-x64 set size:undefined disposed:false
+48 silly fetch manifest @typescript/typescript-linux-s390x@7.0.2
+49 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-s390x cache-miss
+50 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-darwin-x64 281ms (cache miss)
+51 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-darwin-x64 set size:undefined disposed:false
+52 silly fetch manifest @typescript/typescript-openbsd-x64@7.0.2
+53 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-openbsd-x64 cache-miss
+54 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-freebsd-x64 88ms (cache miss)
+55 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-freebsd-x64 set size:undefined disposed:false
+56 silly fetch manifest @typescript/typescript-win32-arm64@7.0.2
+57 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-win32-arm64 cache-miss
+58 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-arm64 94ms (cache miss)
+59 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-arm64 set size:undefined disposed:false
+60 silly fetch manifest @typescript/typescript-darwin-arm64@7.0.2
+61 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-darwin-arm64 cache-miss
+62 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-s390x 86ms (cache miss)
+63 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-s390x set size:undefined disposed:false
+64 silly fetch manifest @typescript/typescript-netbsd-arm64@7.0.2
+65 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-netbsd-arm64 cache-miss
+66 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-win32-arm64 85ms (cache miss)
+67 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-win32-arm64 set size:undefined disposed:false
+68 silly fetch manifest @typescript/typescript-freebsd-arm64@7.0.2
+69 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-freebsd-arm64 cache-miss
+70 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-sunos-x64 481ms (cache miss)
+71 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-sunos-x64 set size:undefined disposed:false
+72 silly fetch manifest @typescript/typescript-linux-loong64@7.0.2
+73 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-loong64 cache-miss
+74 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-openbsd-x64 275ms (cache miss)
+75 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-openbsd-x64 set size:undefined disposed:false
+76 silly fetch manifest @typescript/typescript-linux-riscv64@7.0.2
+77 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-riscv64 cache-miss
+78 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-ppc64 298ms (cache miss)
+79 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-ppc64 set size:undefined disposed:false
+80 silly fetch manifest @typescript/typescript-openbsd-arm64@7.0.2
+81 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-openbsd-arm64 cache-miss
+82 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-darwin-arm64 242ms (cache miss)
+83 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-darwin-arm64 set size:undefined disposed:false
+84 silly fetch manifest @typescript/typescript-linux-mips64el@7.0.2
+85 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-mips64el cache-miss
+86 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-netbsd-arm64 270ms (cache miss)
+87 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-netbsd-arm64 set size:undefined disposed:false
+88 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-freebsd-arm64 244ms (cache miss)
+89 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-freebsd-arm64 set size:undefined disposed:false
+90 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-openbsd-arm64 82ms (cache miss)
+91 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-openbsd-arm64 set size:undefined disposed:false
+92 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-mips64el 87ms (cache miss)
+93 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-mips64el set size:undefined disposed:false
+94 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-loong64 360ms (cache miss)
+95 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-loong64 set size:undefined disposed:false
+96 http fetch GET 200 https://registry.npmjs.org/@typescript%2ftypescript-linux-riscv64 292ms (cache miss)
+97 silly packumentCache full:https://registry.npmjs.org/@typescript%2ftypescript-linux-riscv64 set size:undefined disposed:false
+98 silly placeDep node_modules/@typescript/native @typescript/typescript-aix-ppc64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+99 silly placeDep node_modules/@typescript/native @typescript/typescript-darwin-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+100 silly placeDep node_modules/@typescript/native @typescript/typescript-darwin-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+101 silly placeDep node_modules/@typescript/native @typescript/typescript-freebsd-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+102 silly placeDep node_modules/@typescript/native @typescript/typescript-freebsd-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+103 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-arm@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+104 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+105 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-loong64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+106 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-mips64el@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+107 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-ppc64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+108 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-riscv64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+109 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-s390x@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+110 silly placeDep node_modules/@typescript/native @typescript/typescript-linux-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+111 silly placeDep node_modules/@typescript/native @typescript/typescript-netbsd-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+112 silly placeDep node_modules/@typescript/native @typescript/typescript-netbsd-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+113 silly placeDep node_modules/@typescript/native @typescript/typescript-openbsd-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+114 silly placeDep node_modules/@typescript/native @typescript/typescript-openbsd-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+115 silly placeDep node_modules/@typescript/native @typescript/typescript-sunos-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+116 silly placeDep node_modules/@typescript/native @typescript/typescript-win32-arm64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+117 silly placeDep node_modules/@typescript/native @typescript/typescript-win32-x64@7.0.2 OK for: typescript@7.0.2 want: 7.0.2
+118 silly reify moves {}
+119 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-win32-x64
+120 silly reify mark deleted [
+120 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-win32-x64'
+120 silly reify ]
+121 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-win32-arm64
+122 silly reify mark deleted [
+122 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-win32-arm64'
+122 silly reify ]
+123 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-sunos-x64
+124 silly reify mark deleted [
+124 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-sunos-x64'
+124 silly reify ]
+125 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-openbsd-x64
+126 silly reify mark deleted [
+126 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-openbsd-x64'
+126 silly reify ]
+127 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-openbsd-arm64
+128 silly reify mark deleted [
+128 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-openbsd-arm64'
+128 silly reify ]
+129 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-netbsd-x64
+130 silly reify mark deleted [
+130 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-netbsd-x64'
+130 silly reify ]
+131 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-netbsd-arm64
+132 silly reify mark deleted [
+132 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-netbsd-arm64'
+132 silly reify ]
+133 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-x64
+134 silly reify mark deleted [
+134 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-x64'
+134 silly reify ]
+135 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-s390x
+136 silly reify mark deleted [
+136 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-s390x'
+136 silly reify ]
+137 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-riscv64
+138 silly reify mark deleted [
+138 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-riscv64'
+138 silly reify ]
+139 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-ppc64
+140 silly reify mark deleted [
+140 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-ppc64'
+140 silly reify ]
+141 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-mips64el
+142 silly reify mark deleted [
+142 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-mips64el'
+142 silly reify ]
+143 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-loong64
+144 silly reify mark deleted [
+144 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-loong64'
+144 silly reify ]
+145 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-arm
+146 silly reify mark deleted [
+146 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-linux-arm'
+146 silly reify ]
+147 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-freebsd-x64
+148 silly reify mark deleted [
+148 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-freebsd-x64'
+148 silly reify ]
+149 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-freebsd-arm64
+150 silly reify mark deleted [
+150 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-freebsd-arm64'
+150 silly reify ]
+151 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-darwin-x64
+152 silly reify mark deleted [
+152 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-darwin-x64'
+152 silly reify ]
+153 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-darwin-arm64
+154 silly reify mark deleted [
+154 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-darwin-arm64'
+154 silly reify ]
+155 verbose reify failed optional dependency /usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-aix-ppc64
+156 silly reify mark deleted [
+156 silly reify   '/usr/local/lib/node_modules/@typescript/native/node_modules/@typescript/typescript-aix-ppc64'
+156 silly reify ]
+157 http cache @typescript/typescript-linux-arm64@https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz 0ms (cache hit)
+158 silly tarball no local data for @typescript/typescript-linux-arm64@https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz. Extracting by manifest.
+159 http fetch GET 200 https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz 1138ms (cache miss)
+160 verbose stack Error: EEXIST: file already exists
+160 verbose stack     at failEEXIST (/usr/lib/node_modules/npm/node_modules/bin-links/lib/check-bin.js:47:32)
+160 verbose stack     at checkLink (/usr/lib/node_modules/npm/node_modules/bin-links/lib/check-bin.js:38:12)
+160 verbose stack     at async Promise.all (index 0)
+160 verbose stack     at async Function.checkBins (/usr/lib/node_modules/npm/node_modules/bin-links/lib/check-bins.js:15:3)
+160 verbose stack     at async [checkBins] (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/rebuild.js:223:5)
+160 verbose stack     at async /usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:714:7
+160 verbose stack     at async Promise.allSettled (index 0)
+160 verbose stack     at async [reifyPackages] (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:325:11)
+160 verbose stack     at async Arborist.reify (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:142:5)
+160 verbose stack     at async Install.exec (/usr/lib/node_modules/npm/lib/commands/install.js:150:5)
+161 error code EEXIST
+162 error path /usr/local/bin/tsc
+163 error EEXIST: file already exists
+164 error File exists: /usr/local/bin/tsc
+165 error Remove the existing file and try again, or run npm
+166 error with --force to overwrite files recklessly.
+167 silly unfinished npm timer reify 1785903067170
+168 silly unfinished npm timer reify:unpack 1785903069091
+169 silly unfinished npm timer reifyNode:node_modules/@typescript/native 1785903069092
+170 verbose cwd /
+171 verbose os Linux 4.19.157-perf+
+172 verbose node v22.23.0
+173 verbose npm  v10.9.1
+174 verbose exit 1
+175 verbose code 1
+176 error A complete log of this run can be found in: /public/.npm/_logs/2026-08-05T04_11_03_849Z-debug-0.log

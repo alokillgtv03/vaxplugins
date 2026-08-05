@@ -903,7 +903,7 @@ input#labJsSearchInput,#labJsGotoInput { width: 40px!important; }
 
                 try {
                     // 🚀 ĐƯỜNG DẪN ĐẾN FILE BẠN VỪA LƯU Ở BƯỚC 1 (Hãy đổi lại link này cho đúng cấu trúc web của bạn)
-                    const helperUrl = 'http://vkey.vn/minijq2';
+                    const helperUrl = 'https://rawcdn.githack.com/alokillgtv03/vaxplugins/19b83600a952b6dbc4fd32039257cdb97846638d/miniJQ_V2.js';
 
                     const response = await fetch(helperUrl);
                     if (!response.ok) {
@@ -4437,66 +4437,67 @@ input#labJsSearchInput,#labJsGotoInput { width: 40px!important; }
                 });
 
                 // HÀM ĐƯỢC NÂNG CẤP: Thêm tham số customSelector để cố định vùng tìm kiếm dữ liệu
-                function v163ExtractLinksFromElement(rootElement, extractType = 'default', customSelector = '') {
-                    // Nếu lỗi hoặc không hợp lệ, trả về mảng rỗng dạng chuỗi "[]"
-                    if (!rootElement || rootElement.nodeType !== 1) return "[]";
+function v163ExtractLinksFromElement(rootElement, extractType = 'default', customSelector = '') {
+    // Nếu lỗi hoặc không hợp lệ, trả về chuỗi mảng rỗng "[]"
+    if (!rootElement || rootElement.nodeType !== 1) return "[]";
 
-                    const links = [];
-                    const $root = $(rootElement);
+    const links = [];
+    const $root = $(rootElement);
 
-                    const targetSelector = customSelector.trim() || 'a[href]';
+    const targetSelector = customSelector.trim() || 'a[href]';
 
-                    $root.find(targetSelector).each(function() {
-                        if ($(this).is('a[href]')) {
-                            links.push(this);
-                        } else {
-                            $(this).find('a[href]').each(function() {
-                                if (!links.includes(this)) links.push(this);
-                            });
-                        }
-                    });
+    $root.find(targetSelector).each(function() {
+        if ($(this).is('a[href]')) {
+            links.push(this);
+        } else {
+            $(this).find('a[href]').each(function() {
+                if (!links.includes(this)) links.push(this);
+            });
+        }
+    });
 
-                    if ($root.is(targetSelector) && $root.is('a[href]')) {
-                        if (!links.includes(rootElement)) links.push(rootElement);
-                    }
+    if ($root.is(targetSelector) && $root.is('a[href]')) {
+        if (!links.includes(rootElement)) links.push(rootElement);
+    }
 
-                    // Tạo mảng dữ liệu sạch trước
-                    const rawDataArray = links.map(a => {
-                        const href = a.href || $(a).attr('href') || '';
-                        let name = '';
-                        const $a = $(a);
+    // Tạo mảng dữ liệu sạch
+    const rawDataArray = links.map(a => {
+        const href = a.href || $(a).attr('href') || '';
+        let name = '';
+        const $a = $(a);
 
-                        const attrTypes = ['title', 'alt', 'data-title', 'data-alt', 'src', 'name'];
+        const attrTypes = ['title', 'alt', 'data-title', 'data-alt', 'src', 'name'];
 
-                        if (extractType === 'default') {
-                            name = $a.text();
-                        } else if (attrTypes.includes(extractType)) {
-                            name = $a.attr(extractType) || $a.find(`[${extractType}]`).first().attr(extractType) || '';
-                        } else {
-                            const $targetTag = $a.find(extractType);
-                            name = $targetTag.length ? $targetTag.text() : $a.text();
-                        }
+        if (extractType === 'default') {
+            name = $a.text();
+        } else if (attrTypes.includes(extractType)) {
+            name = $a.attr(extractType) || $a.find(`[${extractType}]`).first().attr(extractType) || '';
+        } else {
+            const $targetTag = $a.find(extractType);
+            name = $targetTag.length ? $targetTag.text() : $a.text();
+        }
 
-                        name = name.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
+        name = name.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
 
-                        if (name.length < 4 || !href) {
-                            return null;
-                        }
+        // Nới lỏng điều kiện tối thiểu để không bị mất các tên danh mục ngắn (như "Anime", v.v.)
+        if (!name || !href) {
+            return null;
+        }
 
-                        const cleanLink = href.replace(/^https?:\/\/[^\/]+/i, "");
+        // Giữ lại đường dẫn tương đối (hoặc xử lý tùy ý theo cấu trúc link của bạn)
+        // Nếu bạn muốn giữ nguyên toàn bộ link tuyệt đối thì bỏ dòng replace cleanLink này đi.
+        const cleanLink = href.indexOf('http') === 0 ? href.replace(/^https?:\/\/[^\/]+/i, "") : href;
 
-                        // Ở đây trả về Object thông thường
-                        return {
-                            link: cleanLink,
-                            name: name
-                        };
-                    }).filter(item => item !== null);
+        return {
+            link: cleanLink,
+            name: name
+        };
+    }).filter(item => item !== null);
 
-                    // THAY ĐỔI Ở ĐÂY: Chuyển toàn bộ mảng thành một chuỗi JSON duy nhất trước khi return
-                    // Thay vì chỉ return JSON.stringify(rawDataArray);
-                    return JSON.stringify(JSON.stringify(rawDataArray));
+    // TRẢ VỀ ĐÚNG CHUẨN JSON MẢNG OBJECT (Không bị double stringify)
+    return JSON.stringify(rawDataArray);
+}
 
-                }
 
                 $btnQuickExtract.on('click', function(e) {
                     e.preventDefault();

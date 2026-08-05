@@ -90,7 +90,6 @@ function appendParamWithRegex(url, myParam) {
   // Pattern kiểm tra xem URL đã chứa dấu '?' chưa
   // (Bỏ qua trường hợp dấu '?' nằm trong phần anchor # nếu có)
   const hasQuery = /\?/.test(url);
-
   // Nếu đã có '?' thì nối thêm '&', chưa có thì nối '?'
   return hasQuery ? `${url}&${myParam}` : `${url}?${myParam}`;
 }
@@ -357,6 +356,7 @@ function checkRaw(scriptStr, returnFixed) {
     return scriptStr; // Luôn an toàn: Fallback trả về chuỗi gốc chứ không làm sập script
   }
 }
+
 
 /**
  * Hàm Decode sạch các HTML entities trong URL
