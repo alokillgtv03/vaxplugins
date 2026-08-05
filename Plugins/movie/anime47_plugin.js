@@ -9,7 +9,7 @@ function getManifest() {
       "id": "anime47",
       "name": "Nguồn Anime47",
       "description": "Nguồn phim Anime47",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Alokillgtv",
       "info": "Nguồn phim Anime của VN.\nNguồn có server riêng nên xem video rất nhanh và mượt.",
       "baseUrl": "https://anime47.best",
@@ -380,7 +380,8 @@ function parseMovieDetail(html, url) {
 
 // ===== HÀM TẠO XỬ LÝ STREAM PHIM BEGIN ======
 {
-  function parseDetailResponse(html, url) {
+  
+function parseDetailResponse(html, url) {
     console.log("parseDetailResponse dang xu ly: " + url);
     try {
         var stream = "";
@@ -396,24 +397,7 @@ function parseMovieDetail(html, url) {
         var streamUrl = selectedStream ? selectedStream.url : "";
 
         // 2. Lưu link stream vào localStorage và xoay vòng (round-robin)
-        if (streamUrl) {
-            var storageKey = "current_stream_url_" + data.id;
-            var savedUrl = localStorage.getItem(storageKey);
-
-            if (streams.length > 1) {
-                var availableStreams = streams.map(function(s) {
-                    return s.url;
-                });
-                var currentIndex = availableStreams.indexOf(savedUrl);
-
-                if (currentIndex !== -1) {
-                    var nextIndex = (currentIndex + 1) % availableStreams.length;
-                    streamUrl = availableStreams[nextIndex];
-                }
-            }
-            localStorage.setItem(storageKey, streamUrl);
-        }
-
+      
         // 3. Lấy phụ đề tiếng Việt và tiếng Anh, kèm mimeType chuẩn
         var subtitles = (selectedStream && selectedStream.subtitles) || [];
         var targetLangs = ["Tiếng Việt", "English"];
@@ -453,14 +437,11 @@ function parseMovieDetail(html, url) {
         return JSON.stringify({
             url: streamUrl,
             mimeType: "application/x-mpegURL",
-            isEmbed: true,
+            isEmbed: false,
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Referer": url,
-                "Origin": url,
-                "Block-Ads": false,
-                "Block-Css": "",
-                "Custom-Js": customJS
+                "Referer": "https://anime47.best/",
+                "Origin": "https://anime47.best",
             },
             subtitles: subsObject
         });
@@ -1314,7 +1295,7 @@ function sortEpisodesByName(data) {
         var fixedLine = currentLine;
         if (returnFixed) {
           // Chuẩn hóa ký tự xuống dòng và tab đặc biệt
-          fixedLine = fixedLine.replace(/\r/g, "").replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
+          fixedLine = fixedLine.replace(/\r/g, "").replace(/\t/g, "  "); // Thay Tab trần bằng 2 khoảng trắng cho an toàn
         }
   
         fixedLines.push(fixedLine);
@@ -1378,3 +1359,4 @@ function sortEpisodesByName(data) {
   }
 }
 // ==== HIDEMENU ====
+
