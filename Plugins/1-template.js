@@ -24,6 +24,7 @@ function getManifest() {
     });
   }
   catch(e){
+    // VERTICAL
     return JSON.stringify({
       "id": "loiapp",
       "name": "Plugin bị lỗi cài đặt",
