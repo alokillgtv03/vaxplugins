@@ -6,7 +6,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "clbpxVIP",
         "name": "CLB Phim Xưa VIP",
-        "version": "1.1",
+        "version": "1.21",
         "info": "Đã nâng cấp thêm cơ chế lưu lịch sử và qua tập. Khỏi cần đăng nhập vẫn xem đc.",
         "baseUrl": "http://vkey.vn/phimxua",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/clbpx.ico",
