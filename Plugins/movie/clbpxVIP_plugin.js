@@ -6,7 +6,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "clbpxVIP",
         "name": "CLB Phim Xưa VIP",
-        "version": "1.3",
+        "version": "1.4",
         "info": "Đã nâng cấp thêm cơ chế lưu lịch sử và qua tập. Khỏi cần đăng nhập vẫn xem đc.",
         "baseUrl": "http://vkey.vn/phimxua",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/clbpx.ico",
@@ -714,7 +714,7 @@ function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
       var cleanId = extractId(epObj.id || epObj.slug || "");
       if (cleanId) { 
         var epName = epObj.name || ("Tập " + (epIdx + 1));
-        showLoading("Đang tải " + epName + " (" + curServer.name + ")...");
+        //showLoading("Đang tải " + epName + " (" + curServer.name + ")...");
         showToast("Đang chuyển sang " + epName + ". Hãy nhấn play để xem tiếp.<br>Bạn có thể chuyển chất lượng video tùy ý nha.");
         iframe.src = ABYSS_BASE_URL + cleanId; 
         bridgeLog("[CustomJS] [" + curServer.name + "] - Phát tập " + (epIdx + 1) + " (ID: " + cleanId + ")");
