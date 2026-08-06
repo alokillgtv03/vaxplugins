@@ -4,7 +4,7 @@
 BASEURL = "http://vkey.vn/phimxua";
 function getManifest() {
     return JSON.stringify({
-        "id": "clbpx",
+        "id": "clbpxVIP",
         "name": "CLB Phim Xưa VIP",
         "version": "1.1",
         "info": "Đã nâng cấp thêm cơ chế lưu lịch sử và qua tập. Khỏi cần đăng nhập vẫn xem đc.",
