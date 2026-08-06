@@ -6,7 +6,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "clbpxVIP",
         "name": "CLB Phim Xưa VIP",
-        "version": "1.21",
+        "version": "1.3",
         "info": "Đã nâng cấp thêm cơ chế lưu lịch sử và qua tập. Khỏi cần đăng nhập vẫn xem đc.",
         "baseUrl": "http://vkey.vn/phimxua",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/clbpx.ico",
@@ -524,7 +524,7 @@ function parseDetailResponse(htmlResponse, fallbackUrl) {
     }
 }
 
-function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
+Function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
     return `
 (function () {
   if (window.__CUSTOM_PLAYER_INITED__) return;
@@ -601,10 +601,14 @@ function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
       return;
     }
 
-    // 2. Dựng CSS & Giao diện UI (Đặt tên Class an toàn chống AdBlock)
+    // 2. Dựng CSS & Giao diện UI (Đã tối ưu Responsive cho Mobile)
     if (document.body) document.body.innerHTML = "";
     
-    var css = "#playback { display: none !important; }* { box-sizing: border-box; margin: 0; padding: 0; } html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; } #player-frame { width: 100%; height: 100%; border: 0; display: block; position: relative; z-index: 1; } .v-fade-ctrl { opacity: 0.4; transition: opacity 0.3s ease; z-index: 20; } .v-fade-ctrl:hover, body:active .v-fade-ctrl { opacity: 1; } .v-menu-wrap { position: absolute; top: 15px; right: 15px; z-index: 25; } .v-btn-toggle { background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; } .v-playlist-panel { display: none; position: absolute; top: 45px; right: 0; width: 340px; max-height: 440px; background: rgba(15, 15, 15, 0.96); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.8); } .v-playlist-panel.active { display: block; } .v-history-bar { display: none; background: rgba(229, 9, 20, 0.15); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 6px; padding: 10px; margin-bottom: 12px; } .v-hist-title { font-size: 12px; color: #ddd; margin-bottom: 8px; line-height: 1.3; } .v-hist-title strong { color: #ff4d4d; } .v-hist-btns { display: flex; gap: 5px; } .v-hbtn { flex: 1; padding: 6px 0; font-size: 11px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; text-align: center; } .v-btn-main { background: #e50914; color: #fff; } .v-btn-sub { background: rgba(255, 255, 255, 0.2); color: #fff; } .v-btn-close { background: rgba(255, 255, 255, 0.08); color: #aaa; } .server-tabs-container { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15); } .server-tab-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #ccc; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; font-weight: bold; } .server-tab-item.active { background: #e50914; color: #fff; border-color: #e50914; } .ep-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } .ep-item { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 8px 2px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ep-item.active { background: #e50914; font-weight: bold; border-color: #fff; } .nav-ep-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 20; } .nav-prev { left: 15px; } .nav-next { right: 15px; } #v-loading-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; pointer-events: none; } .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.15); border-top-color: #e50914; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; } @keyframes spin { to { transform: rotate(360deg); } } #v-status-msg { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(229, 9, 20, 0.95); color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 22; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }";
+    var css = "#playback { display: none !important; }* { box-sizing: border-box; margin: 0; padding: 0; } html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; } #player-frame { width: 100%; height: 100%; border: 0; display: block; position: relative; z-index: 1; } .v-fade-ctrl { opacity: 0.4; transition: opacity 0.3s ease; z-index: 20; } .v-fade-ctrl:hover, body:active .v-fade-ctrl { opacity: 1; } .v-menu-wrap { position: absolute; top: 15px; right: 15px; z-index: 25; } .v-btn-toggle { background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; } " +
+    ".v-playlist-panel { display: none; position: absolute; top: 45px; right: 0; width: calc(100vw - 30px); max-width: 340px; max-height: calc(100vh - 70px); background: rgba(15, 15, 15, 0.96); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 4px 20px rgba(0,0,0,0.8); } " +
+    ".v-playlist-panel.active { display: block; } .v-history-bar { display: none; background: rgba(229, 9, 20, 0.15); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 6px; padding: 10px; margin-bottom: 12px; } .v-hist-title { font-size: 12px; color: #ddd; margin-bottom: 8px; line-height: 1.3; } .v-hist-title strong { color: #ff4d4d; } .v-hist-btns { display: flex; gap: 5px; } .v-hbtn { flex: 1; padding: 6px 0; font-size: 11px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; text-align: center; } .v-btn-main { background: #e50914; color: #fff; } .v-btn-sub { background: rgba(255, 255, 255, 0.2); color: #fff; } .v-btn-close { background: rgba(255, 255, 255, 0.08); color: #aaa; } .server-tabs-container { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15); -webkit-overflow-scrolling: touch; } .server-tab-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #ccc; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; font-weight: bold; } .server-tab-item.active { background: #e50914; color: #fff; border-color: #e50914; } .ep-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } .ep-item { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 8px 2px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ep-item.active { background: #e50914; font-weight: bold; border-color: #fff; } .nav-ep-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 20; } .nav-prev { left: 15px; } .nav-next { right: 15px; } #v-loading-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; pointer-events: none; } .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,255,255,0.15); border-top-color: #e50914; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; } @keyframes spin { to { transform: rotate(360deg); } } #v-status-msg { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(229, 9, 20, 0.95); color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 22; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.6); text-align: center; max-width: 90%; } " +
+    "@media (max-height: 480px) { .v-playlist-panel { max-height: calc(100vh - 50px); padding: 8px; } .ep-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; } .ep-item { padding: 6px 2px; font-size: 11px; } }";
+    
     var style = document.createElement("style"); style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
 
     var iframe = document.createElement("iframe"); iframe.id = "player-frame"; iframe.setAttribute("allow", "autoplay; encrypted-media; fullscreen"); iframe.setAttribute("allowfullscreen", "true");
@@ -617,7 +621,7 @@ function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
     var epToggleBtn = document.createElement("button"); epToggleBtn.className = "v-btn-toggle"; epToggleBtn.innerText = "Danh sách tập"; epToggleBtn.onclick = function () { epPanel.classList.toggle("active"); };
     var epPanel = document.createElement("div"); epPanel.className = "v-playlist-panel"; 
     
-    // KHUNG LỊCH SỬ NẰM TRONG PANEL DANH SÁCH TẬP (Chống AdBlock 100%)
+    // KHUNG LỊCH SỬ NẰM TRONG PANEL DANH SÁCH TẬP
     var histBar = document.createElement("div"); histBar.className = "v-history-bar";
     histBar.innerHTML = '<div class="v-hist-title" id="v-hist-txt">Lịch sử xem: Bạn đã xem tới tập trước đó</div>' +
       '<div class="v-hist-btns">' +
@@ -796,8 +800,7 @@ function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
 
         function closeHistBar() {
           if (histAutoCloseTimeout) clearTimeout(histAutoCloseTimeout);
-          //histBar.style.display = "none";
-           epPanel.classList.remove("active"); 
+          epPanel.classList.remove("active"); 
         }
 
         // Tự động đóng thanh lịch sử sau 15 giây
@@ -833,3 +836,4 @@ function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
 })();
   `;
 }
+
