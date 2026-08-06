@@ -524,7 +524,7 @@ function parseDetailResponse(htmlResponse, fallbackUrl) {
     }
 }
 
-Function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
+function rawJS(safeServerJson, initialVideoId, fallbackUrl, movieKey) {
     return `
 (function () {
   if (window.__CUSTOM_PLAYER_INITED__) return;
