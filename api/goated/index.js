@@ -69,47 +69,57 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 3. XỬ LÝ KHI SOURCE = ALL (Lấy tất cả các Server + Phụ đề)
+    // 3. XỬ LÝ KHI SOURCE = ALL (Tự động phát hiện và lấy TẤT CẢ các Server + Phụ đề)
     if (source === 'all') {
-      const availableSources = ['Valenox', 'Orbit']; // Danh sách các source hỗ trợ
-
-      // Lấy danh sách Video từ tất cả các Source + Danh sách Phụ đề song song
-      const requests = availableSources.map(src => 
-        fetchApiWithPoW('resolve', mediaType, id, { source: src })
-          .then(res => ({ source: src, data: res }))
-          .catch(err => ({ source: src, error: err.message }))
-      );
-      
-      requests.push(
+      // BƯỚC 3.1: Gọi thử 1 server mặc định (Valenox) + Phụ đề
+      const [firstSourceRes, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
         fetchApiWithPoW('subtitles', mediaType, id)
-          .then(res => ({ source: 'subtitles', data: res }))
-          .catch(err => ({ source: 'subtitles', error: err.message }))
-      );
-
-      const responses = await Promise.all(requests);
+      ]);
 
       const sourcesResult = [];
-      let subResult = null;
 
-      responses.forEach(item => {
-        if (item.source === 'subtitles') {
-          subResult = item.data?.subtitles || item.data;
-        } else if (item.data && !item.data.error) {
-          sourcesResult.push({
-            sourceName: item.source,
-            ...item.data
-          });
-        }
-      });
+      if (firstSourceRes && !firstSourceRes.error) {
+        // Dọn dẹp bớt thuộc tính dư thừa trong object server
+        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
+        sourcesResult.push({
+          sourceName: 'Valenox',
+          ...cleanFirst
+        });
+      }
 
-      // Kiểm tra nếu bị Limit / Không lấy được server nào
+      // BƯỚC 3.2: Lấy danh sách TẤT CẢ các source khả thi từ phản hồi API
+      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
+      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
+
+      // BƯỚC 3.3: Gọi tiếp song song tất cả các source còn lại
+      if (remainingSources.length > 0) {
+        const remainingRequests = remainingSources.map(src =>
+          fetchApiWithPoW('resolve', mediaType, id, { source: src })
+            .then(res => ({ sourceName: src, data: res }))
+            .catch(err => ({ sourceName: src, error: err.message }))
+        );
+
+        const remainingResponses = await Promise.all(remainingRequests);
+
+        remainingResponses.forEach(item => {
+          if (item.data && !item.data.error) {
+            const { subtitles: _, availableSources: __, ...cleanData } = item.data;
+            sourcesResult.push({
+              sourceName: item.sourceName,
+              ...cleanData
+            });
+          }
+        });
+      }
+
       if (sourcesResult.length === 0) {
         throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
       }
 
       resultData = {
         sources: sourcesResult,
-        subtitles: subResult
+        subtitles: subData?.subtitles || subData
       };
 
     } else if (source === 'true') {
