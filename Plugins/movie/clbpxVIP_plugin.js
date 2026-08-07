@@ -1,14 +1,15 @@
 // =============================================================================
 // CONFIGURATION & METADATA
 // =============================================================================
-BASEURL = "http://vkey.vn/phimxua";
+BASEURL = "https://vaxplayer.vercel.app/api/clbpx/";
+BASESOURCE = "";
 function getManifest() {
     return JSON.stringify({
         "id": "clbpxVIP",
         "name": "CLB Phim Xưa VIP",
-        "version": "1.4.1",
+        "version": "1.4.2",
         "info": "Đã nâng cấp thêm cơ chế lưu lịch sử và qua tập. Khỏi cần đăng nhập vẫn xem đc.",
-        "BASEURL": "http://vkey.vn/phimxua",
+        "BASEURL": "https://vaxplayer.vercel.app/api/clbpx/",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/clbpx.ico",
         "isEnabled": true,
         "isAdult": false,
@@ -151,7 +152,7 @@ function parseListResponse(htmlResponse) {
         currentPage = parseInt(curPageMatch[1]);
         if (currentPage > totalPages) totalPages = currentPage;
     }
-
+    console.log("list:\n" + JSON.stringify(items))
     return JSON.stringify({
         items: items,
         pagination: {
@@ -247,12 +248,13 @@ function parseMovieDetail(htmlResponse) {
                 }
 
                 var sectionEpisodes = [];
-                var sectionLinkRegex = /<a href="(https?:\/\/clbphimxua\.com\/clbpx(?:\.html)?\?v=[a-zA-Z0-9_-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+                // Bỏ domain cố định, khớp mọi đường dẫn chứa clbpx?v=
+                var sectionLinkRegex = /<a href="([^"]*clbpx(?:\.html)?\?v=[a-zA-Z0-9_-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
                 var slMatch;
                 while ((slMatch = sectionLinkRegex.exec(section)) !== null) {
                     var epUrl = slMatch[1];
                     if (typeof BASEURL !== 'undefined') {
-                        epUrl = epUrl.replace(/https?:\/\/clbphimxua\.com/, BASEURL);
+                        epUrl = epUrl.replace(/^https?:\/\/[^\/]+/, BASEURL);
                     }
                     var epLabel = slMatch[2].replace(/<[^>]+>/g, '').trim();
 
@@ -278,12 +280,13 @@ function parseMovieDetail(htmlResponse) {
 
         if (servers.length === 0) {
             var episodes = [];
-            var allLinksRegex = /<a href="(https?:\/\/clbphimxua\.com\/clbpx(?:\.html)?\?v=[a-zA-Z0-9_-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+            // Bỏ domain cố định, khớp mọi đường dẫn chứa clbpx?v=
+            var allLinksRegex = /<a href="([^"]*clbpx(?:\.html)?\?v=[a-zA-Z0-9_-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
             var lMatch;
             while ((lMatch = allLinksRegex.exec(htmlResponse)) !== null) {
                 var epUrl = lMatch[1];
                 if (typeof BASEURL !== 'undefined') {
-                    epUrl = epUrl.replace(/https?:\/\/clbphimxua\.com/, BASEURL);
+                    epUrl = epUrl.replace(/^https?:\/\/[^\/]+/, BASEURL);
                 }
                 var epLabel = lMatch[2].replace(/<[^>]+>/g, '').trim();
 
@@ -305,101 +308,56 @@ function parseMovieDetail(htmlResponse) {
                 });
             }
         }
-// Hàm hỗ trợ tính tổng số tập và số lượng server con
-// Hàm hỗ trợ tính tổng số tập và số lượng server con
-function getMovieStats(serverList) {
-    if (!Array.isArray(serverList)) return { totalEpisodes: 0, serverCount: 0 };
-    
-    var totalEp = serverList.reduce(function(sum, server) {
-        var epCount = (server && Array.isArray(server.episodes)) ? server.episodes.length : 0;
-        return sum + epCount;
-    }, 0);
 
-    return {
-        totalEpisodes: totalEp,
-        serverCount: serverList.length
-    };
-}
+        function getMovieStats(serverList) {
+            if (!Array.isArray(serverList)) return { totalEpisodes: 0, serverCount: 0 };
+            var totalEp = serverList.reduce(function(sum, server) {
+                var epCount = (server && Array.isArray(server.episodes)) ? server.episodes.length : 0;
+                return sum + epCount;
+            }, 0);
 
-var idplay = BASE64ENCODE(id);
-var keyToUse = idplay;
-var svDATA = {};
+            return {
+                totalEpisodes: totalEp,
+                serverCount: serverList.length
+            };
+        }
 
-if (localStorage.getItem("SVDATA")) {
-    try {
-        svDATA = JSON.parse(localStorage.getItem("SVDATA"));
-    } catch (e) {
-        console.error("❌ Lỗi Parse SVDATA từ localStorage:", e);
-        svDATA = {};
-    }
-}
+        var idplay = typeof BASE64ENCODE === 'function' ? BASE64ENCODE(id) : id;
+        var keyToUse = idplay;
+        var svDATA = {};
 
-console.log(`--- [CHECK SERVER] ID: ${idplay} ---`);
-
-var newStats = getMovieStats(servers);
-
-console.log("📥 [MỚI TẢI VỀ] Số tập:", newStats.totalEpisodes, "| Số server con:", newStats.serverCount, "| Data:", servers);
-
-// Nếu đã có dữ liệu phim này trong Storage
-if (svDATA[idplay]) {
-    var savedStats = getMovieStats(svDATA[idplay]);
-
-    console.log("💾 [ĐÃ LƯU TRƯỚC ĐÓ] Số tập:", savedStats.totalEpisodes, "| Số server con:", savedStats.serverCount, "| Data:", svDATA[idplay]);
-
-    var isBetter = false;
-    var reason = "";
-
-    // Tiêu chí 1: Nhiều tổng số tập hơn
-    if (newStats.totalEpisodes > savedStats.totalEpisodes) {
-        isBetter = true;
-        reason = `Số tập mới (${newStats.totalEpisodes}) > Số tập cũ (${savedStats.totalEpisodes})`;
-    } 
-    // Tiêu chí 2: Tổng số tập bằng nhau nhưng nhiều server con hơn
-    else if (newStats.totalEpisodes === savedStats.totalEpisodes && newStats.serverCount > savedStats.serverCount) {
-        isBetter = true;
-        reason = `Số tập bằng nhau (${newStats.totalEpisodes}), nhưng số server con mới (${newStats.serverCount}) > cũ (${savedStats.serverCount})`;
-    }
-
-    // Tiến hành lưu hoặc bỏ qua
-    if (isBetter) {
-        svDATA[idplay] = servers;
-        console.log(`✅ [CẬP NHẬT SUCCESS] -> Lý do: ${reason}`);
-    } else {
-        console.log(`⏹️ [BỎ QUA - GIỮ DỮ LIỆU CŨ] -> Dữ liệu mới không tốt hơn dữ liệu hiện tại.`);
-    }
-} else {
-    // Chưa có dữ liệu thì lưu luôn
-    svDATA[idplay] = servers;
-    console.log("✨ [LƯU MỚI SUCCESS] -> Phim này chưa tồn tại trong localStorage, đã lưu!");
-}
-
-localStorage.setItem("SVDATA", JSON.stringify(svDATA));
-localStorage.setItem("CURRENT_MOVIE_ID", keyToUse);
-
- // Kết thúc nhóm Log
-
-/*
-            var idplay = BASE64ENCODE(id);
-            var keyToUse = idplay;
-            var svDATA = {}
-            if(localStorage.getItem("SVDATA")){
-              svDATA = JSON.parse(localStorage.getItem("SVDATA"))
+        if (typeof localStorage !== 'undefined' && localStorage.getItem("SVDATA")) {
+            try {
+                svDATA = JSON.parse(localStorage.getItem("SVDATA"));
+            } catch (e) {
+                svDATA = {};
             }
-            if(svDATA[idplay]){
-              var save = svDATA[idplay].episodes.length;
-              var check = servers.episodes.length;
-              if(check > save){
+        }
+
+        var newStats = getMovieStats(servers);
+
+        if (svDATA[idplay]) {
+            var savedStats = getMovieStats(svDATA[idplay]);
+            var isBetter = false;
+
+            if (newStats.totalEpisodes > savedStats.totalEpisodes) {
+                isBetter = true;
+            } else if (newStats.totalEpisodes === savedStats.totalEpisodes && newStats.serverCount > savedStats.serverCount) {
+                isBetter = true;
+            }
+
+            if (isBetter) {
                 svDATA[idplay] = servers;
-              }
             }
-            else{
-              svDATA[idplay] = servers;
-            }
-            
+        } else {
+            svDATA[idplay] = servers;
+        }
+
+        if (typeof localStorage !== 'undefined') {
             localStorage.setItem("SVDATA", JSON.stringify(svDATA));
             localStorage.setItem("CURRENT_MOVIE_ID", keyToUse);
-            console.log("Moviedetail: SVDATA\n" + localStorage.getItem("SVDATA"))
-*/
+        }
+
         return JSON.stringify({
             id: id,
             title: title,
