@@ -1,15 +1,11 @@
 const crypto = require('crypto');
 
-// Khóa bí mật cho App Android
 const APP_SECRET_KEY = "VAXPLAYER";
-// Mã debug để xem trực tiếp trên trình duyệt
 const DEBUG_KEY = "9780752";
 
-// -------------------------------------------------------------
-// BỘ NHỚ CACHE TRONG RAM (Tồn tại giữa các lượt gọi)
-// -------------------------------------------------------------
+// Bộ nhớ Cache trong RAM
 const cache = new Map();
-const CACHE_TTL = 12 * 60 * 60 * 1000; // Thời gian lưu Cache: 12 tiếng (tính bằng millisecond)
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,110 +17,184 @@ module.exports = async (req, res) => {
 
   const { id, mediaType = 'movie', type = 'video', source = 'Valenox', play, debug } = req.query;
 
-  // -------------------------------------------------------------
-  // KIỂM TRA BẢO MẬT: X-App-Secret HOẶC debug=9780752
-  // -------------------------------------------------------------
+  // 1. Kiểm tra BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
   const isHeaderValid = clientSecret === APP_SECRET_KEY;
   const isDebugValid = debug === DEBUG_KEY;
 
   if (!isHeaderValid && !isDebugValid) {
     return res.status(403).json({ 
+      status: "error",
       error: "Truy cập bị từ chối! Bạn không có quyền gọi API này." 
     });
   }
 
   if (!id) {
-    return res.status(400).json({ error: "Thiếu tham số 'id' trên URL" });
+    return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  // Tạo Cache Key độc nhất dựa trên các tham số request
   const cacheKey = `${mediaType}_${id}_${type}_${source}`;
 
-  // -------------------------------------------------------------
-  // BƯỚC 1: KIỂM TRA CACHE TRONG RAM
-  // -------------------------------------------------------------
+  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
   if (cache.has(cacheKey)) {
     const cachedItem = cache.get(cacheKey);
-    // Nếu cache còn hạn sử dụng (dưới 12 tiếng)
     if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
-      res.setHeader('X-Cache', 'HIT'); // Đánh dấu lấy từ RAM Cache
+      const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
       
-      // Nếu có tham số play=true
-      if (play && source !== 'true' && (type === 'video')) {
-        const videoUrl = cachedItem.data?.url || cachedItem.data?.link;
+      const responseData = {
+        status: "success",
+        log: {
+          cache_status: "HIT",
+          message: "Lấy dữ liệu thành công từ Cache trước đó",
+          cached_at: new Date(cachedItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...cachedItem.data
+      };
+
+      if (play && source !== 'true' && source !== 'all' && type === 'video') {
+        const videoUrl = responseData?.url || responseData?.link;
         if (videoUrl && typeof videoUrl === 'string') {
           return res.redirect(302, videoUrl);
         }
       }
 
-      return res.status(200).json(cachedItem.data);
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(responseData);
     } else {
-      cache.delete(cacheKey); // Xóa nếu đã hết hạn
+      cache.delete(cacheKey);
     }
   }
 
   try {
-    let resultData;
+    let resultData = {};
 
-    // -------------------------------------------------------------
-    // BƯỚC 2: NẾU CHƯA CÓ CACHE -> GỌI API & GIẢI POW
-    // -------------------------------------------------------------
-    if (source === 'true') {
-      // Chế độ gộp Video + Phụ đề
+    // 3. XỬ LÝ KHI SOURCE = ALL (Lấy tất cả các Server + Phụ đề)
+    if (source === 'all') {
+      const availableSources = ['Valenox', 'Orbit']; // Danh sách các source hỗ trợ
+
+      // Lấy danh sách Video từ tất cả các Source + Danh sách Phụ đề song song
+      const requests = availableSources.map(src => 
+        fetchApiWithPoW('resolve', mediaType, id, { source: src })
+          .then(res => ({ source: src, data: res }))
+          .catch(err => ({ source: src, error: err.message }))
+      );
+      
+      requests.push(
+        fetchApiWithPoW('subtitles', mediaType, id)
+          .then(res => ({ source: 'subtitles', data: res }))
+          .catch(err => ({ source: 'subtitles', error: err.message }))
+      );
+
+      const responses = await Promise.all(requests);
+
+      const sourcesResult = [];
+      let subResult = null;
+
+      responses.forEach(item => {
+        if (item.source === 'subtitles') {
+          subResult = item.data?.subtitles || item.data;
+        } else if (item.data && !item.data.error) {
+          sourcesResult.push({
+            sourceName: item.source,
+            ...item.data
+          });
+        }
+      });
+
+      // Kiểm tra nếu bị Limit / Không lấy được server nào
+      if (sourcesResult.length === 0) {
+        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
+      }
+
+      resultData = {
+        sources: sourcesResult,
+        subtitles: subResult
+      };
+
+    } else if (source === 'true') {
+      // SOURCE = TRUE (Lấy 1 server mặc định + Phụ đề)
       const [videoData, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
         fetchApiWithPoW('subtitles', mediaType, id)
       ]);
 
+      if (videoData?.error) throw new Error(videoData.error);
+
       resultData = {
         ...videoData,
         subtitles: subData?.subtitles || subData
       };
+
     } else {
-      // Chế độ thường (Lấy riêng Video hoặc Phụ đề)
+      // CHẾ ĐỘ THƯỜNG (Lấy riêng lẻ)
       const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
       const extraPayload = endpoint === 'resolve' ? { source } : {};
 
       resultData = await fetchApiWithPoW(endpoint, mediaType, id, extraPayload);
+      if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // -------------------------------------------------------------
-    // BƯỚC 3: KIỂM TRA DỮ LIỆU HOÀN CHỈNH & LƯU VÀO CACHE
-    // -------------------------------------------------------------
-    const isVideoOk = resultData && !resultData.error;
-    const isSubOk = !resultData?.subtitles?.error;
+    // 4. LƯU DỮ LIỆU HOÀN CHỈNH VÀO CACHE MỚI (CACHE MISS)
+    const now = Date.now();
+    cache.set(cacheKey, {
+      timestamp: now,
+      data: resultData
+    });
 
-    // Chỉ lưu vào Cache khi CẢ HAI luồng dữ liệu đều thành công không có lỗi
-    if (isVideoOk && isSubOk) {
-      cache.set(cacheKey, {
-        timestamp: Date.now(),
-        data: resultData
-      });
-      res.setHeader('X-Cache', 'MISS'); // Đánh dấu lần đầu tạo Cache
-    }
+    const finalResponse = {
+      status: "success",
+      log: {
+        cache_status: "MISS",
+        message: "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+        cached_at: new Date(now).toISOString(),
+        age_seconds: 0
+      },
+      ...resultData
+    };
 
-    // Xử lý chuyển hướng nếu có tham số play=true
-    if (play && source !== 'true' && (type === 'video')) {
+    if (play && source !== 'true' && source !== 'all' && type === 'video') {
       const videoUrl = resultData?.url || resultData?.link;
       if (videoUrl && typeof videoUrl === 'string') {
         return res.redirect(302, videoUrl);
       }
     }
 
-    // Cấu hình HTTP Cache-Control cho mạng lưới CDN của Vercel (Lưu 12 tiếng)
+    res.setHeader('X-Cache', 'MISS');
     res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
-
-    return res.status(200).json(resultData);
+    return res.status(200).json(finalResponse);
 
   } catch (error) {
-    return res.status(500).json({ error: "Xử lý thất bại", details: error.message });
+    // 5. NẾU LỖI / BỊ LIMIT -> KIỂM TRA XEM CÓ CACHE CŨ DỰ PHÒNG KHÔNG
+    if (cache.has(cacheKey)) {
+      const fallbackItem = cache.get(cacheKey);
+      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
+
+      return res.status(200).json({
+        status: "success",
+        log: {
+          cache_status: "HIT_FALLBACK",
+          message: `Request mới bị lỗi/limit (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
+          cached_at: new Date(fallbackItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...fallbackItem.data
+      });
+    }
+
+    // Nếu không có Cache cũ để cứu -> Trả về STATUS ERROR
+    return res.status(500).json({
+      status: "error",
+      log: {
+        cache_status: "FAILED",
+        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
+      },
+      error: error.message
+    });
   }
 };
 
-// -------------------------------------------------------------
-// HÀM BỔ TRỢ: Tự động lấy Challenge -> Giải PoW -> Gọi API
-// -------------------------------------------------------------
+// Hàm bổ trợ gọi API + PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
