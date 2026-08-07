@@ -37,39 +37,12 @@ module.exports = async (req, res) => {
     // CHẾ ĐỘ GỘP DỮ LIỆU: Khi source=true
     // -------------------------------------------------------------
     if (source === 'true') {
-      const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
-      if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
-      
-      const challengeData = await challengeRes.json();
-      const { challenge, difficulty = 4 } = challengeData;
-
-      const nonce = solvePoWNode(challenge, difficulty);
-
-      const basePayload = {
-        mediaType,
-        id: isNaN(id) ? id : Number(id),
-        challenge,
-        nonce: nonce.toString()
-      };
-
-      // Gọi đồng thời cả 2 API lấy Link Video và Phụ Đề
-      const [resolveRes, subRes] = await Promise.all([
-        fetch("https://api.reallyfast.xyz/api/resolve", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...basePayload, source: 'Valenox' })
-        }),
-        fetch("https://api.reallyfast.xyz/api/subtitles", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(basePayload)
-        })
+      // Gọi song song 2 hàm độc lập (mỗi hàm tự lấy Challenge & PoW riêng)
+      const [videoData, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
+        fetchApiWithPoW('subtitles', mediaType, id)
       ]);
 
-      const videoData = await resolveRes.json();
-      const subData = await subRes.json();
-
-      // Gộp kết quả video và danh sách phụ đề vào chung 1 object
       const combinedData = {
         ...videoData,
         subtitles: subData?.subtitles || subData
@@ -82,33 +55,9 @@ module.exports = async (req, res) => {
     // CHẾ ĐỘ THƯỜNG: Lấy riêng Video hoặc Phụ Đề
     // -------------------------------------------------------------
     const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
+    const extraPayload = endpoint === 'resolve' ? { source } : {};
 
-    const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
-    if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
-    
-    const challengeData = await challengeRes.json();
-    const { challenge, difficulty = 4 } = challengeData;
-
-    const nonce = solvePoWNode(challenge, difficulty);
-
-    const payload = {
-      mediaType,
-      id: isNaN(id) ? id : Number(id),
-      challenge,
-      nonce: nonce.toString()
-    };
-
-    if (endpoint === 'resolve') {
-      payload.source = source;
-    }
-
-    const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await apiRes.json();
+    const data = await fetchApiWithPoW(endpoint, mediaType, id, extraPayload);
 
     if (play && endpoint === 'resolve') {
       const videoUrl = data?.url || data?.link;
@@ -123,6 +72,35 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "Xử lý thất bại", details: error.message });
   }
 };
+
+// -------------------------------------------------------------
+// HÀM BỔ TRỢ: Tự động lấy Challenge -> Giải PoW -> Gọi API
+// -------------------------------------------------------------
+async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
+  const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
+  if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
+  
+  const challengeData = await challengeRes.json();
+  const { challenge, difficulty = 4 } = challengeData;
+
+  const nonce = solvePoWNode(challenge, difficulty);
+
+  const payload = {
+    mediaType,
+    id: isNaN(id) ? id : Number(id),
+    challenge,
+    nonce: nonce.toString(),
+    ...extraParams
+  };
+
+  const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  return await apiRes.json();
+}
 
 function solvePoWNode(challenge, difficulty) {
   const targetPrefix = '0'.repeat(difficulty);
