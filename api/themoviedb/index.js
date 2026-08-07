@@ -1,31 +1,35 @@
 module.exports = async (req, res) => {
-  // 1. Thiết lập Header CORS để Cho phép gọi từ Web/App khác
+  // 1. Thiết lập Header CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Xử lý Preflight Request (OPTIONS)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    // 2. Gom tất cả tham số Query truyền từ Client
     const queryParams = new URLSearchParams(req.query);
 
-    // Đảm bảo luôn có api_key và mặc định các giá trị cần thiết nếu Client không truyền
+    // 2. Lấy tham số endpoint từ request, mặc định là 'discover/movie' nếu client không truyền
+    const endpoint = queryParams.get('endpoint') || 'discover/movie';
+    
+    // XÓA tham số endpoint ra khỏi queryParams để không bị truyền thừa sang TMDB API
+    queryParams.delete('endpoint');
+
+    // Đảm bảo các tham số mặc định
     if (!queryParams.has('api_key')) {
       queryParams.set('api_key', 'aa8db17cefbe569dc21a8809090b7b93');
     }
     if (!queryParams.has('language')) {
-      queryParams.set('language', 'en-US');
+      queryParams.set('language', 'vi-VN'); // Khuyên dùng vi-VN mặc định cho app
     }
     if (!queryParams.has('include_adult')) {
       queryParams.set('include_adult', 'false');
     }
 
-    // 3. Tạo URL gọi sang TMDB API
-    const tmdbUrl = `https://api.themoviedb.org/3/discover/movie?${queryParams.toString()}`;
+    // 3. Ghép endpoint ĐỘNG vào URL của TMDB
+    const tmdbUrl = `https://api.themoviedb.org/3/${endpoint}?${queryParams.toString()}`;
 
     // 4. Fetch dữ liệu từ TMDB
     const response = await fetch(tmdbUrl, {
@@ -47,7 +51,7 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // 5. Cấu hình Caching trên Vercel Edge/CDN (Lưu cache 6 tiếng giống TMDB)
+    // 5. Cấu hình Caching trên Vercel Edge/CDN
     res.setHeader('Cache-Control', 'public, max-age=21600, s-maxage=21600, stale-while-revalidate=86400');
     res.setHeader('Content-Type', 'application/json;charset=utf-8');
 
