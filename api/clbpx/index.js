@@ -4,7 +4,6 @@ const TARGET_DOMAIN = process.env.TARGET_DOMAIN || "https://clbphimxua.com";
 const USERNAME = process.env.WP_USERNAME || "hoangnp369@gmail.com";
 const PASSWORD = process.env.WP_PASSWORD || "123456";
 
-// BỘ NHỚ CACHE TRONG RAM LƯU COOKIE
 let cachedCookie = "";
 let cookieExpiresAt = 0;
 
@@ -12,12 +11,10 @@ module.exports = async (req, res) => {
   try {
     const now = Date.now();
 
-    // 1. Kiểm tra Cookie đăng nhập
     if (!cachedCookie || now >= cookieExpiresAt) {
       cachedCookie = await loginAndSaveCookie();
     }
 
-    // 2. Chạy Proxy
     await handleProxyAndScrape(req, res, cachedCookie);
 
   } catch (error) {
@@ -25,9 +22,6 @@ module.exports = async (req, res) => {
   }
 };
 
-/**
- * Đăng nhập vào WordPress target và lấy Cookie
- */
 async function loginAndSaveCookie() {
   try {
     const formData = new URLSearchParams();
@@ -77,13 +71,21 @@ async function loginAndSaveCookie() {
   }
 }
 
-/**
- * Xử lý Proxy, bóc tách URL & sửa đổi nội dung HTML
- */
 async function handleProxyAndScrape(req, res, authCookie) {
-  // 1. LOẠI BỎ TIỀN TỐ '/api/clbpx' ĐỂ TRÁNH LỖI 404 / REDIRECT
-  let cleanPath = req.url.replace(/^\/api\/clbpx/, '');
-  if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+  // 1. LÀM SẠCH VÀ KHỬ LẶP URL (URL SANITIZATION)
+  let cleanPath = req.url;
+
+  // Xóa tất cả các đoạn /api/clbpx bị lặp (kể cả có nhiều dấu ///)
+  while (cleanPath.match(/^(\/+api\/+clbpx)/i)) {
+    cleanPath = cleanPath.replace(/^(\/+api\/+clbpx)/i, '');
+  }
+
+  // Thu gọn nhiều dấu / liên tiếp thành 1 dấu /
+  cleanPath = cleanPath.replace(/\/+/g, '/');
+
+  if (!cleanPath.startsWith('/')) {
+    cleanPath = '/' + cleanPath;
+  }
 
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
@@ -92,7 +94,6 @@ async function handleProxyAndScrape(req, res, authCookie) {
   fetchHeaders["host"] = new URL(TARGET_DOMAIN).host;
   fetchHeaders["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  // Đính kèm Cookie xác thực
   if (authCookie) {
     const existingCookie = fetchHeaders["cookie"] || "";
     fetchHeaders["cookie"] = existingCookie ? `${existingCookie}; ${authCookie}` : authCookie;
@@ -107,16 +108,16 @@ async function handleProxyAndScrape(req, res, authCookie) {
     method: req.method,
     headers: fetchHeaders,
     body: body,
-    redirect: "manual" // Không tự động chuyển hướng ra ngoài
+    redirect: "manual"
   });
 
-  // 2. GHI ĐÈ HEADERS & CHUYỂN HƯỚNG VỀ LẠI PROXY
+  // 2. CHUYỂN HƯỚNG LOCATION AN TOÀN
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
     if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
       if (lowerKey === 'location') {
-        // Thay thế URL gốc thành URL Vercel proxy
-        const rewrittenLocation = value.replace(TARGET_DOMAIN, '/api/clbpx');
+        let rewrittenLocation = value.replaceAll(TARGET_DOMAIN + "/api/clbpx", "/api/clbpx");
+        rewrittenLocation = rewrittenLocation.replaceAll(TARGET_DOMAIN, "/api/clbpx");
         res.setHeader(key, rewrittenLocation);
       } else {
         res.setHeader(key, value);
@@ -126,11 +127,11 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   const contentType = response.headers.get("content-type") || "";
 
-  // 3. SỬA ĐỔI LINK TRONG NỘI DUNG HTML
+  // 3. THAY THẾ LINK TRONG HTML Tránh bị lặp trùng
   if (contentType.includes("text/html")) {
     let htmlText = await response.text();
     
-    // Đổi toàn bộ link tuyệt đối clbphimxua.com thành link proxy
+    htmlText = htmlText.replaceAll(TARGET_DOMAIN + "/api/clbpx", "/api/clbpx");
     htmlText = htmlText.replaceAll(TARGET_DOMAIN, "/api/clbpx");
 
     const injectedScript = "<script>console.log('Proxy active - clbphimxua.com');</script>";
@@ -143,7 +144,6 @@ async function handleProxyAndScrape(req, res, authCookie) {
     return res.status(response.status).send(htmlText);
   }
 
-  // File tĩnh (images, css, js...)
   const arrayBuffer = await response.arrayBuffer();
   return res.status(response.status).send(Buffer.from(arrayBuffer));
 }
