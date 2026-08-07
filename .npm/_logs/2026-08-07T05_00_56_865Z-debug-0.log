@@ -1,0 +1,51 @@
+0 verbose cli /usr/bin/node /usr/bin/npm
+1 info using npm@10.9.1
+2 info using node@v22.23.0
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/public/.cache/typescript/7.0/.npmrc
+5 silly config load:file:/public/.npmrc
+6 silly config load:file:/etc/npmrc
+7 verbose title npm install @types/node@latest
+8 verbose argv "install" "--ignore-scripts" "@types/node@latest" "--save-dev" "--user-agent" "\"typesInstaller/7.0.2\""
+9 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-07T05_00_56_865Z-
+10 verbose logfile /public/.npm/_logs/2026-08-07T05_00_56_865Z-debug-0.log
+11 silly logfile start cleaning logs, removing 2 files
+12 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+13 silly logfile done cleaning log files
+14 silly packumentCache corgi:https://registry.npmjs.org/@types%2fnode cache-miss
+15 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 566ms (cache miss)
+16 silly packumentCache corgi:https://registry.npmjs.org/@types%2fnode set size:undefined disposed:false
+17 silly idealTree buildDeps
+18 silly fetch manifest @types/node@26.1.2
+19 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 398ms (cache miss)
+21 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:undefined disposed:false
+22 silly placeDep ROOT @types/node@26.1.2 OK for:  want: 26.1.2
+23 silly fetch manifest undici-types@~8.3.0
+24 silly packumentCache full:https://registry.npmjs.org/undici-types cache-miss
+25 http cache https://registry.npmjs.org/undici-types 20ms (cache hit)
+26 silly packumentCache full:https://registry.npmjs.org/undici-types set size:250438 disposed:false
+27 silly placeDep ROOT undici-types@8.3.0 OK for: @types/node@26.1.2 want: ~8.3.0
+28 silly reify moves {}
+29 silly audit bulk request {
+29 silly audit   'types-registry': [ '0.1.781' ],
+29 silly audit   '@types/node': [ '26.1.2' ],
+29 silly audit   'undici-types': [ '8.3.0' ]
+29 silly audit }
+30 http cache undici-types@https://registry.npmjs.org/undici-types/-/undici-types-8.3.0.tgz 0ms (cache hit)
+31 http cache @types/node@https://registry.npmjs.org/@types/node/-/node-26.1.2.tgz 0ms (cache hit)
+32 silly tarball no local data for undici-types@https://registry.npmjs.org/undici-types/-/undici-types-8.3.0.tgz. Extracting by manifest.
+33 silly tarball no local data for @types/node@https://registry.npmjs.org/@types/node/-/node-26.1.2.tgz. Extracting by manifest.
+34 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 227ms
+35 silly audit report {}
+36 http fetch GET 200 https://registry.npmjs.org/undici-types/-/undici-types-8.3.0.tgz 396ms (cache miss)
+37 http fetch GET 200 https://registry.npmjs.org/@types/node/-/node-26.1.2.tgz 525ms (cache miss)
+38 silly ADD node_modules/undici-types
+39 silly ADD node_modules/@types/node
+40 verbose cwd /public/.cache/typescript/7.0
+41 verbose os Linux 4.19.157-perf+
+42 verbose node v22.23.0
+43 verbose npm  v10.9.1
+44 verbose exit 0
+45 info ok
+46 error A complete log of this run can be found in: /public/.npm/_logs/2026-08-07T05_00_56_865Z-debug-0.log

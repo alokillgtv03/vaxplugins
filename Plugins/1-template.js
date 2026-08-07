@@ -925,76 +925,11 @@ function rawJS(){
   }
   function log(msg) {console.log(msg);}
   
-  function BASE64DECODE(base64String) {
-    try {
-      if (!base64String) return "";
-  
-      // 1. Dọn dẹp chuỗi & xử lý nếu App tự động mã hóa URL (ví dụ: %2B, %2F)
-      var str = decodeURIComponent(base64String.trim());
-  
-      // Chuyển URL-safe base64 về base64 chuẩn
-      str = str.replace(/-/g, "+").replace(/_/g, "/");
-  
-      // Bảng ký tự Base64
-      var chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-      var output = [];
-      var buffer = 0,
-        bits = 0;
-  
-      // 2. Decode Base64 thành Mảng Byte (Uint8Array)
-      for (var i = 0; i < str.length; i++) {
-        var char = str.charAt(i);
-        if (char === "=") break; // Bỏ qua padding
-        var index = chars.indexOf(char);
-        if (index === -1) continue; // Bỏ qua ký tự không hợp lệ
-  
-        buffer = (buffer << 6) | index;
-        bits += 6;
-  
-        if (bits >= 8) {
-          bits -= 8;
-          output.push((buffer >> bits) & 0xff);
-        }
-      }
-  
-      // 3. Decode UTF-8 từ mảng Byte ra String (không dùng TextDecoder)
-      var result = "";
-      var j = 0;
-      while (j < output.length) {
-        var c = output[j++];
-        if (c < 128) {
-          result += String.fromCharCode(c);
-        } else if (c > 191 && c < 224) {
-          var c2 = output[j++];
-          result += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-        } else if (c > 223 && c < 240) {
-          var c2 = output[j++];
-          var c3 = output[j++];
-          result += String.fromCharCode(
-            ((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63),
-          );
-        } else if (c >= 240) {
-          var c2 = output[j++];
-          var c3 = output[j++];
-          var c4 = output[j++];
-          var u =
-            (((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63)) -
-            0x10000;
-          result += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 0x3ff));
-        }
-      }
-  
-      return result;
-    } catch (e) {
-      console.log("[BASE64DECODE Error]:", e.message || e);
-      return "";
-    }
-  }
-  function BASE64ENCODE(str) {
+BASE64 = {
+  encode: function (str) {
     try {
       if (!str) return "";
-  
+
       // 1. Encode String ra mảng UTF-8 Bytes trước
       var utf8Bytes = [];
       for (var i = 0; i < str.length; i++) {
@@ -1015,49 +950,118 @@ function rawJS(){
             (code >> 18) | 240,
             ((code >> 12) & 63) | 128,
             ((code >> 6) & 63) | 128,
-            (code & 63) | 128,
+            (code & 63) | 128
           );
         } else {
           utf8Bytes.push(
             (code >> 12) | 224,
             ((code >> 6) & 63) | 128,
-            (code & 63) | 128,
+            (code & 63) | 128
           );
         }
       }
-  
+
       // 2. Chuyển mảng UTF-8 Bytes thành chuỗi Base64
       var chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
       var encoded = "";
       var byte1, byte2, byte3;
       var b1, b2, b3, b4;
-  
+
       for (var j = 0; j < utf8Bytes.length; j += 3) {
         byte1 = utf8Bytes[j];
         byte2 = j + 1 < utf8Bytes.length ? utf8Bytes[j + 1] : NaN;
         byte3 = j + 2 < utf8Bytes.length ? utf8Bytes[j + 2] : NaN;
-  
+
         b1 = byte1 >> 2;
         b2 = ((byte1 & 3) << 4) | (isNaN(byte2) ? 0 : byte2 >> 4);
         b3 = isNaN(byte2)
           ? 64
           : ((byte2 & 15) << 2) | (isNaN(byte3) ? 0 : byte3 >> 6);
         b4 = isNaN(byte3) ? 64 : byte3 & 63;
-  
+
         encoded +=
           chars.charAt(b1) +
           chars.charAt(b2) +
           chars.charAt(b3) +
           chars.charAt(b4);
       }
-  
+
       return encoded;
     } catch (e) {
-      console.log("[BASE64ENCODE Error]:", e.message || e);
+      console.log("[BASE64.encode Error]:", e.message || e);
+      return "";
+    }
+  },
+
+  decode: function (base64String) {
+    try {
+      if (!base64String) return "";
+
+      // 1. Dọn dẹp chuỗi & xử lý nếu URL-encoded (ví dụ: %2B, %2F)
+      var str = decodeURIComponent(base64String.trim());
+
+      // Chuyển URL-safe base64 về base64 chuẩn
+      str = str.replace(/-/g, "+").replace(/_/g, "/");
+
+      // Bảng ký tự Base64
+      var chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+      var output = [];
+      var buffer = 0,
+        bits = 0;
+
+      // 2. Decode Base64 thành Mảng Byte
+      for (var i = 0; i < str.length; i++) {
+        var char = str.charAt(i);
+        if (char === "=") break; // Bỏ qua padding
+        var index = chars.indexOf(char);
+        if (index === -1) continue; // Bỏ qua ký tự không hợp lệ
+
+        buffer = (buffer << 6) | index;
+        bits += 6;
+
+        if (bits >= 8) {
+          bits -= 8;
+          output.push((buffer >> bits) & 0xff);
+        }
+      }
+
+      // 3. Decode UTF-8 từ mảng Byte ra String
+      var result = "";
+      var j = 0;
+      while (j < output.length) {
+        var c = output[j++];
+        if (c < 128) {
+          result += String.fromCharCode(c);
+        } else if (c > 191 && c < 224) {
+          var c2 = output[j++];
+          result += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+        } else if (c > 223 && c < 240) {
+          var c2 = output[j++];
+          var c3 = output[j++];
+          result += String.fromCharCode(
+            ((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63)
+          );
+        } else if (c >= 240) {
+          var c2 = output[j++];
+          var c3 = output[j++];
+          var c4 = output[j++];
+          var u =
+            (((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63)) -
+            0x10000;
+          result += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 0x3ff));
+        }
+      }
+
+      return result;
+    } catch (e) {
+      console.log("[BASE64.decode Error]:", e.message || e);
       return "";
     }
   }
+};
+
   function checkRaw(scriptStr, returnFixed) {
     try {
       if (!scriptStr || typeof scriptStr !== "string") {
