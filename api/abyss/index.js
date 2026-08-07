@@ -1,71 +1,54 @@
-const fetch = require('node-fetch'); // Nếu chạy Node <= 17 (Node 18+ đã có sẵn fetch)
-
-async function getAbyssCleanSource(abyssUrl) {
+module.exports = async (req, res) => {
   try {
-    // 1. Giả lập Header từ trang mẹ (clbphimxua.com)
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "Referer": "https://clbphimxua.com/",
-      "Origin": "https://clbphimxua.com",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-      "Sec-Fetch-Dest": "iframe",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "cross-site"
-    };
+    // 1. Lấy mã video từ Query string (Ví dụ: /api/abyss?v=Z9mWsX3Pl)
+    const videoId = req.query?.v || "Z9mWsX3Pl";
+    
+    let targetUrl = videoId;
+    if (!targetUrl.startsWith("http")) {
+      targetUrl = `https://abysscdn.com/?v=${videoId}`;
+    }
 
-    // 2. Tải HTML với chế độ theo dõi Redirect thủ công
-    let response = await fetch(abyssUrl, {
+    // 2. Gửi Request giả lập Header từ trang mẹ
+    const response = await fetch(targetUrl, {
       method: "GET",
-      headers: headers,
-      redirect: "manual" // KHÔNG cho phép tự động chuyển hướng HTTP 301/302
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": "https://clbphimxua.com/",
+        "Origin": "https://clbphimxua.com",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
+      },
+      redirect: "follow"
     });
 
-    // Nếu Abyss trả về lệnh Redirect (301, 302, 307, 308)
-    if (response.status >= 300 && response.status < 400) {
-      const redirectLocation = response.headers.get("location");
-      console.log("Phát hiện HTTP Redirect sang:", redirectLocation);
-      
-      // Nếu link chuyển hướng vẫn thuộc abysscdn/abyss thì đuổi theo lấy HTML thật
-      if (redirectLocation && redirectLocation.includes("abyss")) {
-        response = await fetch(redirectLocation, { headers, redirect: "manual" });
-      }
+    if (!response.ok) {
+      return res.status(response.status).json({ 
+        error: `Trang gốc Abyss trả về lỗi HTTP ${response.status}` 
+      });
     }
 
     let html = await response.text();
 
-    // 3. TRIỆT HẠ JS REDIRECT (Xóa toàn bộ mã lệnh chuyển hướng trình duyệt)
+    // 3. TRIỆT HẠ MÃ REDIRECT (Thay thế các câu lệnh nhảy trang bằng console.log)
     html = html
-      .replace(/window\.top\.location\s*=\s*[^;]+;/gi, '/* blocked redirect */')
-      .replace(/window\.location\.(href|replace)\s*\([^)]*\);?/gi, '/* blocked redirect */')
-      .replace(/top\.location\.href\s*=\s*[^;]+;/gi, '/* blocked redirect */')
-      .replace(/<meta[^>]*http-equiv=["']refresh["'][^>]*>/gi, ''); // Xóa tag HTML Refresh
+      .replace(/window\.top\.location/gi, "console.log")
+      .replace(/window\.location/gi, "console.log")
+      .replace(/top\.location/gi, "console.log")
+      .replace(/<meta[^>]*http-equiv=["']refresh["'][^>]*>/gi, ""); // Xóa tag HTML Refresh tự động
 
-    // 4. BÓC TÁCH LINK VIDEO (.m3u8 / .mp4 / API Source)
-    const m3u8Match = html.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/i) || 
-                      html.match(/(https?:\/\/[^"'\s]+\.mp4[^"'\s]*)/i);
-
-    return {
-      status: "success",
-      videoUrl: m3u8Match ? m3u8Match[1] : null,
-      cleanHtml: html // HTML đã xóa sạch mã chuyển hướng
-    };
+    // 4. Trả về HTML "sạch" cho trình duyệt / App
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    // Lưu Cache 2 tiếng để tải tức thì ở các lần sau
+    res.setHeader("Cache-Control", "public, max-age=7200, s-maxage=7200, stale-while-revalidate=86400");
+    
+    return res.status(200).send(html);
 
   } catch (error) {
-    return { status: "error", message: error.message };
+    // Bắt toàn bộ ngoại lệ để Vercel không bị crash 500
+    return res.status(500).json({ 
+      error: "Lỗi Serverless Function", 
+      details: error.message 
+    });
   }
-}
-
-// === THỬ NGHIỆM ===
-(async () => {
-  const targetUrl = "https://abysscdn.com/?v=Z9mWsX3Pl";
-  console.log("Đang tải dữ liệu từ Abyss...");
-  
-  const result = await getAbyssCleanSource(targetUrl);
-  
-  if (result.videoUrl) {
-    console.log("🎯 Bóc thành công link Video gốc:", result.videoUrl);
-  } else {
-    console.log("⚠️ Không tìm thấy link trực tiếp .m3u8, HTML đã được làm sạch JS redirect.");
-  }
-})();
+};
