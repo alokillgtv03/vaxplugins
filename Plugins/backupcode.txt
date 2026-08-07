@@ -6,7 +6,7 @@ https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&sou
 Link lấy phim và play phim luôn
 https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&source1=Valenox&source2=Orbit&play=1
 
-
+https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
 
 worker lấy dữ liệu subtitle.
 

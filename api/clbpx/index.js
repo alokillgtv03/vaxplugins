@@ -11,12 +11,10 @@ module.exports = async (req, res) => {
   try {
     const now = Date.now();
 
-    // 1. Kiểm tra Cookie
     if (!cachedCookie || now >= cookieExpiresAt) {
       cachedCookie = await loginAndSaveCookie();
     }
 
-    // 2. Chạy Proxy
     await handleProxyAndScrape(req, res, cachedCookie);
 
   } catch (error) {
@@ -24,9 +22,6 @@ module.exports = async (req, res) => {
   }
 };
 
-/**
- * Đăng nhập lấy Cookie
- */
 async function loginAndSaveCookie() {
   try {
     const formData = new URLSearchParams();
@@ -73,21 +68,18 @@ async function loginAndSaveCookie() {
   }
 }
 
-/**
- * Xử lý Proxy
- */
 async function handleProxyAndScrape(req, res, authCookie) {
-  // Lấy đường dẫn gốc client gửi lên
-  let rawPath = req.url || "/";
+  // 1. TỰ ĐỘNG TẠO DOMAIN TUYỆT ĐỐI (VD: https://vaxplayer.vercel.app/api/clbpx)
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const PROXY_BASE_URL = `${protocol}://${host}/api/clbpx`;
 
-  // Loại bỏ tất cả tiền tố /api/clbpx bị lặp (kể cả dấu ///)
+  // 2. LÀM SẠCH URL ĐẦU VÀO
+  let rawPath = req.url || "/";
   let cleanPath = rawPath.replace(/^(\/+api\/+clbpx)+/gi, "");
-  
-  // Rút gọn dấu gạch chéo
   cleanPath = cleanPath.replace(/\/+/g, "/");
   if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
 
-  // Tạo URL gửi sang clbphimxua.com
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
   const fetchHeaders = { ...req.headers };
@@ -112,12 +104,12 @@ async function handleProxyAndScrape(req, res, authCookie) {
     redirect: "manual"
   });
 
-  // Chuyển hướng Location an toàn
+  // 3. ĐỔI LOCATION CHUYỂN HƯỚNG THÀNH TÊN MIỀN HOÀN CHỈNH
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
     if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
       if (lowerKey === 'location') {
-        const newLocation = value.replace(TARGET_DOMAIN, "/api/clbpx");
+        const newLocation = value.replace(TARGET_DOMAIN, PROXY_BASE_URL);
         res.setHeader(key, newLocation);
       } else {
         res.setHeader(key, value);
@@ -127,17 +119,16 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   const contentType = response.headers.get("content-type") || "";
 
-  // Sửa đổi HTML
-  if (contentType.includes("text/html")) {
-    let htmlText = await response.text();
+  // 4. THAY THẾ DOMAIN GỐC THÀNH FULL DOMAIN PROXY TRONG NỘI DUNG HTML/JSON
+  if (contentType.includes("text/html") || contentType.includes("application/json")) {
+    let text = await response.text();
     
-    // Thay toàn bộ domain gốc bằng prefix proxy
-    htmlText = htmlText.replaceAll(TARGET_DOMAIN, "/api/clbpx");
+    // Đổi toàn bộ https://clbphimxua.com thành https://vaxplayer.vercel.app/api/clbpx
+    text = text.replaceAll(TARGET_DOMAIN, PROXY_BASE_URL);
 
-    return res.status(response.status).send(htmlText);
+    return res.status(response.status).send(text);
   }
 
-  // Trả về dữ liệu file tĩnh / media
   const arrayBuffer = await response.arrayBuffer();
   return res.status(response.status).send(Buffer.from(arrayBuffer));
 }
