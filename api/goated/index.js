@@ -23,10 +23,9 @@ module.exports = async (req, res) => {
     debug,
     season,
     episode,
-    cache: cacheParam // Nhận tham số cache từ URL (vd: ?cache=false)
+    cache: cacheParam
   } = req.query;
 
-  // Xử lý cờ bypass cache (cache=false, nocache=true, refresh=true)
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
 
   // 1. KIỂM TRA BẢO MẬT
@@ -45,10 +44,12 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  const cacheKey = `${mediaType}_${id}_${season || ''}_${episode || ''}_${type}_${source}`;
+  // Làm sạch ID (nếu truyền vào dạng "969681,969681" hoặc chứa khoảng trắng)
+  const cleanId = String(id).split(',')[0].trim();
+
+  const cacheKey = `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
 
   // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
-  // Nếu cache=false thì bỏ qua bước kiểm tra này và chủ động xóa Cache cũ nếu có
   if (isCacheDisabled) {
     cache.delete(cacheKey);
   } else if (cache.has(cacheKey)) {
@@ -86,13 +87,11 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
     if (type === 'subtitle' || type === 'sub') {
-      // Chỉ lấy phụ đề từ Shegust (Trực tiếp, không dùng PoW)
-      resultData = await fetchSubtitlesShegu({ mediaType, id, season, episode });
+      resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
     } else if (source === 'all') {
-      // Lấy TẤT CẢ các Video Server (Dùng PoW) + Phụ đề từ Shegust
       const [firstSourceRes, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id, season, episode })
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
       ]);
 
       const sourcesResult = [];
@@ -110,7 +109,7 @@ module.exports = async (req, res) => {
 
       if (remainingSources.length > 0) {
         const remainingRequests = remainingSources.map(src =>
-          fetchApiWithPoW('resolve', mediaType, id, { source: src, season, episode })
+          fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode })
             .then(res => ({ sourceName: src, data: res }))
             .catch(err => ({ sourceName: src, error: err.message }))
         );
@@ -138,10 +137,9 @@ module.exports = async (req, res) => {
       };
 
     } else if (source === 'true') {
-      // Lấy 1 Server mặc định (Dùng PoW) + Phụ đề từ Shegust
       const [videoData, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id, season, episode })
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
       ]);
 
       if (videoData?.error) throw new Error(videoData.error);
@@ -152,8 +150,7 @@ module.exports = async (req, res) => {
       };
 
     } else {
-      // CHẾ ĐỘ THƯỜNG (Lấy 1 Video Server bằng PoW)
-      resultData = await fetchApiWithPoW('resolve', mediaType, id, { source, season, episode });
+      resultData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source, season, episode });
       if (resultData?.error) throw new Error(resultData.error);
     }
 
@@ -189,7 +186,6 @@ module.exports = async (req, res) => {
     return res.status(200).json(finalResponse);
 
   } catch (error) {
-    // 5. NẾU LỖI -> DÙNG CACHE DỰ PHÒNG (KỂ CẢ KHI CÓ CACHE=FALSE NHƯNG FETCH MỚI THẤT BẠI)
     if (cache.has(cacheKey)) {
       const fallbackItem = cache.get(cacheKey);
       const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
@@ -219,18 +215,20 @@ module.exports = async (req, res) => {
 
 // Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
-  const url = new URL('https://subtitles.shegu.st/subtitles');
-  url.searchParams.append('type', mediaType);
-  url.searchParams.append('tmdb', id);
+  // Đảm bảo loại mediaType khớp chuẩn (movie / tv)
+  const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
+  
+  // Tự ghép chuỗi URL thủ công để đảm bảo đúng chuẩn mẫu
+  let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
 
-  if (mediaType === 'tv' || mediaType === 'series') {
-    if (season) url.searchParams.append('season', season);
-    if (episode) url.searchParams.append('episode', episode);
+  if (normType === 'tv') {
+    if (season) targetUrl += `&season=${season}`;
+    if (episode) targetUrl += `&episode=${episode}`;
   }
 
-  const res = await fetch(url.toString());
+  const res = await fetch(targetUrl);
   if (!res.ok) {
-    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status})\\n + ${url.toString()}`);
+    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status}) - Link: ${targetUrl}`);
   }
   return await res.json();
 }
