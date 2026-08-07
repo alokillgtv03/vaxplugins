@@ -230,7 +230,7 @@ async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
 
   const res = await fetch(url.toString());
   if (!res.ok) {
-    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status})`);
+    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status})\\n + ${url.toString()}`);
   }
   return await res.json();
 }

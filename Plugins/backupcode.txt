@@ -8,6 +8,8 @@ https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&sou
 
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
 
+https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&id=969681&source=all&debug=9780752&cache=false
+
 https://subtitles.shegu.st/subtitles?type=movie&tmdb=969681&
 
 https://subtitles.shegu.st/subtitles?type=movie&tmdb=969681

@@ -48,3 +48,11 @@
 24 silly audit   'undici-types': [ '8.3.0' ],
 24 silly audit   'types-registry': [ '0.1.781' ]
 24 silly audit }
+25 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 488ms
+26 silly audit report {}
+27 verbose cwd /public/.cache/typescript/7.0
+28 verbose os Linux 4.19.157-perf+
+29 verbose node v22.23.0
+30 verbose npm  v10.9.1
+31 verbose exit 0
+32 info ok
