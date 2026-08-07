@@ -22,8 +22,12 @@ module.exports = async (req, res) => {
     play, 
     debug,
     season,
-    episode 
+    episode,
+    cache: cacheParam // Nhận tham số cache từ URL (vd: ?cache=false)
   } = req.query;
+
+  // Xử lý cờ bypass cache (cache=false, nocache=true, refresh=true)
+  const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
 
   // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
@@ -44,7 +48,10 @@ module.exports = async (req, res) => {
   const cacheKey = `${mediaType}_${id}_${season || ''}_${episode || ''}_${type}_${source}`;
 
   // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
-  if (cache.has(cacheKey)) {
+  // Nếu cache=false thì bỏ qua bước kiểm tra này và chủ động xóa Cache cũ nếu có
+  if (isCacheDisabled) {
+    cache.delete(cacheKey);
+  } else if (cache.has(cacheKey)) {
     const cachedItem = cache.get(cacheKey);
     if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
       const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
@@ -79,7 +86,7 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
     if (type === 'subtitle' || type === 'sub') {
-      // Chỉ lấy phụ đề từ Shegust (Không cần Challenge/PoW)
+      // Chỉ lấy phụ đề từ Shegust (Trực tiếp, không dùng PoW)
       resultData = await fetchSubtitlesShegu({ mediaType, id, season, episode });
     } else if (source === 'all') {
       // Lấy TẤT CẢ các Video Server (Dùng PoW) + Phụ đề từ Shegust
@@ -150,7 +157,7 @@ module.exports = async (req, res) => {
       if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI (CACHE MISS)
+    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI (CACHE MISS HOẶC CACHE REFRESH)
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -160,8 +167,10 @@ module.exports = async (req, res) => {
     const finalResponse = {
       status: "success",
       log: {
-        cache_status: "MISS",
-        message: "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+        cache_status: isCacheDisabled ? "BYPASS_REFRESH" : "MISS",
+        message: isCacheDisabled 
+          ? "Đã làm mới dữ liệu thành công (bỏ qua Cache cũ)" 
+          : "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
         cached_at: new Date(now).toISOString(),
         age_seconds: 0
       },
@@ -175,12 +184,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('X-Cache', isCacheDisabled ? 'BYPASS' : 'MISS');
     res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
     return res.status(200).json(finalResponse);
 
   } catch (error) {
-    // 5. NẾU LỖI -> DÙNG CACHE DỰ PHÒNG
+    // 5. NẾU LỖI -> DÙNG CACHE DỰ PHÒNG (KỂ CẢ KHI CÓ CACHE=FALSE NHƯNG FETCH MỚI THẤT BẠI)
     if (cache.has(cacheKey)) {
       const fallbackItem = cache.get(cacheKey);
       const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
@@ -208,7 +217,7 @@ module.exports = async (req, res) => {
   }
 };
 
-// Hàm lấy Phụ đề từ Shegust (Trực tiếp, không PoW)
+// Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   const url = new URL('https://subtitles.shegu.st/subtitles');
   url.searchParams.append('type', mediaType);
@@ -253,7 +262,6 @@ async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   return await apiRes.json();
 }
 
-// Hàm tính toán PoW
 function solvePoWNode(challenge, difficulty) {
   const targetPrefix = '0'.repeat(difficulty);
   let nonce = 0;
