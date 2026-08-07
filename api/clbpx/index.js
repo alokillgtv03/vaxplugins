@@ -1,24 +1,23 @@
 const { URLSearchParams } = require('url');
 
-// CẤU HÌNH THÔNG TIN: Ưu tiên lấy từ Biến môi trường Vercel (nếu có), hoặc dùng giá trị mặc định
 const TARGET_DOMAIN = process.env.TARGET_DOMAIN || "https://clbphimxua.com";
 const USERNAME = process.env.WP_USERNAME || "hoangnp369@gmail.com";
 const PASSWORD = process.env.WP_PASSWORD || "123456";
 
-// BỘ NHỚ CACHE TRONG RAM THAY THẾ CHO CLOUDFLARE KV
+// BỘ NHỚ CACHE TRONG RAM LƯU COOKIE
 let cachedCookie = "";
-let cookieExpiresAt = 0; // Thời gian hết hạn Cookie (Timestamp ms)
+let cookieExpiresAt = 0;
 
 module.exports = async (req, res) => {
   try {
     const now = Date.now();
 
-    // 1. Nếu chưa có Cookie hoặc đã hết hạn 12 tiếng -> Tiến hành đăng nhập lấy Cookie mới
+    // 1. Kiểm tra Cookie đăng nhập
     if (!cachedCookie || now >= cookieExpiresAt) {
       cachedCookie = await loginAndSaveCookie();
     }
 
-    // 2. Thực hiện Proxy request kèm Cookie xác thực và biến đổi HTML
+    // 2. Chạy Proxy
     await handleProxyAndScrape(req, res, cachedCookie);
 
   } catch (error) {
@@ -27,7 +26,7 @@ module.exports = async (req, res) => {
 };
 
 /**
- * Đăng nhập vào WordPress target và lưu Cookie vào bộ nhớ RAM
+ * Đăng nhập vào WordPress target và lấy Cookie
  */
 async function loginAndSaveCookie() {
   try {
@@ -39,19 +38,17 @@ async function loginAndSaveCookie() {
     formData.append("redirect_to", `${TARGET_DOMAIN}/wp-admin/`);
     formData.append("testcookie", "1");
 
-    // Gửi request đăng nhập
     const response = await fetch(`${TARGET_DOMAIN}/wp-login.php`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "Cookie": "wordpress_test_cookie=WP%20Cookie%20check",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       },
       body: formData.toString(),
       redirect: "manual"
     });
 
-    // Lấy Set-Cookie headers
     let rawCookies = [];
     if (typeof response.headers.getSetCookie === "function") {
       rawCookies = response.headers.getSetCookie();
@@ -60,21 +57,18 @@ async function loginAndSaveCookie() {
       if (singleHeader) rawCookies = [singleHeader];
     }
 
-    // Trích xuất các cookie
     const parsedCookies = rawCookies
       .map(c => c.split(";")[0].trim())
       .filter(Boolean);
 
-    // Kiểm tra cookie đăng nhập của WordPress
     const hasAuthToken = parsedCookies.some(c => c.startsWith("wordpress_logged_in_"));
     const formattedCookies = parsedCookies.join("; ");
 
-    // Lưu vào RAM nếu thành công (Thời gian sống: 12 tiếng = 43.200.000 ms)
     if (hasAuthToken && formattedCookies) {
       cookieExpiresAt = Date.now() + 12 * 60 * 60 * 1000;
       return formattedCookies;
     } else {
-      console.error("Đăng nhập thất bại: Sai tài khoản/mật khẩu hoặc dính Captcha/Cloudflare.");
+      console.error("Đăng nhập thất bại.");
       return "";
     }
   } catch (error) {
@@ -84,15 +78,19 @@ async function loginAndSaveCookie() {
 }
 
 /**
- * Trung chuyển yêu cầu và chỉnh sửa HTML (Thay thế HTMLRewriter)
+ * Xử lý Proxy, bóc tách URL & sửa đổi nội dung HTML
  */
 async function handleProxyAndScrape(req, res, authCookie) {
-  // Tạo URL đích dựa trên path và query của request gốc
-  const targetUrl = new URL(req.url, TARGET_DOMAIN);
+  // 1. LOẠI BỎ TIỀN TỐ '/api/clbpx' ĐỂ TRÁNH LỖI 404 / REDIRECT
+  let cleanPath = req.url.replace(/^\/api\/clbpx/, '');
+  if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+  const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
   const fetchHeaders = { ...req.headers };
   delete fetchHeaders.host;
   fetchHeaders["host"] = new URL(TARGET_DOMAIN).host;
+  fetchHeaders["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   // Đính kèm Cookie xác thực
   if (authCookie) {
@@ -100,7 +98,6 @@ async function handleProxyAndScrape(req, res, authCookie) {
     fetchHeaders["cookie"] = existingCookie ? `${existingCookie}; ${authCookie}` : authCookie;
   }
 
-  // Chuẩn bị Body đối với POST / PUT / PATCH
   let body = null;
   if (req.method !== "GET" && req.method !== "HEAD") {
     body = typeof req.body === 'object' ? JSON.stringify(req.body) : req.body;
@@ -109,24 +106,33 @@ async function handleProxyAndScrape(req, res, authCookie) {
   const response = await fetch(targetUrl.toString(), {
     method: req.method,
     headers: fetchHeaders,
-    body: body
+    body: body,
+    redirect: "manual" // Không tự động chuyển hướng ra ngoài
+  });
+
+  // 2. GHI ĐÈ HEADERS & CHUYỂN HƯỚNG VỀ LẠI PROXY
+  response.headers.forEach((value, key) => {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+      if (lowerKey === 'location') {
+        // Thay thế URL gốc thành URL Vercel proxy
+        const rewrittenLocation = value.replace(TARGET_DOMAIN, '/api/clbpx');
+        res.setHeader(key, rewrittenLocation);
+      } else {
+        res.setHeader(key, value);
+      }
+    }
   });
 
   const contentType = response.headers.get("content-type") || "";
 
-  // Sao chép các header từ trang đích về client (Bỏ content-length & content-encoding để tránh lỗi mismatch khi sửa HTML)
-  response.headers.forEach((value, key) => {
-    const lowerKey = key.toLowerCase();
-    if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
-      res.setHeader(key, value);
-    }
-  });
-
-  // Nếu là trang HTML -> Tiến hành can thiệp & chèn Script
+  // 3. SỬA ĐỔI LINK TRONG NỘI DUNG HTML
   if (contentType.includes("text/html")) {
     let htmlText = await response.text();
     
-    // Thay thế cho HTMLRewriter: Chèn script trước thẻ </body>
+    // Đổi toàn bộ link tuyệt đối clbphimxua.com thành link proxy
+    htmlText = htmlText.replaceAll(TARGET_DOMAIN, "/api/clbpx");
+
     const injectedScript = "<script>console.log('Proxy active - clbphimxua.com');</script>";
     if (htmlText.includes("</body>")) {
       htmlText = htmlText.replace("</body>", `${injectedScript}</body>`);
@@ -137,7 +143,7 @@ async function handleProxyAndScrape(req, res, authCookie) {
     return res.status(response.status).send(htmlText);
   }
 
-  // Nếu là file tĩnh (Ảnh, JS, CSS, Media...) -> Trả về Buffer dữ liệu thô
+  // File tĩnh (images, css, js...)
   const arrayBuffer = await response.arrayBuffer();
   return res.status(response.status).send(Buffer.from(arrayBuffer));
 }
