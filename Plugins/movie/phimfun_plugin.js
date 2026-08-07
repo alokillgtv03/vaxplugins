@@ -13,7 +13,7 @@ function getManifest() {
     isEnabled: true,
     "layoutType": "HORIZONTAL",
     type: "MOVIE",
-    playerTpye: "embed",
+    playerType: "embed",
   });
 }
 

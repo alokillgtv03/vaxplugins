@@ -3,3 +3,4 @@
 	email = alokillgtv03@gmail.com
 [alias]
 	push-open = !git push && am start -a android.intent.action.VIEW -d \"https://google.comc\"
+	t = !git add . && git commit -m \"update [skip ci]\" && git push
