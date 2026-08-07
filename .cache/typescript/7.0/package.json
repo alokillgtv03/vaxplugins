@@ -1,1 +1,1 @@
-{"private":true,"dependencies":{"types-registry":"^0.1.781"},"devDependencies":{"@types/node":"^26.1.2"}}
+{"private":true,"dependencies":{"types-registry":"^0.1.781"},"devDependencies":{"@types/node":"^26.1.2","@types/node-fetch":"^2.6.13"}}
