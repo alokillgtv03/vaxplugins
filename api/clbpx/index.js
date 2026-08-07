@@ -7,6 +7,10 @@ const PASSWORD = process.env.WP_PASSWORD || "123456";
 let cachedCookie = "";
 let cookieExpiresAt = 0;
 
+// BỘ NHỚ RAM LƯU CACHE (LỚP 2)
+const memoryCache = new Map();
+const CACHE_TTL = 2 * 60 * 60 * 1000; // Thời hạn Cache: Đúng 2 tiếng (7,200,000 miligiây)
+
 module.exports = async (req, res) => {
   try {
     const now = Date.now();
@@ -69,16 +73,32 @@ async function loginAndSaveCookie() {
 }
 
 async function handleProxyAndScrape(req, res, authCookie) {
-  // 1. TỰ ĐỘNG TẠO DOMAIN TUYỆT ĐỐI (VD: https://vaxplayer.vercel.app/api/clbpx)
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const PROXY_BASE_URL = `${protocol}://${host}/api/clbpx`;
 
-  // 2. LÀM SẠCH URL ĐẦU VÀO
   let rawPath = req.url || "/";
   let cleanPath = rawPath.replace(/^(\/+api\/+clbpx)+/gi, "");
   cleanPath = cleanPath.replace(/\/+/g, "/");
   if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
+
+  const isGetMethod = req.method === "GET";
+  const now = Date.now();
+
+  // 1. KIỂM TRA TRONG BỘ NHỚ RAM (LỚP 2)
+  if (isGetMethod && memoryCache.has(cleanPath)) {
+    const cachedItem = memoryCache.get(cleanPath);
+    // Nếu chưa quá 2 tiếng
+    if (now - cachedItem.timestamp < CACHE_TTL) {
+      // Bật Vercel CDN Cache cho trình duyệt/mạng
+      res.setHeader('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=600');
+      res.setHeader('X-Cache-Status', 'HIT-MEMORY');
+      return res.status(200).send(cachedItem.data);
+    } else {
+      // Đã quá 2 tiếng -> Tự động xóa Cache cũ đi
+      memoryCache.delete(cleanPath);
+    }
+  }
 
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
@@ -104,7 +124,6 @@ async function handleProxyAndScrape(req, res, authCookie) {
     redirect: "manual"
   });
 
-  // 3. ĐỔI LOCATION CHUYỂN HƯỚNG THÀNH TÊN MIỀN HOÀN CHỈNH
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
     if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
@@ -119,16 +138,28 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   const contentType = response.headers.get("content-type") || "";
 
-  // 4. THAY THẾ DOMAIN GỐC THÀNH FULL DOMAIN PROXY TRONG NỘI DUNG HTML/JSON
   if (contentType.includes("text/html") || contentType.includes("application/json")) {
     let text = await response.text();
-    
-    // Đổi toàn bộ https://clbphimxua.com thành https://vaxplayer.vercel.app/api/clbpx
     text = text.replaceAll(TARGET_DOMAIN, PROXY_BASE_URL);
+
+    // 2. LƯU DỮ LIỆU VÀO CACHE KHI CÀO THÀNH CÔNG (HTTP 200)
+    if (isGetMethod && response.status === 200) {
+      memoryCache.set(cleanPath, { data: text, timestamp: now });
+      
+      // Khai báo cho Vercel Edge CDN lưu trữ trong 2 tiếng (7200 giây)
+      res.setHeader('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=600');
+      res.setHeader('X-Cache-Status', 'MISS-FETCHED');
+    }
 
     return res.status(response.status).send(text);
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  return res.status(response.status).send(Buffer.from(arrayBuffer));
+  const buffer = Buffer.from(arrayBuffer);
+
+  if (isGetMethod && response.status === 200) {
+    res.setHeader('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=600');
+  }
+
+  return res.status(response.status).send(buffer);
 }
