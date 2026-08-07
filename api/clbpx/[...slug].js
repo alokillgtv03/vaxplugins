@@ -62,31 +62,25 @@ async function loginAndSaveCookie() {
       cookieExpiresAt = Date.now() + 12 * 60 * 60 * 1000;
       return formattedCookies;
     } else {
-      console.error("Đăng nhập thất bại.");
       return "";
     }
   } catch (error) {
-    console.error("Lỗi tự động đăng nhập:", error);
     return "";
   }
 }
 
 async function handleProxyAndScrape(req, res, authCookie) {
-  // 1. LÀM SẠCH VÀ KHỬ LẶP URL (URL SANITIZATION)
-  let cleanPath = req.url;
+  // Lấy đường dẫn thực tế từ client
+  let rawUrl = req.url || "/";
 
-  // Xóa tất cả các đoạn /api/clbpx bị lặp (kể cả có nhiều dấu ///)
-  while (cleanPath.match(/^(\/+api\/+clbpx)/i)) {
-    cleanPath = cleanPath.replace(/^(\/+api\/+clbpx)/i, '');
-  }
+  // Bóc tách bỏ tất cả các tiền tố /api/clbpx (kể cả khi bị lặp lại)
+  let cleanPath = rawUrl.replace(/^(\/api\/clbpx)+/g, "");
 
-  // Thu gọn nhiều dấu / liên tiếp thành 1 dấu /
-  cleanPath = cleanPath.replace(/\/+/g, '/');
+  // Thu gọn dấu gạch chéo
+  cleanPath = cleanPath.replace(/\/+/g, "/");
+  if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
 
-  if (!cleanPath.startsWith('/')) {
-    cleanPath = '/' + cleanPath;
-  }
-
+  // Tạo URL đích gửi tới clbphimxua.com
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
   const fetchHeaders = { ...req.headers };
@@ -111,14 +105,13 @@ async function handleProxyAndScrape(req, res, authCookie) {
     redirect: "manual"
   });
 
-  // 2. CHUYỂN HƯỚNG LOCATION AN TOÀN
+  // Chuyển hướng Location an toàn
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
     if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
       if (lowerKey === 'location') {
-        let rewrittenLocation = value.replaceAll(TARGET_DOMAIN + "/api/clbpx", "/api/clbpx");
-        rewrittenLocation = rewrittenLocation.replaceAll(TARGET_DOMAIN, "/api/clbpx");
-        res.setHeader(key, rewrittenLocation);
+        let newLocation = value.replace(TARGET_DOMAIN, "/api/clbpx");
+        res.setHeader(key, newLocation);
       } else {
         res.setHeader(key, value);
       }
@@ -127,11 +120,10 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   const contentType = response.headers.get("content-type") || "";
 
-  // 3. THAY THẾ LINK TRONG HTML Tránh bị lặp trùng
   if (contentType.includes("text/html")) {
     let htmlText = await response.text();
     
-    htmlText = htmlText.replaceAll(TARGET_DOMAIN + "/api/clbpx", "/api/clbpx");
+    // Đổi link gốc thành link proxy
     htmlText = htmlText.replaceAll(TARGET_DOMAIN, "/api/clbpx");
 
     const injectedScript = "<script>console.log('Proxy active - clbphimxua.com');</script>";
