@@ -6,11 +6,12 @@ function getManifest() {
     id: "vicdn",
     name: "Nguồn Vicdn",
     description: "Nguồn phim Vicdn.",
-    "version": "1.4",
+    "version": "1.5",
     info: "Nguồn phim vietsub và thuyết minh mới.\n\n Hỗ trợ lồng tiếng và có tốc độ phát rất nhanh.",
     baseUrl: "https://vicdn.cc",
     iconUrl: "https://vicdn.cc/vicdn.png",
     "layoutType": "HORIZONTAL",
+    debug: true,
     isEnabled: true,
     "adblock": false,
     type: "MOVIE",
@@ -228,7 +229,7 @@ function parseListResponse(html, $url) {
     try {
         log("parseListResponse[url]: \n" + $url);
         if ($url.indexOf("/?q=") > -1) {
-            var script = _$(html).find("script:content('const allData')").html()
+            var script = _$(html).find("script:content('const|allData')").html()
 
             var $obj = script.match(/\[\s*\{[\s\S]*?\}\s*\]/i);
             if ($obj) {
