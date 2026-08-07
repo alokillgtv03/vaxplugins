@@ -1,34 +1,57 @@
-// Bộ nhớ đệm RAM lưu Token (Thay thế cho Cloudflare KV)
+// Bộ nhớ đệm RAM lưu Token
 let tokenCache = {
   accessToken: null,
   refreshToken: null,
   expiresAt: 0
 };
 
+// Bộ nhớ đệm RAM lưu dữ liệu API
+const memoryCache = new Map();
+
 module.exports = async (req, res) => {
-  // 1. Cấu hình CORS đầy đủ
+  // 1. Cấu hình CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Xử lý Preflight Request (CORS)
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
   try {
-    // 2. Tự động cắt bỏ /api/anime47 khỏi URL để không bị 404
+    // 2. Cắt bỏ tiền tố /api/anime47 khỏi URL
     let cleanPath = req.url.replace(/^\/api\/anime47/i, "");
     if (!cleanPath.startsWith("/")) {
       cleanPath = "/" + cleanPath;
     }
 
+    const isGetMethod = req.method === "GET";
+    const now = Date.now();
+
+    // 3. Phân loại chiến lược Cache theo Slug
+    const cacheStrategy = getCacheStrategy(cleanPath);
+
+    // 4. KIỂM TRA RAM CACHE (Nếu là GET request và cho phép Cache)
+    if (isGetMethod && cacheStrategy !== "NO_CACHE" && memoryCache.has(cleanPath)) {
+      const cachedItem = memoryCache.get(cleanPath);
+
+      if (now < cachedItem.expiresAt) {
+        // Trả kết quả trực tiếp từ RAM
+        setCacheHeaders(res, cacheStrategy, true);
+        res.setHeader("Content-Type", "application/json");
+        return res.status(200).send(cachedItem.data);
+      } else {
+        // Đã hết 30 phút -> Xóa Cache cũ để lấy mới
+        memoryCache.delete(cleanPath);
+      }
+    }
+
     const targetUrl = `https://anime47.love${cleanPath}`;
 
-    // 3. Lấy Access Token hợp lệ (Tự động login / refresh)
+    // 5. Lấy Access Token hợp lệ (Tự động login / refresh)
     const token = await getValidAccessToken();
 
-    // 4. Thiết lập Header gọi sang Anime47
+    // 6. Cấu hình Header gọi sang Anime47
     const fetchHeaders = {
       "Accept": "application/json, text/plain, */*",
       "Authorization": `Bearer ${token}`,
@@ -43,7 +66,7 @@ module.exports = async (req, res) => {
       fetchHeaders["Content-Type"] = req.headers["content-type"] || "application/json";
     }
 
-    // 5. Gọi API đích
+    // 7. Gọi API gốc Anime47
     const apiResponse = await fetch(targetUrl, {
       method: req.method,
       headers: fetchHeaders,
@@ -54,10 +77,26 @@ module.exports = async (req, res) => {
 
     if (contentType.includes("application/json")) {
       const data = await apiResponse.json();
+      const stringifiedData = JSON.stringify(data);
+
+      // 8. LƯU BẢN CACHE MỚI (Nếu GET thành công và có bật Cache)
+      if (isGetMethod && apiResponse.status === 200 && cacheStrategy !== "NO_CACHE") {
+        const ttl = cacheStrategy === "CACHE_30M" 
+          ? 30 * 60 * 1000                 // 30 phút
+          : 365 * 24 * 60 * 60 * 1000;       // Tối đa (1 năm)
+
+        memoryCache.set(cleanPath, {
+          data: stringifiedData,
+          expiresAt: now + ttl
+        });
+      }
+
+      setCacheHeaders(res, cacheStrategy, false);
       res.setHeader("Content-Type", "application/json");
-      return res.status(apiResponse.status).json(data);
+      return res.status(apiResponse.status).send(stringifiedData);
     } else {
       const textData = await apiResponse.text();
+      setCacheHeaders(res, cacheStrategy, false);
       return res.status(apiResponse.status).send(textData);
     }
 
@@ -66,11 +105,47 @@ module.exports = async (req, res) => {
   }
 };
 
-// Hàm xử lý logic lấy token thông minh
+/**
+ * Hàm phân loại chiến lược Cache theo cấu trúc Slug
+ */
+function getCacheStrategy(path) {
+  // Rule 1: Link xem tập phim -> KHÔNG LƯU CACHE
+  if (path.includes("/anime/watch/")) {
+    return "NO_CACHE";
+  }
+
+  // Rule 2: Trang danh sách lọc phim mới -> CACHE 30 PHÚT
+  if (path.includes("/anime/filter") && path.includes("sort=latest")) {
+    return "CACHE_30M";
+  }
+
+  // Rule 3: Tất cả các slug còn lại -> CACHE TỐI ĐA
+  return "CACHE_MAX";
+}
+
+/**
+ * Hàm thiết lập Header Cache cho Vercel Edge CDN & Trình duyệt
+ */
+function setCacheHeaders(res, strategy, isRamHit) {
+  if (strategy === "NO_CACHE") {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("X-Proxy-Cache", "NO-CACHE");
+  } else if (strategy === "CACHE_30M") {
+    res.setHeader("Cache-Control", "public, max-age=1800, s-maxage=1800, stale-while-revalidate=300");
+    res.setHeader("X-Proxy-Cache", isRamHit ? "HIT-RAM-30M" : "MISS-30M");
+  } else {
+    // CACHE_MAX: Lưu lâu nhất có thể trên Edge CDN Vercel
+    res.setHeader("Cache-Control", "public, max-age=31536000, s-maxage=31536000, immutable");
+    res.setHeader("X-Proxy-Cache", isRamHit ? "HIT-RAM-MAX" : "MISS-MAX");
+  }
+}
+
+/**
+ * Logic tự động Đăng nhập & Refresh Token
+ */
 async function getValidAccessToken() {
   const now = Date.now();
 
-  // Nếu token còn hạn (trừ hao 2 phút = 120000ms), dùng luôn từ RAM
   if (
     tokenCache.accessToken &&
     tokenCache.expiresAt &&
@@ -79,7 +154,6 @@ async function getValidAccessToken() {
     return tokenCache.accessToken;
   }
 
-  // Thử refresh token nếu có
   if (tokenCache.refreshToken) {
     try {
       const refreshRes = await fetch("https://anime47.love/api/auth/refresh", {
@@ -103,11 +177,10 @@ async function getValidAccessToken() {
         return tokenCache.accessToken;
       }
     } catch (e) {
-      // Refresh thất bại -> Chuyển xuống bước login mới
+      // Refresh thất bại -> Tự động chuyển xuống login mới
     }
   }
 
-  // Đăng nhập mới
   const loginRes = await fetch("https://anime47.love/api/auth/login", {
     method: "POST",
     headers: {
@@ -128,7 +201,6 @@ async function getValidAccessToken() {
 
   const loginData = await loginRes.json();
   
-  // Lưu token vào RAM
   tokenCache.accessToken = loginData.access_token;
   tokenCache.expiresAt = now + (loginData.expires_in * 1000);
   if (loginData.refresh_token) {
