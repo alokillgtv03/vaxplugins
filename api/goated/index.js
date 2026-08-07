@@ -33,6 +33,54 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ GỘP DỮ LIỆU: Khi source=true
+    // -------------------------------------------------------------
+    if (source === 'true') {
+      const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
+      if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
+      
+      const challengeData = await challengeRes.json();
+      const { challenge, difficulty = 4 } = challengeData;
+
+      const nonce = solvePoWNode(challenge, difficulty);
+
+      const basePayload = {
+        mediaType,
+        id: isNaN(id) ? id : Number(id),
+        challenge,
+        nonce: nonce.toString()
+      };
+
+      // Gọi đồng thời cả 2 API lấy Link Video và Phụ Đề
+      const [resolveRes, subRes] = await Promise.all([
+        fetch("https://api.reallyfast.xyz/api/resolve", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...basePayload, source: 'Valenox' })
+        }),
+        fetch("https://api.reallyfast.xyz/api/subtitles", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(basePayload)
+        })
+      ]);
+
+      const videoData = await resolveRes.json();
+      const subData = await subRes.json();
+
+      // Gộp kết quả video và danh sách phụ đề vào chung 1 object
+      const combinedData = {
+        ...videoData,
+        subtitles: subData?.subtitles || subData
+      };
+
+      return res.status(200).json(combinedData);
+    }
+
+    // -------------------------------------------------------------
+    // CHẾ ĐỘ THƯỜNG: Lấy riêng Video hoặc Phụ Đề
+    // -------------------------------------------------------------
     const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
 
     const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
