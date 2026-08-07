@@ -1,253 +1,158 @@
-const crypto = require('crypto');
-
-const APP_SECRET_KEY = "VAXPLAYER";
-const DEBUG_KEY = "9780752";
-
-// Bộ nhớ Cache trong RAM
-const cache = new Map();
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
-
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const { id, mediaType = 'movie', type = 'video', source = 'Valenox', play, debug } = req.query;
-
-  // 1. Kiểm tra BẢO MẬT
-  const clientSecret = req.headers['x-app-secret'];
-  const isHeaderValid = clientSecret === APP_SECRET_KEY;
-  const isDebugValid = debug === DEBUG_KEY;
-
-  if (!isHeaderValid && !isDebugValid) {
-    return res.status(403).json({ 
-      status: "error",
-      error: "Truy cập bị từ chối! Bạn không có quyền gọi API này." 
-    });
-  }
-
-  if (!id) {
-    return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
-  }
-
-  const cacheKey = `${mediaType}_${id}_${type}_${source}`;
-
-  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
-  if (cache.has(cacheKey)) {
-    const cachedItem = cache.get(cacheKey);
-    if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
-      const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
-      
-      const responseData = {
-        status: "success",
-        log: {
-          cache_status: "HIT",
-          message: "Lấy dữ liệu thành công từ Cache trước đó",
-          cached_at: new Date(cachedItem.timestamp).toISOString(),
-          age_seconds: ageSeconds
-        },
-        ...cachedItem.data
-      };
-
-      if (play && source !== 'true' && source !== 'all' && type === 'video') {
-        const videoUrl = responseData?.url || responseData?.link;
-        if (videoUrl && typeof videoUrl === 'string') {
-          return res.redirect(302, videoUrl);
-        }
-      }
-
-      res.setHeader('X-Cache', 'HIT');
-      return res.status(200).json(responseData);
-    } else {
-      cache.delete(cacheKey);
+ function getLISTmenu() {
+    try {
+        // Trả về thẳng MẢNG Object (Array), không cần bao bọc bởi chuỗi string ` `
+        return `[
+            { "name": "Phim Thịnh Hành", "link": "/api/themoviedb?endpoint=trending/movie/day&language=vi-VN" },
+            { "name": "Phim Đang Chiếu Rạp", "link": "/api/themoviedb?endpoint=movie/now_playing&language=vi-VN" },
+            { "name": "Phim Lẻ Đánh Giá Cao", "link": "/api/themoviedb?endpoint=movie/top_rated&language=vi-VN" },
+            { "name": "TV Show Thịnh Hành", "link": "/api/themoviedb?endpoint=trending/tv/day&language=vi-VN" },
+            { "name": "TV Show Đang Phát Sóng", "link": "/api/themoviedb?endpoint=tv/on_the_air&language=vi-VN" },
+            { "name": "TV Show Đánh Giá Cao", "link": "/api/themoviedb?endpoint=tv/top_rated&language=vi-VN" },
+            { "name": "Anime Bộ (Series)", "link": "/api/themoviedb?endpoint=discover/tv&with_genres=16&with_original_language=ja&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Anime Lẻ (Movie)", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=16&with_original_language=ja&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Hành Động", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Phiêu Lưu", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=12&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Hoạt Hình", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=16&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Hài Hước", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=35&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Hình Sự", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=80&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Tài Liệu", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=99&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Chính Kịch", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=18&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Gia Đình", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=10751&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Cổ Trang / Khai Phá", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=36&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Kinh Dị", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=27&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Âm Nhạc", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=10402&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Bí Ẩn / Trinh Thám", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=9648&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Lãng Mạn", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=10749&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Viễn Tưởng (Sci-Fi)", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=878&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Giật Gân / Gián Điệp", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=53&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Chiến Tranh", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=10752&sort_by=popularity.desc&language=vi-VN" },
+            { "name": "Phim Miền Tây (Western)", "link": "/api/themoviedb?endpoint=discover/movie&with_genres=37&sort_by=popularity.desc&language=vi-VN" }
+        ]`;
+    } catch (e) {
+        if (typeof log === "function") log("getLISTmenu[err]:\n " + e);
+        return [{ "link": "/", "name": "Đang lỗi getLISTmenu()" }];
     }
-  }
-
-  try {
-    let resultData = {};
-
-    // 3. XỬ LÝ KHI SOURCE = ALL (Tự động phát hiện và lấy TẤT CẢ các Server + Phụ đề)
-    if (source === 'all') {
-      // BƯỚC 3.1: Gọi thử 1 server mặc định (Valenox) + Phụ đề
-      const [firstSourceRes, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
-        fetchApiWithPoW('subtitles', mediaType, id)
-      ]);
-
-      const sourcesResult = [];
-
-      if (firstSourceRes && !firstSourceRes.error) {
-        // Dọn dẹp bớt thuộc tính dư thừa trong object server
-        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
-        sourcesResult.push({
-          sourceName: 'Valenox',
-          ...cleanFirst
-        });
-      }
-
-      // BƯỚC 3.2: Lấy danh sách TẤT CẢ các source khả thi từ phản hồi API
-      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
-      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
-
-      // BƯỚC 3.3: Gọi tiếp song song tất cả các source còn lại
-      if (remainingSources.length > 0) {
-        const remainingRequests = remainingSources.map(src =>
-          fetchApiWithPoW('resolve', mediaType, id, { source: src })
-            .then(res => ({ sourceName: src, data: res }))
-            .catch(err => ({ sourceName: src, error: err.message }))
-        );
-
-        const remainingResponses = await Promise.all(remainingRequests);
-
-        remainingResponses.forEach(item => {
-          if (item.data && !item.data.error) {
-            const { subtitles: _, availableSources: __, ...cleanData } = item.data;
-            sourcesResult.push({
-              sourceName: item.sourceName,
-              ...cleanData
-            });
-          }
-        });
-      }
-
-      if (sourcesResult.length === 0) {
-        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
-      }
-
-      resultData = {
-        sources: sourcesResult,
-        subtitles: subData?.subtitles || subData
-      };
-
-    } else if (source === 'true') {
-      // SOURCE = TRUE (Lấy 1 server mặc định + Phụ đề)
-      const [videoData, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
-        fetchApiWithPoW('subtitles', mediaType, id)
-      ]);
-
-      if (videoData?.error) throw new Error(videoData.error);
-
-      resultData = {
-        ...videoData,
-        subtitles: subData?.subtitles || subData
-      };
-
-    } else {
-      // CHẾ ĐỘ THƯỜNG (Lấy riêng lẻ)
-      const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
-      const extraPayload = endpoint === 'resolve' ? { source } : {};
-
-      resultData = await fetchApiWithPoW(endpoint, mediaType, id, extraPayload);
-      if (resultData?.error) throw new Error(resultData.error);
-    }
-
-    // 4. LƯU DỮ LIỆU HOÀN CHỈNH VÀO CACHE MỚI (CACHE MISS)
-    const now = Date.now();
-    cache.set(cacheKey, {
-      timestamp: now,
-      data: resultData
-    });
-
-    const finalResponse = {
-      status: "success",
-      log: {
-        cache_status: "MISS",
-        message: "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
-        cached_at: new Date(now).toISOString(),
-        age_seconds: 0
-      },
-      ...resultData
-    };
-
-    if (play && source !== 'true' && source !== 'all' && type === 'video') {
-      const videoUrl = resultData?.url || resultData?.link;
-      if (videoUrl && typeof videoUrl === 'string') {
-        return res.redirect(302, videoUrl);
-      }
-    }
-
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
-    return res.status(200).json(finalResponse);
-
-  } catch (error) {
-    // 5. NẾU LỖI / BỊ LIMIT -> KIỂM TRA XEM CÓ CACHE CŨ DỰ PHÒNG KHÔNG
-    if (cache.has(cacheKey)) {
-      const fallbackItem = cache.get(cacheKey);
-      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
-
-      return res.status(200).json({
-        status: "success",
-        log: {
-          cache_status: "HIT_FALLBACK",
-          message: `Request mới bị lỗi/limit (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
-          cached_at: new Date(fallbackItem.timestamp).toISOString(),
-          age_seconds: ageSeconds
-        },
-        ...fallbackItem.data
-      });
-    }
-
-    // Nếu không có Cache cũ để cứu -> Trả về STATUS ERROR
-    return res.status(500).json({
-      status: "error",
-      log: {
-        cache_status: "FAILED",
-        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
-      },
-      error: error.message
-    });
-  }
-};
-
-// Hàm bổ trợ gọi API + PoW
-async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
-  const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
-  if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
-  
-  const challengeData = await challengeRes.json();
-  const { challenge, difficulty = 4 } = challengeData;
-
-  const nonce = solvePoWNode(challenge, difficulty);
-
-  const payload = {
-    mediaType,
-    id: isNaN(id) ? id : Number(id),
-    challenge,
-    nonce: nonce.toString(),
-    ...extraParams
-  };
-
-  const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  return await apiRes.json();
 }
 
-function solvePoWNode(challenge, difficulty) {
-  const targetPrefix = '0'.repeat(difficulty);
-  let nonce = 0;
-
-  while (nonce < 1000000) {
-    const hash = crypto.createHash('sha256').update(challenge + nonce).digest('hex');
-    if (hash.startsWith(targetPrefix)) {
-      return nonce;
-    }
-    nonce++;
-  }
-  return nonce;
+function buildMenu(menuStr, type) { 
+    var menuArray = JSON.parse(menuStr); 
+    let menulist = []; 
+    if (!menuArray || !Array.isArray(menuArray)) return menulist; 
+    var typeStr = type !== undefined ? String(type).trim() : undefined; 
+    for (var i = 0; i < menuArray.length; i++) { 
+        var item = menuArray[i]; 
+        if (!item) continue; 
+        var link = item.link ? String(item.link).trim() : ""; 
+        var name = item.name ? String(item.name).trim() : ""; 
+        if (!link || !name) continue; 
+        var menuItem = {}; 
+        if (typeStr === "false") { 
+            menuItem = { "slug": link, "title": name, "type": "Horizontal" }; 
+        } else if (typeStr === "true") { 
+            menuItem = { "slug": link, "title": name, "type": "Grid" }; 
+        } else { 
+            menuItem = { "slug": link, "name": name }; 
+        } 
+        menulist.push(menuItem); 
+    } 
+    return menulist; 
 }
 
+/ Tạo thẻ chủ đề filter cho App/Extension
+function getFilterConfig() {
+    try {
+        var rawList = getLISTmenu();
+        var categories = rawList.map(function(item) {
+            return {
+                name: item.name,
+                value: item.link
+            };
+        });
 
-Tôi cần bạn sửa lại code như sau: bỏ qua bước check challenge và lấy subtiltle từ https://api.reallyfast.xyz mà chuyển sang dùng
-https://subtitles.shegu.st/subtitles?type=movie&tmdb=1620
-https://subtitles.shegu.st/subtitles?type=tv&tmdb=1413&season=1&episode=1
+        return JSON.stringify({
+            category: categories
+        });
+    } catch (e) {
+        if (typeof log === "function") log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
+}
 
-Hãy dùng các loại type được truyền vào, tpdb, season và episode truyền vào dữ liệu để gán vào link shegu cho phù hợp, khỏi cần challenge luôn,
+function parseCategoriesResponse(apiResponseJson) {
+    try {
+        var rawList = getLISTmenu();
+        var menulist = buildMenu(rawList);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        if (typeof log === "function") log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
+}
+
+so sánh với plugin khác có thể loại nằm trên đầu
+
+
+function getFilterConfig() {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
+        });
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
+}
+
+function parseCategoriesResponse(apiResponseJson) {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
+}
+
+function getLISTmenu() {
+    return `[
+{"link":"/shows?sort=popularity","name":"TV Show"},
+{"link":"/movies?sort=popularity","name":"Phim Lẻ"},
+{"link":"/search?search=action","name":"Hành Động"},
+{"link":"/search?search=horror","name":"Kinh Dị"},
+{"link":"/search?search=fantasy","name":"Huyền Ảo"},
+{"link":"/search?search=anime","name":"Anime"},
+{"link":"/search?search=cartoon","name":"Hoạt Hình"},
+{"link":"/search?search=romance","name":"Tình Cảm"},
+{"link":"/search?search=comedy","name":"Hài Hước"},
+{"link":"/search?search=scifi","name":"Viễn Tưởng"},
+{"link":"/search?search=crime","name":"Trinh Thám"}
+]`;
+}
+
+function buildMenu(menuStr, type) { 
+    var menuArray = JSON.parse(menuStr); 
+    let menulist = []; 
+    if (!menuArray || !Array.isArray(menuArray)) return menulist; 
+    var typeStr = type !== undefined ? String(type).trim() : undefined; 
+    for (var i = 0; i < menuArray.length; i++) { 
+        var item = menuArray[i]; 
+        if (!item) continue; 
+        var link = item.link ? String(item.link).trim() : ""; 
+        var name = item.name ? String(item.name).trim() : ""; 
+        if (!link || !name) continue; 
+        var menuItem = {}; 
+        if (typeStr === "false") { 
+            menuItem = { "slug": link, "title": name, "type": "Horizontal" }; 
+        } else if (typeStr === "true") { 
+            menuItem = { "slug": link, "title": name, "type": "Grid" }; 
+        } else { 
+            menuItem = { "slug": link, "name": name }; 
+        } 
+        menulist.push(menuItem); 
+    } 
+    return menulist; 
+}
+

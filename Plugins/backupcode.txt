@@ -15,7 +15,7 @@ https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1413&season=1&episode=1
 
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
 
-https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&id=969681&source=all&debug=9780752&cache=false
+https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752&cache=false
 
 https://subtitles.shegu.st/subtitles?type=movie&tmdb=969681&
 
