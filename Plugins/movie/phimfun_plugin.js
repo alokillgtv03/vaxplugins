@@ -7,7 +7,7 @@ function getManifest() {
     name: "Nguồn Phim Fun",
     description: "Nguồn phim mới.",
     "version": "1.1.6",
-    info: "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim..",
+    info: "Nguồn phim dự phòng, có server riêng có thể sơ cưa khi những nguồn khác bị lỗi. Có cơ chế lưu lại tập vừa xem và có thể chuyển tập không cần quay lại menu phim.",
     baseUrl: "https://phimfun.net",
     iconUrl: "https://phimfun.net/Content/PhimFun/Imgs/phimFun.png",
     isEnabled: true,
