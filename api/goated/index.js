@@ -1,11 +1,10 @@
 const crypto = require('crypto');
 
-const APP_SECRET_KEY = "VAXPLAYER";
-const DEBUG_KEY = "9780752";
-
-// Bộ nhớ Cache trong RAM
 const cache = new Map();
 const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
+
+const APP_SECRET_KEY = "VAXPLAYER";
+const DEBUG_KEY = "9780752";
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,9 +14,18 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const { id, mediaType = 'movie', type = 'video', source = 'Valenox', play, debug } = req.query;
+  const { 
+    id, 
+    mediaType = 'movie', 
+    type = 'video', 
+    source = 'Valenox', 
+    play, 
+    debug,
+    season,
+    episode 
+  } = req.query;
 
-  // 1. Kiểm tra BẢO MẬT
+  // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
   const isHeaderValid = clientSecret === APP_SECRET_KEY;
   const isDebugValid = debug === DEBUG_KEY;
@@ -33,7 +41,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  const cacheKey = `${mediaType}_${id}_${type}_${source}`;
+  const cacheKey = `${mediaType}_${id}_${season || ''}_${episode || ''}_${type}_${source}`;
 
   // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
   if (cache.has(cacheKey)) {
@@ -69,18 +77,20 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 3. XỬ LÝ KHI SOURCE = ALL (Tự động phát hiện và lấy TẤT CẢ các Server + Phụ đề)
-    if (source === 'all') {
-      // BƯỚC 3.1: Gọi thử 1 server mặc định (Valenox) + Phụ đề
+    // 3. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
+    if (type === 'subtitle' || type === 'sub') {
+      // Chỉ lấy phụ đề từ Shegust (Không cần Challenge/PoW)
+      resultData = await fetchSubtitlesShegu({ mediaType, id, season, episode });
+    } else if (source === 'all') {
+      // Lấy TẤT CẢ các Video Server (Dùng PoW) + Phụ đề từ Shegust
       const [firstSourceRes, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
-        fetchApiWithPoW('subtitles', mediaType, id)
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id, season, episode })
       ]);
 
       const sourcesResult = [];
 
       if (firstSourceRes && !firstSourceRes.error) {
-        // Dọn dẹp bớt thuộc tính dư thừa trong object server
         const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
         sourcesResult.push({
           sourceName: 'Valenox',
@@ -88,14 +98,12 @@ module.exports = async (req, res) => {
         });
       }
 
-      // BƯỚC 3.2: Lấy danh sách TẤT CẢ các source khả thi từ phản hồi API
       const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
       const remainingSources = allAvailable.filter(s => s !== 'Valenox');
 
-      // BƯỚC 3.3: Gọi tiếp song song tất cả các source còn lại
       if (remainingSources.length > 0) {
         const remainingRequests = remainingSources.map(src =>
-          fetchApiWithPoW('resolve', mediaType, id, { source: src })
+          fetchApiWithPoW('resolve', mediaType, id, { source: src, season, episode })
             .then(res => ({ sourceName: src, data: res }))
             .catch(err => ({ sourceName: src, error: err.message }))
         );
@@ -123,10 +131,10 @@ module.exports = async (req, res) => {
       };
 
     } else if (source === 'true') {
-      // SOURCE = TRUE (Lấy 1 server mặc định + Phụ đề)
+      // Lấy 1 Server mặc định (Dùng PoW) + Phụ đề từ Shegust
       const [videoData, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
-        fetchApiWithPoW('subtitles', mediaType, id)
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id, season, episode })
       ]);
 
       if (videoData?.error) throw new Error(videoData.error);
@@ -137,15 +145,12 @@ module.exports = async (req, res) => {
       };
 
     } else {
-      // CHẾ ĐỘ THƯỜNG (Lấy riêng lẻ)
-      const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
-      const extraPayload = endpoint === 'resolve' ? { source } : {};
-
-      resultData = await fetchApiWithPoW(endpoint, mediaType, id, extraPayload);
+      // CHẾ ĐỘ THƯỜNG (Lấy 1 Video Server bằng PoW)
+      resultData = await fetchApiWithPoW('resolve', mediaType, id, { source, season, episode });
       if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // 4. LƯU DỮ LIỆU HOÀN CHỈNH VÀO CACHE MỚI (CACHE MISS)
+    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI (CACHE MISS)
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -175,7 +180,7 @@ module.exports = async (req, res) => {
     return res.status(200).json(finalResponse);
 
   } catch (error) {
-    // 5. NẾU LỖI / BỊ LIMIT -> KIỂM TRA XEM CÓ CACHE CŨ DỰ PHÒNG KHÔNG
+    // 5. NẾU LỖI -> DÙNG CACHE DỰ PHÒNG
     if (cache.has(cacheKey)) {
       const fallbackItem = cache.get(cacheKey);
       const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
@@ -184,7 +189,7 @@ module.exports = async (req, res) => {
         status: "success",
         log: {
           cache_status: "HIT_FALLBACK",
-          message: `Request mới bị lỗi/limit (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
+          message: `Request mới bị lỗi (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
           cached_at: new Date(fallbackItem.timestamp).toISOString(),
           age_seconds: ageSeconds
         },
@@ -192,7 +197,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Nếu không có Cache cũ để cứu -> Trả về STATUS ERROR
     return res.status(500).json({
       status: "error",
       log: {
@@ -204,7 +208,25 @@ module.exports = async (req, res) => {
   }
 };
 
-// Hàm bổ trợ gọi API + PoW
+// Hàm lấy Phụ đề từ Shegust (Trực tiếp, không PoW)
+async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
+  const url = new URL('https://subtitles.shegu.st/subtitles');
+  url.searchParams.append('type', mediaType);
+  url.searchParams.append('tmdb', id);
+
+  if (mediaType === 'tv' || mediaType === 'series') {
+    if (season) url.searchParams.append('season', season);
+    if (episode) url.searchParams.append('episode', episode);
+  }
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status})`);
+  }
+  return await res.json();
+}
+
+// Hàm giải mã Video Link qua Challenge / PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
@@ -231,6 +253,7 @@ async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   return await apiRes.json();
 }
 
+// Hàm tính toán PoW
 function solvePoWNode(challenge, difficulty) {
   const targetPrefix = '0'.repeat(difficulty);
   let nonce = 0;

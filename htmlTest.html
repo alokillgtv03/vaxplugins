@@ -1,224 +1,253 @@
-https://abysscdn.com/?v=Z9mWsX3Pl
-https://subtitles.shegu.st/subtitles?type=movie&tmdb=1620
-https://subtitles.shegu.st/subtitles?type=movie&tmdb=1339713ộc
-Bỏ hết đi bạn làm cho tôi code này, bạn chuyển worker này sang nodejs chạy trên vercel dùm.
+const crypto = require('crypto');
 
-export default {
+const APP_SECRET_KEY = "VAXPLAYER";
+const DEBUG_KEY = "9780752";
 
-async fetch(request, env, ctx) {
+// Bộ nhớ Cache trong RAM
+const cache = new Map();
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
 
-const url = new URL(request.url);
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-const targetPath = url.pathname + url.search;
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-const targetUrl = `https://anime47.love${targetPath}`;
+  const { id, mediaType = 'movie', type = 'video', source = 'Valenox', play, debug } = req.query;
 
+  // 1. Kiểm tra BẢO MẬT
+  const clientSecret = req.headers['x-app-secret'];
+  const isHeaderValid = clientSecret === APP_SECRET_KEY;
+  const isDebugValid = debug === DEBUG_KEY;
 
-try {
+  if (!isHeaderValid && !isDebugValid) {
+    return res.status(403).json({ 
+      status: "error",
+      error: "Truy cập bị từ chối! Bạn không có quyền gọi API này." 
+    });
+  }
 
-// 1. Lấy Access Token hợp lệ (có kiểm tra KV)
+  if (!id) {
+    return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
+  }
 
-const token = await getValidAccessToken(env);
+  const cacheKey = `${mediaType}_${id}_${type}_${source}`;
 
+  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
+  if (cache.has(cacheKey)) {
+    const cachedItem = cache.get(cacheKey);
+    if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
+      const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
+      
+      const responseData = {
+        status: "success",
+        log: {
+          cache_status: "HIT",
+          message: "Lấy dữ liệu thành công từ Cache trước đó",
+          cached_at: new Date(cachedItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...cachedItem.data
+      };
 
-// 2. Gọi API đích của Anime47
+      if (play && source !== 'true' && source !== 'all' && type === 'video') {
+        const videoUrl = responseData?.url || responseData?.link;
+        if (videoUrl && typeof videoUrl === 'string') {
+          return res.redirect(302, videoUrl);
+        }
+      }
 
-const apiResponse = await fetch(targetUrl, {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(responseData);
+    } else {
+      cache.delete(cacheKey);
+    }
+  }
 
-method: request.method,
+  try {
+    let resultData = {};
 
-headers: {
+    // 3. XỬ LÝ KHI SOURCE = ALL (Tự động phát hiện và lấy TẤT CẢ các Server + Phụ đề)
+    if (source === 'all') {
+      // BƯỚC 3.1: Gọi thử 1 server mặc định (Valenox) + Phụ đề
+      const [firstSourceRes, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
+        fetchApiWithPoW('subtitles', mediaType, id)
+      ]);
 
-"Accept": "application/json, text/plain, */*",
+      const sourcesResult = [];
 
-"Authorization": `Bearer ${token}`,
+      if (firstSourceRes && !firstSourceRes.error) {
+        // Dọn dẹp bớt thuộc tính dư thừa trong object server
+        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
+        sourcesResult.push({
+          sourceName: 'Valenox',
+          ...cleanFirst
+        });
+      }
 
-"Origin": "https://anime47.best",
+      // BƯỚC 3.2: Lấy danh sách TẤT CẢ các source khả thi từ phản hồi API
+      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
+      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
 
-"Referer": "https://anime47.best/",
+      // BƯỚC 3.3: Gọi tiếp song song tất cả các source còn lại
+      if (remainingSources.length > 0) {
+        const remainingRequests = remainingSources.map(src =>
+          fetchApiWithPoW('resolve', mediaType, id, { source: src })
+            .then(res => ({ sourceName: src, data: res }))
+            .catch(err => ({ sourceName: src, error: err.message }))
+        );
 
-"User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36"
+        const remainingResponses = await Promise.all(remainingRequests);
 
-}
+        remainingResponses.forEach(item => {
+          if (item.data && !item.data.error) {
+            const { subtitles: _, availableSources: __, ...cleanData } = item.data;
+            sourcesResult.push({
+              sourceName: item.sourceName,
+              ...cleanData
+            });
+          }
+        });
+      }
 
-});
+      if (sourcesResult.length === 0) {
+        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
+      }
 
+      resultData = {
+        sources: sourcesResult,
+        subtitles: subData?.subtitles || subData
+      };
 
-const data = await apiResponse.json();
+    } else if (source === 'true') {
+      // SOURCE = TRUE (Lấy 1 server mặc định + Phụ đề)
+      const [videoData, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, id, { source: 'Valenox' }),
+        fetchApiWithPoW('subtitles', mediaType, id)
+      ]);
 
+      if (videoData?.error) throw new Error(videoData.error);
 
-// 3. Trả kết quả về cho client của bạn
+      resultData = {
+        ...videoData,
+        subtitles: subData?.subtitles || subData
+      };
 
-return new Response(JSON.stringify(data), {
+    } else {
+      // CHẾ ĐỘ THƯỜNG (Lấy riêng lẻ)
+      const endpoint = (type === 'subtitle' || type === 'sub') ? 'subtitles' : 'resolve';
+      const extraPayload = endpoint === 'resolve' ? { source } : {};
 
-status: apiResponse.status,
+      resultData = await fetchApiWithPoW(endpoint, mediaType, id, extraPayload);
+      if (resultData?.error) throw new Error(resultData.error);
+    }
 
-headers: {
+    // 4. LƯU DỮ LIỆU HOÀN CHỈNH VÀO CACHE MỚI (CACHE MISS)
+    const now = Date.now();
+    cache.set(cacheKey, {
+      timestamp: now,
+      data: resultData
+    });
 
-"Content-Type": "application/json",
+    const finalResponse = {
+      status: "success",
+      log: {
+        cache_status: "MISS",
+        message: "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+        cached_at: new Date(now).toISOString(),
+        age_seconds: 0
+      },
+      ...resultData
+    };
 
-"Access-Control-Allow-Origin": "*"
+    if (play && source !== 'true' && source !== 'all' && type === 'video') {
+      const videoUrl = resultData?.url || resultData?.link;
+      if (videoUrl && typeof videoUrl === 'string') {
+        return res.redirect(302, videoUrl);
+      }
+    }
 
-}
+    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
+    return res.status(200).json(finalResponse);
 
-});
+  } catch (error) {
+    // 5. NẾU LỖI / BỊ LIMIT -> KIỂM TRA XEM CÓ CACHE CŨ DỰ PHÒNG KHÔNG
+    if (cache.has(cacheKey)) {
+      const fallbackItem = cache.get(cacheKey);
+      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
 
+      return res.status(200).json({
+        status: "success",
+        log: {
+          cache_status: "HIT_FALLBACK",
+          message: `Request mới bị lỗi/limit (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
+          cached_at: new Date(fallbackItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...fallbackItem.data
+      });
+    }
 
-} catch (error) {
-
-return new Response(JSON.stringify({ error: error.message }), {
-
-status: 500,
-
-headers: { "Content-Type": "application/json" }
-
-});
-
-}
-
-}
-
+    // Nếu không có Cache cũ để cứu -> Trả về STATUS ERROR
+    return res.status(500).json({
+      status: "error",
+      log: {
+        cache_status: "FAILED",
+        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
+      },
+      error: error.message
+    });
+  }
 };
 
+// Hàm bổ trợ gọi API + PoW
+async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
+  const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
+  if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
+  
+  const challengeData = await challengeRes.json();
+  const { challenge, difficulty = 4 } = challengeData;
 
-// Hàm xử lý logic lấy token thông minh qua KV
+  const nonce = solvePoWNode(challenge, difficulty);
 
-async function getValidAccessToken(env) {
+  const payload = {
+    mediaType,
+    id: isNaN(id) ? id : Number(id),
+    challenge,
+    nonce: nonce.toString(),
+    ...extraParams
+  };
 
-const now = Date.now();
+  const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
 
+  return await apiRes.json();
+}
 
-// Đọc token và thời gian hết hạn từ KV
+function solvePoWNode(challenge, difficulty) {
+  const targetPrefix = '0'.repeat(difficulty);
+  let nonce = 0;
 
-let accessToken = await env.TOKEN_KV.get("access_token");
-
-let expiresAt = await env.TOKEN_KV.get("expires_at");
-
-let refreshToken = await env.TOKEN_KV.get("refresh_token");
-
-
-// Nếu token còn hạn (trừ hao trước 2 phút = 120000ms), dùng luôn
-
-if (accessToken && expiresAt && now < parseInt(expiresAt) - 120000) {
-
-return accessToken;
-
+  while (nonce < 1000000) {
+    const hash = crypto.createHash('sha256').update(challenge + nonce).digest('hex');
+    if (hash.startsWith(targetPrefix)) {
+      return nonce;
+    }
+    nonce++;
+  }
+  return nonce;
 }
 
 
-// Nếu token hết hạn nhưng có refresh_token, ta thử refresh trước để đỡ phải điền lại pass
+Tôi cần bạn sửa lại code như sau: bỏ qua bước check challenge và lấy subtiltle từ https://api.reallyfast.xyz mà chuyển sang dùng
+https://subtitles.shegu.st/subtitles?type=movie&tmdb=1620
+https://subtitles.shegu.st/subtitles?type=tv&tmdb=1413&season=1&episode=1
 
-if (refreshToken) {
-
-try {
-
-const refreshRes = await fetch("https://anime47.love/api/auth/refresh", { // (Tuỳ chỉnh lại endpoint refresh nếu API yêu cầu)
-
-method: "POST",
-
-headers: {
-
-"Content-Type": "application/json",
-
-"Accept": "application/json",
-
-"Authorization": `Bearer ${refreshToken}`,
-
-"Origin": "https://anime47.best"
-
-}
-
-});
-
-if (refreshRes.ok) {
-
-const refreshData = await refreshRes.json();
-
-accessToken = refreshData.access_token;
-
-const newExpiresAt = now + (refreshData.expires_in * 1000);
-
-// Lưu lại token mới vào KV
-
-await env.TOKEN_KV.put("access_token", accessToken);
-
-await env.TOKEN_KV.put("expires_at", newExpiresAt.toString());
-
-if (refreshData.refresh_token) {
-
-await env.TOKEN_KV.put("refresh_token", refreshData.refresh_token);
-
-}
-
-return accessToken;
-
-}
-
-} catch (e) {
-
-// Nếu refresh thất bại, rơi xuống bước đăng nhập mới bằng user/pass bên dưới
-
-}
-
-}
-
-
-// Nếu không có token hoặc refresh thất bại -> Tiến hành Login mới bằng User/Password
-
-const loginRes = await fetch("https://anime47.love/api/auth/login", {
-
-method: "POST",
-
-headers: {
-
-"Content-Type": "application/json",
-
-"Accept": "application/json",
-
-"Origin": "https://anime47.best",
-
-"User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36"
-
-},
-
-body: JSON.stringify({
-
-login: "alokillgtv@gmail.com",
-
-password: "Exciter150"
-
-})
-
-});
-
-
-if (!loginRes.ok) {
-
-throw new Error("Đăng nhập thất bại vào Anime47 qua Worker.");
-
-}
-
-
-const loginData = await loginRes.json();
-
-accessToken = loginData.access_token;
-
-const newExpiresAt = now + (loginData.expires_in * 1000);
-
-
-// Lưu toàn bộ thông tin mới vào KV Storage
-
-await env.TOKEN_KV.put("access_token", accessToken);
-
-await env.TOKEN_KV.put("expires_at", newExpiresAt.toString());
-
-if (loginData.refresh_token) {
-
-await env.TOKEN_KV.put("refresh_token", loginData.refresh_token);
-
-}
-
-
-return accessToken;
-
-}
+Hãy dùng các loại type được truyền vào, tpdb, season và episode truyền vào dữ liệu để gán vào link shegu cho phù hợp, khỏi cần challenge luôn,

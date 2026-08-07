@@ -8,10 +8,16 @@ https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&sou
 
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
 
+https://subtitles.shegu.st/subtitles?type=movie&tmdb=969681&
+
+https://subtitles.shegu.st/subtitles?type=movie&tmdb=969681
+
 worker lấy dữ liệu subtitle.
 
 Link lấy subtitle tât cả shup
+
+
 https://subtitles.shegu.st/subtitles?type=movie&tmdb=1620
-https://subtitles.shegu.st/subtitles?type=tv&tmdb=1339713
+https://subtitles.shegu.st/subtitles?type=tv&tmdb=1413&season=1&episode=1
 
 
