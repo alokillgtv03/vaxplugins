@@ -1,5 +1,4 @@
 module.exports = async (req, res) => {
-  // 1. Thiết lập Header CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -11,27 +10,37 @@ module.exports = async (req, res) => {
   try {
     const queryParams = new URLSearchParams(req.query);
 
-    // 2. Lấy tham số endpoint từ request, mặc định là 'discover/movie' nếu client không truyền
-    const endpoint = queryParams.get('endpoint') || 'discover/movie';
-    
-    // XÓA tham số endpoint ra khỏi queryParams để không bị truyền thừa sang TMDB API
+    // 1. Lấy raw endpoint từ query
+    let rawEndpoint = queryParams.get('endpoint') || 'discover/movie';
     queryParams.delete('endpoint');
 
-    // Đảm bảo các tham số mặc định
+    // 2. Nếu trong endpoint chứa sẵn query string (ví dụ "tv/top_rated?language=vi-VN")
+    // Tiến hành tách riêng path và param ra để ghép lại đúng chuẩn URL
+    if (rawEndpoint.includes('?')) {
+      const [path, extraQuery] = rawEndpoint.split('?');
+      rawEndpoint = path;
+      const extraParams = new URLSearchParams(extraQuery);
+      extraParams.forEach((value, key) => {
+        if (!queryParams.has(key)) {
+          queryParams.set(key, value);
+        }
+      });
+    }
+
+    // 3. Đảm bảo các tham số mặc định
     if (!queryParams.has('api_key')) {
       queryParams.set('api_key', 'aa8db17cefbe569dc21a8809090b7b93');
     }
     if (!queryParams.has('language')) {
-      queryParams.set('language', 'vi-VN'); // Khuyên dùng vi-VN mặc định cho app
+      queryParams.set('language', 'vi-VN');
     }
     if (!queryParams.has('include_adult')) {
       queryParams.set('include_adult', 'false');
     }
 
-    // 3. Ghép endpoint ĐỘNG vào URL của TMDB
-    const tmdbUrl = `https://api.themoviedb.org/3/${endpoint}?${queryParams.toString()}`;
+    // 4. Ghép URL chuẩn xác cho TMDB (chỉ chứa 1 dấu ? duy nhất)
+    const tmdbUrl = `https://api.themoviedb.org/3/${rawEndpoint}?${queryParams.toString()}`;
 
-    // 4. Fetch dữ liệu từ TMDB
     const response = await fetch(tmdbUrl, {
       method: 'GET',
       headers: {
@@ -51,11 +60,9 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // 5. Cấu hình Caching trên Vercel Edge/CDN
     res.setHeader('Cache-Control', 'public, max-age=21600, s-maxage=21600, stale-while-revalidate=86400');
     res.setHeader('Content-Type', 'application/json;charset=utf-8');
 
-    // 6. Trả dữ liệu về cho Client
     return res.status(200).json(data);
 
   } catch (error) {
