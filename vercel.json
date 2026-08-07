@@ -7,6 +7,15 @@
     {
       "source": "/api/clbpx/(.*)",
       "destination": "/api/clbpx"
+    },
+    {
+      "source": "/api/anime47",
+      "destination": "/api/anime47"
+    },
+    {
+      "source": "/api/anime47/(.*)",
+      "destination": "/api/anime47"
     }
   ]
+
 }
