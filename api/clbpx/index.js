@@ -11,10 +11,12 @@ module.exports = async (req, res) => {
   try {
     const now = Date.now();
 
+    // 1. Kiểm tra Cookie
     if (!cachedCookie || now >= cookieExpiresAt) {
       cachedCookie = await loginAndSaveCookie();
     }
 
+    // 2. Chạy Proxy
     await handleProxyAndScrape(req, res, cachedCookie);
 
   } catch (error) {
@@ -22,6 +24,9 @@ module.exports = async (req, res) => {
   }
 };
 
+/**
+ * Đăng nhập lấy Cookie
+ */
 async function loginAndSaveCookie() {
   try {
     const formData = new URLSearchParams();
@@ -61,26 +66,28 @@ async function loginAndSaveCookie() {
     if (hasAuthToken && formattedCookies) {
       cookieExpiresAt = Date.now() + 12 * 60 * 60 * 1000;
       return formattedCookies;
-    } else {
-      return "";
     }
+    return "";
   } catch (error) {
     return "";
   }
 }
 
+/**
+ * Xử lý Proxy
+ */
 async function handleProxyAndScrape(req, res, authCookie) {
-  // Lấy đường dẫn thực tế từ client
-  let rawUrl = req.url || "/";
+  // Lấy đường dẫn gốc client gửi lên
+  let rawPath = req.url || "/";
 
-  // Bóc tách bỏ tất cả các tiền tố /api/clbpx (kể cả khi bị lặp lại)
-  let cleanPath = rawUrl.replace(/^(\/api\/clbpx)+/g, "");
-
-  // Thu gọn dấu gạch chéo
+  // Loại bỏ tất cả tiền tố /api/clbpx bị lặp (kể cả dấu ///)
+  let cleanPath = rawPath.replace(/^(\/+api\/+clbpx)+/gi, "");
+  
+  // Rút gọn dấu gạch chéo
   cleanPath = cleanPath.replace(/\/+/g, "/");
   if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
 
-  // Tạo URL đích gửi tới clbphimxua.com
+  // Tạo URL gửi sang clbphimxua.com
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
   const fetchHeaders = { ...req.headers };
@@ -110,7 +117,7 @@ async function handleProxyAndScrape(req, res, authCookie) {
     const lowerKey = key.toLowerCase();
     if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
       if (lowerKey === 'location') {
-        let newLocation = value.replace(TARGET_DOMAIN, "/api/clbpx");
+        const newLocation = value.replace(TARGET_DOMAIN, "/api/clbpx");
         res.setHeader(key, newLocation);
       } else {
         res.setHeader(key, value);
@@ -120,22 +127,17 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   const contentType = response.headers.get("content-type") || "";
 
+  // Sửa đổi HTML
   if (contentType.includes("text/html")) {
     let htmlText = await response.text();
     
-    // Đổi link gốc thành link proxy
+    // Thay toàn bộ domain gốc bằng prefix proxy
     htmlText = htmlText.replaceAll(TARGET_DOMAIN, "/api/clbpx");
-
-    const injectedScript = "<script>console.log('Proxy active - clbphimxua.com');</script>";
-    if (htmlText.includes("</body>")) {
-      htmlText = htmlText.replace("</body>", `${injectedScript}</body>`);
-    } else {
-      htmlText += injectedScript;
-    }
 
     return res.status(response.status).send(htmlText);
   }
 
+  // Trả về dữ liệu file tĩnh / media
   const arrayBuffer = await response.arrayBuffer();
   return res.status(response.status).send(Buffer.from(arrayBuffer));
 }
