@@ -1,17 +1,19 @@
 
-https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681
-link lấy nội dung phim và subtitle
-Link lấy theo nguồn phim
-https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&source1=Valenox&source2=Orbit
-Link lấy phim và play phim luôn
-https://billowing-sun-1654.alokillgtv.workers.dev/?mediaType=movie&id=969681&source1=Valenox&source2=Orbit&play=1
-
+goated
 // link lấy dữ liệu stream và sub cho goated
 Loại movie
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&id=969681&source=all&debug=9780752
 
 loại tvshow
 https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1413&season=1&episode=1&source=all&debug=9780752
+
+//novahd
+Loại movie
+https://vaxplayer.vercel.app/api/novahd/?mediaType=movie&id=969681&id=969681&source=all&debug=9780752
+
+loại tvshow
+https://vaxplayer.vercel.app/api/novahd/?mediaType=tv&id=1413&season=1&episode=1&source=all&debug=9780752
+
 
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
 
