@@ -1,4 +1,4 @@
-// File: /api/novahd/index.js
+// File: /api/novahd.js (hoặc /api/novahd/index.js)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -6,6 +6,9 @@ const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
 
 const APP_SECRET_KEY = "VAXPLAYER";
 const DEBUG_KEY = "9780752";
+
+// Worker proxy cá nhân của bạn
+const WORKER_PROXY_BASE = "https://billowing-sun-1654.alokillgtv.workers.dev";
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -60,7 +63,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 3. LẤY DỮ LIỆU TỪ NOVAHD VÀ SUBTITLE
+    // 3. LẤY DỮ LIỆU TỪ NOVAHD QUA CLOUDFLARE WORKER VÀ SUBTITLE
     const [novaData, subData] = await Promise.all([
       fetchNovaHD({ mediaType, id: cleanId, season, episode }),
       fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
@@ -110,23 +113,23 @@ module.exports = async (req, res) => {
   }
 };
 
-// HÀM LẤY DATA NOVAHD (ĐÃ FIX GIẢ LẬP HEADER CHỐNG 403)
+// HÀM LẤY DATA NOVAHD QUA CLOUDFLARE WORKER PROXY
 async function fetchNovaHD({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
   
-  // URL gốc của NovaHD
-  let novaUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
+  // 1. Tạo URL gốc NovaHD
+  let novaTargetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
   if (normType === 'show') {
-    novaUrl += `&season=${season || 1}&episode=${episode || 1}`;
+    novaTargetUrl += `&season=${season || 1}&episode=${episode || 1}`;
   }
 
-  // Bọc qua Reverse Proxy công cộng để đổi IP xuất phát
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(novaUrl)}`;
+  // 2. Wrap URL qua Cloudflare Worker theo cấu trúc: ?url=...&type=json
+  const workerUrl = `${WORKER_PROXY_BASE}/?url=${encodeURIComponent(novaTargetUrl)}&type=json`;
 
-  const res = await fetch(proxyUrl);
+  const res = await fetch(workerUrl);
 
   if (!res.ok) {
-    throw new Error(`NovaHD Proxy Status: ${res.status}`);
+    throw new Error(`Cloudflare Worker Proxy Status: ${res.status}`);
   }
 
   const data = await res.json();

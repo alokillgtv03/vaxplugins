@@ -1,3 +1,6 @@
+worker fetch data
+https://billowing-sun-1654.alokillgtv.workers.dev/?url=https%3A%2F%2Fnovahd.cc%2Fapi%2Fsources%3Ftype%3Dshow%26tmdbId%3D1413%26season%3D1%26episode%3D1&type=json
+
 
 goated
 // link lấy dữ liệu stream và sub cho goated

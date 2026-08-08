@@ -22,8 +22,6 @@
     { "source": "/api/novahd/(.*)", "destination": "/api/novahd.js" },
 
     { "source": "/api/themoviedata", "destination": "/api/themoviedb.js" },
-    { "source": "/api/themoviedata/(.*)", "destination": "/api/themoviedb.js" },
-    { "source": "/api/themoviedb", "destination": "/api/themoviedb.js" },
-    { "source": "/api/themoviedb/(.*)", "destination": "/api/themoviedb.js" }
+    { "source": "/api/themoviedata/(.*)", "destination": "/api/themoviedb.js" }
   ]
 }

@@ -7,18 +7,18 @@
 6 silly config load:file:/etc/npmrc
 7 verbose title npm install types-registry@latest
 8 verbose argv "install" "--ignore-scripts" "types-registry@latest"
-9 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-08T14_33_06_165Z-
-10 verbose logfile /public/.npm/_logs/2026-08-08T14_33_06_165Z-debug-0.log
+9 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-08T14_52_23_978Z-
+10 verbose logfile /public/.npm/_logs/2026-08-08T14_52_23_978Z-debug-0.log
 11 silly logfile start cleaning logs, removing 1 files
-12 silly logfile done cleaning log files
-13 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+12 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+13 silly logfile done cleaning log files
 14 silly packumentCache corgi:https://registry.npmjs.org/types-registry cache-miss
-15 http cache https://registry.npmjs.org/types-registry 37ms (cache hit)
+15 http cache https://registry.npmjs.org/types-registry 36ms (cache hit)
 16 silly packumentCache corgi:https://registry.npmjs.org/types-registry set size:630928 disposed:false
 17 silly idealTree buildDeps
 18 silly fetch manifest types-registry@0.1.781
 19 silly packumentCache full:https://registry.npmjs.org/types-registry cache-miss
-20 http cache https://registry.npmjs.org/types-registry 11ms (cache hit)
+20 http cache https://registry.npmjs.org/types-registry 30ms (cache hit)
 21 silly packumentCache full:https://registry.npmjs.org/types-registry set size:1372739 disposed:false
 22 silly placeDep ROOT types-registry@0.1.781 REPLACE for:  want: 0.1.781
 23 silly reify moves {}
@@ -48,7 +48,7 @@
 24 silly audit   'undici-types': [ '8.3.0' ],
 24 silly audit   'types-registry': [ '0.1.781' ]
 24 silly audit }
-25 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 516ms
+25 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 531ms
 26 silly audit report {}
 27 verbose cwd /public/.cache/typescript/7.0
 28 verbose os Linux 4.19.157-perf+
