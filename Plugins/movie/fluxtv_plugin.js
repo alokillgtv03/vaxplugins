@@ -1,23 +1,22 @@
 var BASEURL = "https://vaxplayer.vercel.app";
 var BASEAPI = "https://vaxplayer.vercel.app";
-// https://api.themoviedb.org/3/discover/movie?api_key=aa8db17cefbe569dc21a8809090b7b93&language=en-US&include_adult=false&page=1&sort_by=popularity.desc&with_original_language=en&with_genres=9648
-// https://vaxplayer.vercel.app/api/themoviedb?endpoint=trending/movie/day&language=vi-VN
 var BASELINK = BASEURL;
 // https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/goated.png
 function getManifest() {
   try{
     return JSON.stringify({
-      "id": "goated",
-      "name": "Nguồn Goated",
-      "description": "Nguồn phim Goated",
-      "version": "1.0.3",
+      "id": "fluxtv",
+      "name": "Nguồn FluxTV",
+      "description": "Nguồn phim FluxTV",
+      "version": "1.0.0",
       "author": "Alokillgtv",
       "info": "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này được mình tích hợp rẩt nhiều subtitle nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát.\nNếu vẫn không dược hãy thử hạ độ phân giải xuống 1 cấp sẽ coi được..",
       "BASEURL": "https://vaxplayer.vercel.app",
-      "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/goated.png",
+      "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/fluxtv.png",
       "isEnabled": true,
       "isAdult": false,
       "adblock": false,
+      debug: true,
       "layoutType": "HORIZONTAL",
       "type": "MOVIE",
       "subtitleCat": false,
@@ -42,9 +41,6 @@ function getManifest() {
 
 // ===== HÀM MENU LIST BEGIN ======
 {
-// Tạo List phim ở menu Home
-  //           {"slug": "/api/themoviedb?endpoint=tv/top_rated&language=vi-VN","title": "TV SHOW Hot","type": "Horizontal"},
-  //           {"slug": "/api/themoviedb?endpoint=trending/movie/day&language=vi-VN","title": "Phim Mới","type": "Grid"}
   function getHomeSections() {
       localStorage.clear();
       return JSON.stringify([
@@ -415,7 +411,7 @@ function parseMovieDetail(html, url) {
                 } else if (totalEpisodes > 0) {
                     // Nếu API chỉ trả về số lượng episode_count, tự generate danh sách tập
                     for (var i = 1; i <= totalEpisodes; i++) {
-                        var id = BASEAPI + "/api/goated/?mediaType=tv&id="+tmdbId+"&season="+seasonNum+"&episode="+i+"&source=all&debug=9780752"
+                        var id = BASEAPI + "/api/nflixmovie/?mediaType=tv&id="+tmdbId+"&season="+seasonNum+"&episode="+i+"&source=all&debug=9780752"
                         var epName = "Tập " + i;
                         var epSlug = "tap-" + i;
 
@@ -440,7 +436,7 @@ function parseMovieDetail(html, url) {
             });
         } else {
             // Movie
-            var id = BASEAPI + "/api/goated/?mediaType=movie&id="+tmdbId+"&source=all&debug=9780752";
+            var id = BASEAPI + "/api/nflixmovie/?mediaType=movie&id="+tmdbId+"&source=all&debug=9780752";
             servers.push({
                 name: "Vietsub / HD",
                 episodes: [{
@@ -489,10 +485,8 @@ function parseMovieDetail(html, url) {
 // ===== HÀM TẠO KHỐI CHI TIẾT PHIM END ======
 
 // ===== HÀM TẠO XỬ LÝ STREAM PHIM BEGIN ======
-
 {
-  
-function parseDetailResponse(html, url) {
+  function parseDetailResponse(html, url) {
   try {
     console.log("parseDetailResponse đang xử lý: " + url);
     if (!html) {

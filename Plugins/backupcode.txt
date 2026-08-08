@@ -37,6 +37,7 @@ https://vaxplayer.vercel.app/api/json?file=filex.json&refresh=1
 https://vaxplayer.vercel.app/api/themoviedb?page=1&with_genres=9648&sort_by=popularity.desc
 
 
+https://vaxplayer.vercel.app/api/nflixmovie/?mediaType=movie&id=969681&source=all&debug=9780752
 
 https://nflixmovies.app/api/titan/play?id=980431&type=movie&skip=signalvault&cache_only=1&public_embed=1&parent=nflixmovies.app
 
