@@ -1,11 +1,9 @@
-// File: /api/flextv/index.js
-// script flextv version 1.2 (Standalone Folder Route)
+// File: /api/flextv.js
 const crypto = require('crypto');
 
 const APP_SECRET_KEY = "VAXPLAYER";
 const DEBUG_KEY = "9780752";
 
-// Hàm an toàn nhận diện định dạng video từ response
 function safeDetectFormat(data) {
   if (!data || typeof data !== 'object') return 'unknown';
   if (data.format) return String(data.format).toLowerCase();
@@ -20,7 +18,6 @@ function safeDetectFormat(data) {
   return 'unknown';
 }
 
-// Hàm tạo SID & ghép URL theo chuẩn nflixmovies
 function withEmbedSid(q, parentHost = 'nflixmovies.app') {
   const embedSid = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let s = String(q || '');
@@ -36,7 +33,6 @@ function withEmbedSid(q, parentHost = 'nflixmovies.app') {
   return s;
 }
 
-// Hàm fetch stream/video từ Nflixmovies
 async function fetchNflixStream({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
   let queryPath = '';
@@ -68,7 +64,6 @@ async function fetchNflixStream({ mediaType, id, season, episode }) {
   return await res.json();
 }
 
-// Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
@@ -85,7 +80,6 @@ async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   return await res.json();
 }
 
-// Hàm giải mã Video Link qua Challenge / PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
@@ -148,7 +142,6 @@ module.exports = async (req, res) => {
 
   const isGetSv = getsv === 'true';
 
-  // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
   const isHeaderValid = clientSecret === APP_SECRET_KEY;
   const isDebugValid = debug === DEBUG_KEY;
@@ -169,9 +162,7 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 2. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất
       const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
       if (initialRes?.error) throw new Error(initialRes.error);
 
@@ -254,7 +245,6 @@ module.exports = async (req, res) => {
       ...resultData
     };
 
-    // Điều hướng nếu có tham số play=true
     if (!isGetSv && play && type === 'video') {
       const videoUrl = resultData?.directUrl || resultData?.hlsUrl || resultData?.url || resultData?.link;
       if (videoUrl && typeof videoUrl === 'string') {

@@ -1,5 +1,6 @@
-// script themoviedata version: 1.0
-// Danh sách API keys xoay vòng (Fallback list)
+// File: /api/themoviedata.js
+// script themoviedata version: 1.1 (Direct Endpoint Compatible)
+
 const API_KEYS = [
   'aa8db17cefbe569dc21a8809090b7b93',
   '3d421899d5ce93db8ad4ae4591ccc130',
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
   try {
     const queryParams = new URLSearchParams(req.query);
 
-    // Lấy thông tin server nếu có (VD: server=goated, server=fluxtv)
+    // Lấy thông tin server nếu có (VD: server=goated, server=flextv, server=clbpx)
     const serverName = queryParams.get('server');
     queryParams.delete('server');
 
@@ -108,7 +109,7 @@ module.exports = async (req, res) => {
 
             if (mediaType === 'tv') {
               if (isGetSv) {
-                // Tối ưu: Khi lấy danh sách Server, luôn cố định season=1 & episode=1 để chỉ gọi đúng 1 lần duy nhất
+                // Tối ưu: Khi lấy danh sách Server, luôn cố định season=1 & episode=1
                 serverParams.set('season', '1');
                 serverParams.set('episode', '1');
               } else {
@@ -129,6 +130,8 @@ module.exports = async (req, res) => {
 
             const host = req.headers.host || 'vaxplayer.vercel.app';
             const protocol = req.headers['x-forwarded-proto'] || 'https';
+            
+            // Gọi thẳng tới endpoint /api/{serverName}
             const serverApiUrl = `${protocol}://${host}/api/${serverName}?${serverParams.toString()}`;
 
             const serverRes = await fetch(serverApiUrl, {

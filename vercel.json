@@ -1,40 +1,36 @@
 {
   "rewrites": [
     {
-      "source": "/api/clbpx",
-      "destination": "/api/clbpx/index.js"
-    },
-    {
-      "source": "/api/clbpx/(.*)",
-      "destination": "/api/clbpx/index.js"
-    },
-    {
-      "source": "/api/anime47",
-      "destination": "/api/anime47/index.js"
-    },
-    {
-      "source": "/api/anime47/(.*)",
-      "destination": "/api/anime47/index.js"
-    },
-    {
-      "source": "/api/novahd",
-      "destination": "/api/novahd/index.js"
-    },
-    {
-      "source": "/api/novahd/(.*)",
-      "destination": "/api/novahd/index.js"
-    },
-    {
       "source": "/api/flextv",
-      "destination": "/api/flextv/index.js"
+      "destination": "/api/flextv.js"
     },
     {
       "source": "/api/flextv/(.*)",
-      "destination": "/api/flextv/index.js"
+      "destination": "/api/flextv.js"
     },
     {
-      "source": "/json",
-      "destination": "/api/json/index.js"
+      "source": "/api/novahd",
+      "destination": "/api/novahd.js"
+    },
+    {
+      "source": "/api/novahd/(.*)",
+      "destination": "/api/novahd.js"
+    },
+    {
+      "source": "/api/clbpx",
+      "destination": "/api/clbpx.js"
+    },
+    {
+      "source": "/api/clbpx/(.*)",
+      "destination": "/api/clbpx.js"
+    },
+    {
+      "source": "/api/anime47",
+      "destination": "/api/anime47.js"
+    },
+    {
+      "source": "/api/anime47/(.*)",
+      "destination": "/api/anime47.js"
     }
   ]
 }

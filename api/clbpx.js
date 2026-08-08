@@ -1,3 +1,6 @@
+// File: /api/clbpx.js
+// script clbpx wordpress proxy version: 1.1 (Direct Endpoint Compatible)
+
 const { URLSearchParams } = require('url');
 
 const TARGET_DOMAIN = process.env.TARGET_DOMAIN || "https://clbphimxua.com";
@@ -9,7 +12,7 @@ let cookieExpiresAt = 0;
 
 // BỘ NHỚ RAM LƯU CACHE (LỚP 2)
 const memoryCache = new Map();
-const CACHE_TTL = 2 * 60 * 60 * 1000; // Thời hạn Cache: Đúng 2 tiếng (7,200,000 miligiây)
+const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 tiếng (7,200,000 ms)
 
 module.exports = async (req, res) => {
   try {
@@ -63,7 +66,7 @@ async function loginAndSaveCookie() {
     const formattedCookies = parsedCookies.join("; ");
 
     if (hasAuthToken && formattedCookies) {
-      cookieExpiresAt = Date.now() + 12 * 60 * 60 * 1000;
+      cookieExpiresAt = Date.now() + 12 * 60 * 60 * 1000; // Cookie sống 12 tiếng
       return formattedCookies;
     }
     return "";
@@ -73,12 +76,19 @@ async function loginAndSaveCookie() {
 }
 
 async function handleProxyAndScrape(req, res, authCookie) {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'vaxplayer.vercel.app';
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const PROXY_BASE_URL = `${protocol}://${host}/api/clbpx`;
 
-  let rawPath = req.url || "/";
-  let cleanPath = rawPath.replace(/^(\/+api\/+clbpx)+/gi, "");
+  // Trích xuất cleanPath linh hoạt (hỗ trợ cả query 'endpoint' lẫn URL path)
+  let cleanPath = "";
+  if (req.query && req.query.endpoint) {
+    cleanPath = req.query.endpoint;
+  } else {
+    let rawPath = req.url || "/";
+    cleanPath = rawPath.split("?")[0].replace(/^(\/+api\/+clbpx)+/gi, "");
+  }
+
   cleanPath = cleanPath.replace(/\/+/g, "/");
   if (!cleanPath.startsWith("/")) cleanPath = "/" + cleanPath;
 
@@ -88,28 +98,27 @@ async function handleProxyAndScrape(req, res, authCookie) {
   // 1. KIỂM TRA TRONG BỘ NHỚ RAM (LỚP 2)
   if (isGetMethod && memoryCache.has(cleanPath)) {
     const cachedItem = memoryCache.get(cleanPath);
-    // Nếu chưa quá 2 tiếng
     if (now - cachedItem.timestamp < CACHE_TTL) {
-      // Bật Vercel CDN Cache cho trình duyệt/mạng
       res.setHeader('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=600');
       res.setHeader('X-Cache-Status', 'HIT-MEMORY');
       return res.status(200).send(cachedItem.data);
     } else {
-      // Đã quá 2 tiếng -> Tự động xóa Cache cũ đi
       memoryCache.delete(cleanPath);
     }
   }
 
   const targetUrl = new URL(cleanPath, TARGET_DOMAIN);
 
-  const fetchHeaders = { ...req.headers };
-  delete fetchHeaders.host;
+  // Lọc header tránh lỗi trùng lặp Host/Connection
+  const fetchHeaders = {};
+  if (req.headers['content-type']) fetchHeaders['content-type'] = req.headers['content-type'];
+  if (req.headers['accept']) fetchHeaders['accept'] = req.headers['accept'];
+  
   fetchHeaders["host"] = new URL(TARGET_DOMAIN).host;
   fetchHeaders["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   if (authCookie) {
-    const existingCookie = fetchHeaders["cookie"] || "";
-    fetchHeaders["cookie"] = existingCookie ? `${existingCookie}; ${authCookie}` : authCookie;
+    fetchHeaders["cookie"] = authCookie;
   }
 
   let body = null;
@@ -126,7 +135,7 @@ async function handleProxyAndScrape(req, res, authCookie) {
 
   response.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
-    if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+    if (lowerKey !== 'content-encoding' && lowerKey !== 'content-length' && lowerKey !== 'transfer-encoding') {
       if (lowerKey === 'location') {
         const newLocation = value.replace(TARGET_DOMAIN, PROXY_BASE_URL);
         res.setHeader(key, newLocation);
@@ -145,8 +154,6 @@ async function handleProxyAndScrape(req, res, authCookie) {
     // 2. LƯU DỮ LIỆU VÀO CACHE KHI CÀO THÀNH CÔNG (HTTP 200)
     if (isGetMethod && response.status === 200) {
       memoryCache.set(cleanPath, { data: text, timestamp: now });
-      
-      // Khai báo cho Vercel Edge CDN lưu trữ trong 2 tiếng (7200 giây)
       res.setHeader('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=600');
       res.setHeader('X-Cache-Status', 'MISS-FETCHED');
     }

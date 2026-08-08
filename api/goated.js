@@ -1,4 +1,4 @@
-// script goated, version: 1.1 (Added getsv feature)
+// script goated, version: 1.2 (Direct Endpoint Version)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
   // Làm sạch ID
   const cleanId = String(id).split(',')[0].trim();
 
-  // Tạo Cache Key riêng biệt nếu query tham số getsv
+  // Tạo Cache Key
   const cacheKey = isGetSv 
     ? `getsv_${mediaType}_${cleanId}_${season || ''}_${episode || ''}`
     : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
@@ -93,7 +93,6 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
       const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
       if (initialRes?.error) throw new Error(initialRes.error);
 
@@ -106,10 +105,11 @@ module.exports = async (req, res) => {
 
     } else if (type === 'subtitle' || type === 'sub') {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
+
     } else if (source === 'all') {
       const [firstSourceRes, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       const sourcesResult = [];
@@ -157,7 +157,7 @@ module.exports = async (req, res) => {
     } else if (source === 'true') {
       const [videoData, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       if (videoData?.error) throw new Error(videoData.error);

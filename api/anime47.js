@@ -1,3 +1,6 @@
+// File: /api/anime47.js
+// script anime47 proxy version: 1.1 (Direct Endpoint Compatible)
+
 // Bộ nhớ đệm RAM lưu Token
 let tokenCache = {
   accessToken: null,
@@ -19,8 +22,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 2. Cắt bỏ tiền tố /api/anime47 khỏi URL
-    let cleanPath = req.url.replace(/^\/api\/anime47/i, "");
+    // 2. Bóc tách cleanPath linh hoạt (Hỗ trợ cả tham số query 'endpoint' lẫn URL path)
+    let cleanPath = "";
+    
+    if (req.query && req.query.endpoint) {
+      cleanPath = req.query.endpoint;
+    } else {
+      // Cắt bỏ tiền tố /api/anime47 nếu gọi dạng path
+      cleanPath = req.url.split("?")[0].replace(/^\/api\/anime47/i, "");
+    }
+
     if (!cleanPath.startsWith("/")) {
       cleanPath = "/" + cleanPath;
     }
@@ -41,7 +52,7 @@ module.exports = async (req, res) => {
         res.setHeader("Content-Type", "application/json");
         return res.status(200).send(cachedItem.data);
       } else {
-        // Đã hết 30 phút -> Xóa Cache cũ để lấy mới
+        // Đã hết hạn -> Xóa Cache cũ để lấy mới
         memoryCache.delete(cleanPath);
       }
     }
