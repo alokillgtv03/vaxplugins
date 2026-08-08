@@ -1,4 +1,4 @@
-// script goated, version: 1.1 (Updated getsv with video format & status)
+// script goated, version: 1.1 (Fixed TypeError)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -7,17 +7,19 @@ const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
 const APP_SECRET_KEY = "VAXPLAYER";
 const DEBUG_KEY = "9780752";
 
-// Hàm hỗ trợ nhận diện định dạng video từ response
-function detectVideoFormat(data) {
-  if (!data) return 'unknown';
+// Hàm an toàn kiểm tra định dạng video
+function safeDetectFormat(data) {
+  if (!data || typeof data !== 'object') return 'unknown';
   if (data.format) return String(data.format).toLowerCase();
   if (data.type) return String(data.type).toLowerCase();
   
-  const targetUrl = data.directUrl || data.hlsUrl || data.url || data.link || '';
-  if (targetUrl.includes('.m3u8')) return 'hls';
-  if (targetUrl.includes('.mp4')) return 'mp4';
-  
-  return targetUrl ? 'hls' : 'unknown';
+  var targetUrl = data.directUrl || data.hlsUrl || data.url || data.link || '';
+  if (typeof targetUrl === 'string') {
+    if (targetUrl.indexOf('.m3u8') > -1) return 'hls';
+    if (targetUrl.indexOf('.mp4') > -1) return 'mp4';
+    if (targetUrl.length > 0) return 'hls';
+  }
+  return 'unknown';
 }
 
 module.exports = async (req, res) => {
@@ -60,15 +62,14 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  // Làm sạch ID
   const cleanId = String(id).split(',')[0].trim();
 
-  // Tạo Cache Key riêng biệt nếu query tham số getsv
+  // Cache Key
   const cacheKey = isGetSv 
     ? `getsv_${mediaType}_${cleanId}_${season || ''}_${episode || ''}`
     : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
 
-  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
+  // 2. KIỂM TRA CACHE
   if (isCacheDisabled) {
     cache.delete(cacheKey);
   } else if (cache.has(cacheKey)) {
@@ -106,46 +107,47 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // BƯỚC 1: Lấy danh sách server khả dụng ban đầu từ 1 request
       const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(() => null);
+      
       if (!initialRes || initialRes.error) {
-        throw new Error(initialRes?.error || "Không thể kết nối đến máy chủ lấy danh sách Server.");
+        throw new Error(initialRes?.error || "Không thể truy xuất danh sách Server");
       }
 
-      const availableSources = initialRes?.availableSources || ['Valenox'];
+      const availableSources = Array.isArray(initialRes?.availableSources) 
+        ? initialRes.availableSources 
+        : ['Valenox'];
 
-      // BƯỚC 2: Gọi lấy thông tin định dạng (format) cho từng Server song song
-      const serverDetailsPromises = availableSources.map(async (src) => {
-        // Nếu là Valenox thì lấy trực tiếp định dạng từ kết quả bước 1
+      const serverList = [];
+
+      for (let i = 0; i < availableSources.length; i++) {
+        const src = availableSources[i];
         if (src === 'Valenox') {
-          return {
+          serverList.push({
             name: 'Valenox',
-            format: detectVideoFormat(initialRes),
+            format: safeDetectFormat(initialRes),
             status: 'available'
-          };
+          });
+        } else {
+          try {
+            const resData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
+            serverList.push({
+              name: src,
+              format: (resData && !resData.error) ? safeDetectFormat(resData) : 'unknown',
+              status: (resData && !resData.error) ? 'available' : 'error'
+            });
+          } catch (err) {
+            serverList.push({
+              name: src,
+              format: 'unknown',
+              status: 'error'
+            });
+          }
         }
-
-        try {
-          const res = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
-          return {
-            name: src,
-            format: res?.error ? 'unknown' : detectVideoFormat(res),
-            status: res?.error ? 'error' : 'available'
-          };
-        } catch (e) {
-          return {
-            name: src,
-            format: 'unknown',
-            status: 'error'
-          };
-        }
-      });
-
-      const serversWithFormat = await Promise.all(serverDetailsPromises);
+      }
 
       resultData = {
-        total_servers: serversWithFormat.length,
-        servers: serversWithFormat
+        total_servers: serverList.length,
+        servers: serverList
       };
 
     } else if (type === 'subtitle' || type === 'sub') {
@@ -216,7 +218,7 @@ module.exports = async (req, res) => {
       if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI
+    // 4. SAVE CACHE
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -228,8 +230,8 @@ module.exports = async (req, res) => {
       log: {
         cache_status: isCacheDisabled ? "BYPASS_REFRESH" : "MISS",
         message: isCacheDisabled 
-          ? "Đã làm mới dữ liệu thành công (bỏ qua Cache cũ)" 
-          : "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+          ? "Đã làm mới dữ liệu thành công" 
+          : "Dữ liệu mới đã được lưu vào Cache",
         cached_at: new Date(now).toISOString(),
         age_seconds: 0
       },
@@ -256,7 +258,7 @@ module.exports = async (req, res) => {
         status: "success",
         log: {
           cache_status: "HIT_FALLBACK",
-          message: `Request mới bị lỗi (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
+          message: `Lỗi request (${error.message}). Dùng cache dự phòng.`,
           cached_at: new Date(fallbackItem.timestamp).toISOString(),
           age_seconds: ageSeconds
         },
@@ -268,14 +270,13 @@ module.exports = async (req, res) => {
       status: "error",
       log: {
         cache_status: "FAILED",
-        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
+        message: "Request thất bại."
       },
       error: error.message
     });
   }
 };
 
-// Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
@@ -287,12 +288,11 @@ async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
 
   const res = await fetch(targetUrl);
   if (!res.ok) {
-    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status}) - Link: ${targetUrl}`);
+    throw new Error(`Lỗi lấy phụ đề từ Shegust (${res.status})`);
   }
   return await res.json();
 }
 
-// Hàm giải mã Video Link qua Challenge / PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
