@@ -1,4 +1,4 @@
-// script goated, version: 1.2 (Added NovaHD support)
+// script goated, version: 1.7 (Fixed Vercel Serverless Route Detection)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -19,8 +19,8 @@ module.exports = async (req, res) => {
     id, 
     mediaType = 'movie', 
     type = 'video', 
-    source = 'Valenox', 
-    server, // Hỗ trợ thêm query server=novahd
+    source, 
+    server, 
     play, 
     debug,
     season,
@@ -29,12 +29,12 @@ module.exports = async (req, res) => {
     getsv
   } = req.query;
 
-  // Xác định provider ưu tiên từ param source hoặc server
-  const activeSource = (server || source || 'Valenox').trim();
-  const isNovaHD = activeSource.toLowerCase() === 'novahd';
+  // Ép buộc mặc định là 'novahd' cho file api/novahd.js nếu không chỉ định source khác
+  let activeSource = (server || source || 'novahd').trim().toLowerCase();
 
+  const isNovaHD = activeSource === 'novahd';
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
-  const isGetSv = getsv === 'true' || req.query.getsv === 'novahd';
+  const isGetSv = getsv === 'true' || getsv === 'novahd';
 
   // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
@@ -52,15 +52,14 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  // Làm sạch ID
-  const cleanId = String(id).split(',')[0].trim();
+  const cleanId = Array.isArray(id) ? String(id[0]).trim() : String(id).split(',')[0].trim();
 
-  // Tạo Cache Key riêng biệt
+  // Cache key
   const cacheKey = isGetSv 
-    ? `getsv_${mediaType}_${cleanId}_${season || ''}_${episode || ''}`
-    : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${activeSource}`;
+    ? `getsv_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}`
+    : `src_${activeSource}_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}_T${type}`;
 
-  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
+  // 2. CHECK CACHE
   if (isCacheDisabled) {
     cache.delete(cacheKey);
   } else if (cache.has(cacheKey)) {
@@ -72,7 +71,7 @@ module.exports = async (req, res) => {
         status: "success",
         log: {
           cache_status: "HIT",
-          message: "Lấy dữ liệu thành công từ Cache trước đó",
+          message: `Lấy dữ liệu thành công từ Cache [${activeSource.toUpperCase()}]`,
           cached_at: new Date(cachedItem.timestamp).toISOString(),
           age_seconds: ageSeconds
         },
@@ -96,18 +95,15 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 3. XỬ LÝ THEO LOẠI REQUEST
+    // 3. XỬ LÝ THEO SOURCE
     if (isGetSv) {
-      // Bổ sung server NovaHD vào danh sách servers trả về khi gọi getsv
-      let servers = ['novahd'];
+      let servers = ['NovaHD'];
       try {
-        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-        if (initialRes?.availableSources) {
+        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode });
+        if (Array.isArray(initialRes?.availableSources)) {
           servers = Array.from(new Set([...servers, ...initialRes.availableSources]));
         }
-      } catch (e) {
-        // Nếu API PoW lỗi thì vẫn trả về novahd
-      }
+      } catch (e) {}
 
       resultData = {
         total_servers: servers.length,
@@ -118,47 +114,46 @@ module.exports = async (req, res) => {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
 
     } else if (activeSource === 'all') {
-      const [novaRes, firstSourceRes, subData] = await Promise.all([
+      // Quét NovaHD + Tất cả Server PoW
+      const [novaRes, initialPoWRes, subData] = await Promise.all([
         fetchNovaHD({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(err => ({ error: err.message })),
+        fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode }).catch(err => ({ error: err.message })),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       const sourcesResult = [];
 
-      // Đưa nguồn NovaHD vào danh sách nếu có
-      if (novaRes && !novaRes.error && novaRes.sources) {
-        sourcesResult.push({
-          sourceName: 'NovaHD',
-          sources: novaRes.sources
+      // Map mảng NovaHD
+      if (novaRes && !novaRes.error && Array.isArray(novaRes.sources)) {
+        novaRes.sources.forEach(item => {
+          sourcesResult.push({
+            sourceName: item.provider ? `NovaHD (${item.provider})` : 'NovaHD',
+            url: item.url,
+            quality: item.quality,
+            type: item.type,
+            provider: item.provider,
+            language: item.language,
+            source: 'NovaHD'
+          });
         });
       }
 
-      if (firstSourceRes && !firstSourceRes.error) {
-        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
-        sourcesResult.push({
-          sourceName: 'Valenox',
-          ...cleanFirst
-        });
-      }
-
-      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
-      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
-
-      if (remainingSources.length > 0) {
-        const remainingRequests = remainingSources.map(src =>
-          fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode })
-            .then(res => ({ sourceName: src, data: res }))
-            .catch(err => ({ sourceName: src, error: err.message }))
+      // Map mảng PoW
+      const availableList = Array.isArray(initialPoWRes?.availableSources) ? initialPoWRes.availableSources : [];
+      if (availableList.length > 0) {
+        const powRequests = availableList.map(serverName =>
+          fetchApiWithPoW('resolve', mediaType, cleanId, { source: serverName, season, episode })
+            .then(res => ({ serverName, data: res }))
+            .catch(err => ({ serverName, error: err.message }))
         );
 
-        const remainingResponses = await Promise.all(remainingRequests);
+        const powResponses = await Promise.all(powRequests);
 
-        remainingResponses.forEach(item => {
+        powResponses.forEach(item => {
           if (item.data && !item.data.error) {
             const { subtitles: _, availableSources: __, ...cleanData } = item.data;
             sourcesResult.push({
-              sourceName: item.sourceName,
+              sourceName: item.serverName,
               ...cleanData
             });
           }
@@ -166,7 +161,7 @@ module.exports = async (req, res) => {
       }
 
       if (sourcesResult.length === 0) {
-        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
+        throw new Error("Không thể lấy dữ liệu từ bất kỳ nguồn server nào.");
       }
 
       resultData = {
@@ -175,25 +170,37 @@ module.exports = async (req, res) => {
       };
 
     } else if (isNovaHD) {
-      // Xử lý riêng cho nguồn NovaHD
+      // MẶC ĐỊNH: LẤY ĐỦ TOÀN BỘ MẢNG SOURCES TỪ NOVAHD (Viper, Vega, Atlas, Orion,...)
       const [novaData, subData] = await Promise.all([
         fetchNovaHD({ mediaType, id: cleanId, season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       if (!novaData?.sources || novaData.sources.length === 0) {
-        throw new Error("Không lấy được dữ liệu video từ NovaHD.");
+        throw new Error("NovaHD không tìm thấy nguồn video cho ID này.");
       }
 
+      // Map toàn bộ danh sách server từ mảng sources của NovaHD
+      const mappedNovaSources = novaData.sources.map(item => ({
+        sourceName: item.provider ? `NovaHD (${item.provider})` : (item.name || 'NovaHD'),
+        url: item.url,
+        quality: item.quality,
+        type: item.type,
+        provider: item.provider,
+        language: item.language,
+        hostKey: item.hostKey
+      }));
+
       resultData = {
-        sources: novaData.sources,
+        sources: mappedNovaSources,
         subtitles: subData?.subtitles || subData
       };
 
-    } else if (activeSource === 'true') {
+    } else {
+      // Lấy server PoW cụ thể
       const [videoData, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       if (videoData?.error) throw new Error(videoData.error);
@@ -202,13 +209,9 @@ module.exports = async (req, res) => {
         ...videoData,
         subtitles: subData?.subtitles || subData
       };
-
-    } else {
-      resultData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode });
-      if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI
+    // 4. LƯU CACHE
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -220,54 +223,27 @@ module.exports = async (req, res) => {
       log: {
         cache_status: isCacheDisabled ? "BYPASS_REFRESH" : "MISS",
         message: isCacheDisabled 
-          ? "Đã làm mới dữ liệu thành công (bỏ qua Cache cũ)" 
-          : "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+          ? "Đã làm mới dữ liệu thành công" 
+          : `Dữ liệu nguồn [${activeSource.toUpperCase()}] đã lưu vào Cache`,
         cached_at: new Date(now).toISOString(),
         age_seconds: 0
       },
       ...resultData
     };
 
-    if (!isGetSv && play && activeSource !== 'true' && activeSource !== 'all' && type === 'video') {
-      const videoUrl = resultData?.url || resultData?.link || resultData?.sources?.[0]?.url;
-      if (videoUrl && typeof videoUrl === 'string') {
-        return res.redirect(302, videoUrl);
-      }
-    }
-
     res.setHeader('X-Cache', isCacheDisabled ? 'BYPASS' : 'MISS');
     res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
     return res.status(200).json(finalResponse);
 
   } catch (error) {
-    if (cache.has(cacheKey)) {
-      const fallbackItem = cache.get(cacheKey);
-      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
-
-      return res.status(200).json({
-        status: "success",
-        log: {
-          cache_status: "HIT_FALLBACK",
-          message: `Request mới bị lỗi (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
-          cached_at: new Date(fallbackItem.timestamp).toISOString(),
-          age_seconds: ageSeconds
-        },
-        ...fallbackItem.data
-      });
-    }
-
     return res.status(500).json({
       status: "error",
-      log: {
-        cache_status: "FAILED",
-        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
-      },
+      log: { cache_status: "FAILED" },
       error: error.message
     });
   }
 };
 
-// Hàm lấy dữ liệu trực tiếp từ NovaHD
 async function fetchNovaHD({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
   let targetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
@@ -284,18 +260,16 @@ async function fetchNovaHD({ mediaType, id, season, episode }) {
   });
 
   if (!res.ok) {
-    throw new Error(`Không thể lấy dữ liệu từ NovaHD (Status: ${res.status})`);
+    throw new Error(`NovaHD API lỗi Status: ${res.status}`);
   }
 
   const data = await res.json();
-  
-  // Trả về mảng sources, bỏ qua hoàn toàn mảng subtitles của NovaHD
+
   return {
     sources: data.sources || []
   };
 }
 
-// Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'tv' : 'movie';
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
@@ -306,13 +280,10 @@ async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   }
 
   const res = await fetch(targetUrl);
-  if (!res.ok) {
-    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status}) - Link: ${targetUrl}`);
-  }
+  if (!res.ok) throw new Error("Lỗi sub");
   return await res.json();
 }
 
-// Hàm giải mã Video Link qua Challenge / PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
