@@ -1,4 +1,4 @@
-// script goated, version: 1.5 (Dynamic Multi-Server Support)
+// script goated, version: 1.6 (Pure Array Dynamic Iteration)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
   const isGetSv = getsv === 'true' || getsv === 'novahd';
 
-  // 1. BẢO MẬT
+  // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
   const isHeaderValid = clientSecret === APP_SECRET_KEY;
   const isDebugValid = debug === DEBUG_KEY;
@@ -54,12 +54,12 @@ module.exports = async (req, res) => {
 
   const cleanId = Array.isArray(id) ? String(id[0]).trim() : String(id).split(',')[0].trim();
 
-  // Cache key phân biệt chính xác theo từng request
+  // Cache key phân biệt theo đúng nguồn gọi
   const cacheKey = isGetSv 
     ? `getsv_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}`
     : `src_${activeSource}_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}_T${type}`;
 
-  // 2. CHECK CACHE
+  // 2. KIỂM TRA CACHE
   if (isCacheDisabled) {
     cache.delete(cacheKey);
   } else if (cache.has(cacheKey)) {
@@ -99,8 +99,8 @@ module.exports = async (req, res) => {
     if (isGetSv) {
       let servers = ['NovaHD'];
       try {
-        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-        if (initialRes?.availableSources && Array.isArray(initialRes.availableSources)) {
+        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode });
+        if (Array.isArray(initialRes?.availableSources)) {
           servers = Array.from(new Set([...servers, ...initialRes.availableSources]));
         }
       } catch (e) {}
@@ -114,20 +114,20 @@ module.exports = async (req, res) => {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
 
     } else if (activeSource === 'all') {
-      // BƯỚC 1: Lấy song song NovaHD, Subtitles và request đầu tiên đến PoW để lấy danh sách availableSources thực tế
+      // BƯỚC 1: Lấy dữ liệu NovaHD, Subtitles và gọi PoW để lấy mảng availableSources
       const [novaRes, initialPoWRes, subData] = await Promise.all([
         fetchNovaHD({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(err => ({ error: err.message })),
+        fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode }).catch(err => ({ error: err.message })),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       const sourcesResult = [];
 
-      // 1.1 Thêm tất cả sub-servers/providers từ NovaHD (Viper, Vega, Atlas, Orion,...)
+      // BƯỚC 2: Duyệt mảng `sources` của NovaHD (nếu có)
       if (novaRes && !novaRes.error && Array.isArray(novaRes.sources)) {
         novaRes.sources.forEach(item => {
           sourcesResult.push({
-            sourceName: item.provider ? `NovaHD - ${item.provider}` : 'NovaHD',
+            sourceName: item.provider ? `NovaHD (${item.provider})` : 'NovaHD',
             url: item.url,
             quality: item.quality,
             type: item.type,
@@ -138,34 +138,25 @@ module.exports = async (req, res) => {
         });
       }
 
-      // 1.2 Thêm dữ liệu từ request PoW đầu tiên (Valenox)
-      if (initialPoWRes && !initialPoWRes.error) {
-        const { subtitles: _, availableSources: __, ...cleanFirst } = initialPoWRes;
-        sourcesResult.push({
-          sourceName: 'Valenox',
-          ...cleanFirst
-        });
-      }
+      // BƯỚC 3: Duyệt động toàn bộ mảng `availableSources` từ PoW API trả về
+      const availableList = Array.isArray(initialPoWRes?.availableSources) ? initialPoWRes.availableSources : [];
 
-      // 1.3 Lấy TOÀN BỘ danh sách servers còn lại do PoW API trả về
-      const dynamicAvailableSources = initialPoWRes?.availableSources || [];
-      const remainingSources = dynamicAvailableSources.filter(s => s !== 'Valenox');
-
-      // 1.4 Lấy song song tất cả các server còn lại trong availableSources
-      if (remainingSources.length > 0) {
-        const remainingRequests = remainingSources.map(src =>
-          fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode })
-            .then(res => ({ sourceName: src, data: res }))
-            .catch(err => ({ sourceName: src, error: err.message }))
+      if (availableList.length > 0) {
+        // Dùng .map() duyệt qua từng phần tử trong mảng để tạo danh sách Promise
+        const powRequests = availableList.map(serverName =>
+          fetchApiWithPoW('resolve', mediaType, cleanId, { source: serverName, season, episode })
+            .then(res => ({ serverName, data: res }))
+            .catch(err => ({ serverName, error: err.message }))
         );
 
-        const remainingResponses = await Promise.all(remainingRequests);
+        const powResponses = await Promise.all(powRequests);
 
-        remainingResponses.forEach(item => {
+        // Duyệt kết quả trả về của từng server trong mảng
+        powResponses.forEach(item => {
           if (item.data && !item.data.error) {
             const { subtitles: _, availableSources: __, ...cleanData } = item.data;
             sourcesResult.push({
-              sourceName: item.sourceName,
+              sourceName: item.serverName,
               ...cleanData
             });
           }
@@ -173,7 +164,7 @@ module.exports = async (req, res) => {
       }
 
       if (sourcesResult.length === 0) {
-        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
+        throw new Error("Không thể lấy dữ liệu từ bất kỳ mảng server nào.");
       }
 
       resultData = {
@@ -198,7 +189,7 @@ module.exports = async (req, res) => {
       };
 
     } else {
-      // Gọi cụ thể 1 server PoW (Valenox, Flextv, Orbit, Vidsrc,...)
+      // Xử lý cho từng server đơn lẻ
       const [videoData, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
