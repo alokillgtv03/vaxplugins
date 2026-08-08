@@ -1,5 +1,6 @@
 var BASEURL = "https://vaxplayer.vercel.app";
 var BASEAPI = "https://vaxplayer.vercel.app";
+var BASESV = "goated";
 // https://api.themoviedb.org/3/discover/movie?api_key=aa8db17cefbe569dc21a8809090b7b93&language=en-US&include_adult=false&page=1&sort_by=popularity.desc&with_original_language=en&with_genres=9648
 // https://vaxplayer.vercel.app/api/themoviedb?endpoint=trending/movie/day&language=vi-VN
 var BASELINK = BASEURL;
@@ -10,7 +11,7 @@ function getManifest() {
       "id": "goated",
       "name": "Nguồn Goated",
       "description": "Nguồn phim Goated",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "author": "Alokillgtv",
       "info": "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này được mình tích hợp rẩt nhiều subtitle nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát.\nNếu vẫn không dược hãy thử hạ độ phân giải xuống 1 cấp sẽ coi được..",
       "BASEURL": "https://vaxplayer.vercel.app",
@@ -207,7 +208,7 @@ function parseListResponse(html, $url) {
             results.forEach(function(item) {
                 if (!item) return;
 
-                var idvd = item.id + "&server=goated&getsv=true";
+                var idvd = item.id + "&server="+BASESV+"&getsv=true";
                 
                 var isTV = isTVList || item.media_type === "tv" || item.first_air_date !== undefined || item.name !== undefined;
                 var mediaType = isTV ? "tv" : "movie";
@@ -436,7 +437,7 @@ function parseMovieDetail(html, url) {
                 if (baseEpisodes.length > 0) {
                     availableServers.forEach(function(serverName) {
                         var serverEpisodes = baseEpisodes.map(function(ep) {
-                            var epId = BASEAPI + "/api/goated/?mediaType=tv&id=" + tmdbId + "&season=" + ep.season + "&episode=" + ep.episode + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
+                            var epId = BASEAPI + "/api/"+BASESV+"/?mediaType=tv&id=" + tmdbId + "&season=" + ep.season + "&episode=" + ep.episode + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
                           
                             if (ep.season === 1 && ep.episode === 1 && !checkExtra) {
                                 checkExtra = epId;
@@ -461,7 +462,7 @@ function parseMovieDetail(html, url) {
                 var movieEpisodes = [];
 
                 availableServers.forEach(function(serverName, index) {
-                    var idMovie = BASEAPI + "/api/goated/?mediaType=movie&id=" + tmdbId + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
+                    var idMovie = BASEAPI + "/api/"+BASESV+"/?mediaType=movie&id=" + tmdbId + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
                     if (!checkExtra) {
                         checkExtra = idMovie;
                     }
@@ -540,7 +541,7 @@ function parseDetailResponse(html, url) {
     var sources = $data.sources || [];
     var subtitles = $data.subtitles || [];
 
-    // 1. Lọc tất cả các nguồn stream hợp lệ
+    // 1. Lọc các nguồn stream hợp lệ (có URL)
     var validSources = sources.filter(function(item) {
       return item.url && typeof item.url === "string" && item.url.trim() !== "";
     });
@@ -549,16 +550,23 @@ function parseDetailResponse(html, url) {
     var serverParamMatch = url.match(/[?&]server=([^&]+)/i);
     var targetServer = serverParamMatch ? decodeURIComponent(serverParamMatch[1]).toLowerCase() : "";
 
-    // Nếu URL có truyền &server=tên_server, ưu tiên lọc ra các source khớp tên server đó
-    if (targetServer) {
-      var serverMatchedSources = validSources.filter(function(item) {
+    // NẾU CÓ THAM SỐ &server=... : Sắp xếp đưa Server yêu cầu lên ĐẦU MẢNG, các Server còn lại xuống SAU
+    if (targetServer && validSources.length > 1) {
+      var matched = [];
+      var others = [];
+
+      validSources.forEach(function(item) {
         var sName = (item.sourceName || item.source || "").toLowerCase();
-        return sName === targetServer;
+        if (sName === targetServer) {
+          matched.push(item);
+        } else {
+          others.push(item);
+        }
       });
 
-      // Nếu tìm thấy nguồn khớp server yêu cầu thì dùng, không thì fallback về danh sách nguồn gốc
-      if (serverMatchedSources.length > 0) {
-        validSources = serverMatchedSources;
+      // Ghép mảng: Server được chọn đứng đầu (index 0), các server dự phòng nối tiếp phía sau
+      if (matched.length > 0) {
+        validSources = matched.concat(others);
       }
     }
 
@@ -567,7 +575,7 @@ function parseDetailResponse(html, url) {
     var sourceHeaders = {};
 
     if (validSources.length > 0) {
-      // Xác định Key lưu trữ dựa trên ID, Season, Episode và Server
+      // Định danh Key theo ID + Season + Episode (Bỏ targetServer khỏi Key để xoay vòng chung mảng)
       var idMatch = url.match(/[?&]id=([^&]+)/i);
       var seasonMatch = url.match(/[?&]season=(\d+)/i);
       var epMatch = url.match(/[?&]episode=(\d+)/i);
@@ -576,11 +584,12 @@ function parseDetailResponse(html, url) {
       var season = seasonMatch ? seasonMatch[1] : "0";
       var episode = epMatch ? epMatch[1] : "0";
 
-      var mediaKey = "stream_history_" + mediaId + "_s" + season + "_e" + episode + "_" + (targetServer || "all");
+      var mediaKey = "stream_retry_" + mediaId + "_s" + season + "_e" + episode;
 
-      // Đọc lịch sử phát gần nhất từ localStorage
+      // Đọc lịch sử xem từ localStorage
       var historyRaw = localStorage.getItem(mediaKey);
-      var history = { lastIndex: 0, lastUrl: "", lastTime: 0 };
+      var history = { lastIndex: 0, lastTime: 0 };
+      
       if (historyRaw) {
         try {
           history = JSON.parse(historyRaw);
@@ -590,49 +599,48 @@ function parseDetailResponse(html, url) {
       }
 
       var now = Date.now();
-      var currentIndex = history.lastIndex || 0;
+      var currentIndex = typeof history.lastIndex === "number" ? history.lastIndex : 0;
+      var lastTime = history.lastTime || 0;
 
-      // Kiểm tra nếu gọi lại trong vòng 1 phút (60,000 ms)
-      if (history.lastTime && (now - history.lastTime < 60000)) {
-        // Chuyển sang nguồn tiếp theo trong mảng
+      // KIỂM TRA: Nếu reload / gọi lại cùng tập này trong vòng 1 phút (60,000ms)
+      if (lastTime > 0 && (now - lastTime < 60000)) {
+        // Tự động nhảy sang Server/Link tiếp theo trong mảng validSources
         currentIndex = (currentIndex + 1) % validSources.length;
-        console.log("🔄 Phát lại trong 1 phút! Tự động chuyển sang server/link tiếp theo: " + (currentIndex + 1));
+        console.log("🔄 Thử lại trong vòng 1 phút! Tự động chuyển sang Link/Server tiếp theo (Index: " + currentIndex + "/" + validSources.length + ")");
       } else {
-        // Đã quá 1 phút hoặc lần đầu gọi -> đảm bảo index hợp lệ
-        if (currentIndex >= validSources.length) {
-          currentIndex = 0;
-        }
+        // Lần đầu mở hoặc quá 1 phút -> Luôn chọn Server đầu tiên (Index 0 - Ưu tiên server được chọn)
+        currentIndex = 0;
+        console.log("▶ Phát từ Server ưu tiên đầu tiên (Index 0).");
       }
 
       var selectedSource = validSources[currentIndex];
       stream = selectedSource.url;
       streamType = selectedSource.format ? String(selectedSource.format).toLowerCase() : "";
 
-      // Lưu lại thông tin link hiện tại và timestamp mới
+      // Lưu lại Index và Timestamp mới nhất
       localStorage.setItem(mediaKey, JSON.stringify({
         lastIndex: currentIndex,
-        lastUrl: stream,
         lastTime: now
       }));
 
-      // Lấy headers đi kèm của nguồn (nếu API có trả về)
+      // Lấy headers nếu có
       if (selectedSource.headers) {
         try {
           sourceHeaders = (typeof selectedSource.headers === "object") 
             ? selectedSource.headers 
             : JSON.parse(selectedSource.headers);
         } catch (e) {
-          console.log("Lỗi parse headers của source:", e);
+          console.log("Lỗi parse headers:", e);
         }
       }
 
-      console.log("▶ Playing Server (" + (currentIndex + 1) + "/" + validSources.length + "): " + (selectedSource.sourceName || selectedSource.source || "Unknown"));
+      console.log("▶ Đang phát (" + (currentIndex + 1) + "/" + validSources.length + "): " + (selectedSource.sourceName || selectedSource.source || "Unknown"));
     } else {
       console.log("Không tìm thấy bất kỳ nguồn stream nào.");
     }
 
     // 2. Tự động nhận diện MimeType
-    var mimeType = "application/x-mpegURL"; // Mặc định HLS
+    var mimeType = "application/x-mpegURL";
     if (streamType === "mp4" || streamType === "file") {
       mimeType = "video/mp4";
     } else if (streamType === "hls" || streamType === "m3u8") {
@@ -644,7 +652,7 @@ function parseDetailResponse(html, url) {
       }
     }
 
-    // 3. Xử lý Subtitle có sẵn trong $data
+    // 3. Xử lý Subtitles
     var subtitleList = [];
     var viCount = 0;
     var enCount = 0;
@@ -682,7 +690,6 @@ function parseDetailResponse(html, url) {
 
       var subMime = getSubtitleMimeType(type, itemUrl);
 
-      // Ưu tiên Phụ đề Tiếng Việt
       if (lang === "vi" || display.indexOf("vietnamese") > -1 || display.indexOf("vietsub") > -1) {
         viCount++;
         subtitleList.push({
@@ -690,9 +697,7 @@ function parseDetailResponse(html, url) {
           url: itemUrl,
           mimeType: subMime
         });
-      } 
-      // Lấy tối đa 3 Phụ đề Tiếng Anh
-      else if ((lang === "en" || display.indexOf("english") > -1) && enCount < 3) {
+      } else if ((lang === "en" || display.indexOf("english") > -1) && enCount < 3) {
         enCount++;
         subtitleList.push({
           lang: "Engsub " + enCount + " [" + subMime + "]",
@@ -702,16 +707,12 @@ function parseDetailResponse(html, url) {
       }
     });
 
-    // Merge default headers nếu trong source không có
     var finalHeaders = Object.assign({
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Referer": "https://goated.cx",
       "Origin": "https://goated.cx"
     }, sourceHeaders);
 
-    console.log("streamVD: \n" + stream);
-    console.log("subtitleVD: \n" + JSON.stringify(subtitleList));
-    
     return JSON.stringify({
       url: stream,
       mimeType: mimeType,

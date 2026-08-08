@@ -1,25 +1,4 @@
-https://nxsha.space/embed/movie/1368337?lang=en&autoplay=true&sub=en
-
-https://vidgod.site/movie/1368337?autoplay=true
-
-https://player-4aq.pages.dev/embed/movie/1368337?autoPlay=true
-
-https://www.viduki.net/1/movie/1368337?autoPlay=true
-
-
-https://novahd.cc/api/sources?type=movie&tmdbId=216015
-https://novahd.cc/api/sources?type=show&tmdbId=1413&season=1&episode=1
-
-mình có 2 link dạng phía trên cũng dùng tmdid và epi, season và type như script bên dưới, mình muốn bạn làm 2 link trên tương tụ như thế, khi thêm &server=novahd hay &getsv đều dùng như nodejs bên dưới, và bạn càn lấy link video từ json của 2 thằng kia trả về, nhưng hãy bỏ qua phần subtitle đính kèm của nó, mà hãy dùng subtitle mà nodejs đang dùng. Cấu trúc dữ liệu của nó có dạng như bên dưới
-
-{"sources":[{"url":link,"quality":"Auto","type":"hls","provider":"Viper","language":"English sub","name":"Viper (English sub) - Auto","edge":"nova-edge-4b86c0a81afb.planters","hostKey":"12dd5de2"},{"url":link,"quality":"Auto","type":"hls","provider":"Vega","language":"","name":"Vega · Helios","edge":"test5-fc7","hostKey":"f0b0ddf5"},{"url":link,"quality":"480p","type":"hls","provider":"Atlas","language":"English","name":"Atlas · Alpha","codecs":"hevc","edge":"nova-edge-cef83b5af85c.cloudcdn-cef","hostKey":"8ec7bedd"},{"url":link,"quality":"1080p","type":"hls","provider":"Orion","language":"French","name":"Orion · Beta","codecs":"hevc","edge":"nova-edge-189637577b5c.round-butterfly-6","hostKey":"c4e48e42"},{"url":link,"quality":"Auto","type":"hls","provider":"Viper","language":"English sub","name":"Viper (English sub) - Auto","edge":"nova-edge-4b86c0a81afb.planters","hostKey":"12dd5de2"},{"url":link,"quality":"Auto","type":"hls","provider":"Vega","language":"","name":"Vega · Selene","edge":"nova-edge-2519bc742886.emma-251","hostKey":"f0b0ddf5"},{"url":link,"quality":"480p","type":"hls","provider":"Orion","language":"English","name":"Orion · Alpha","codecs":"hevc","edge":"nova-edge-cef83b5af85c.cloudcdn-cef","hostKey":"8ec7bedd"},{"url":link,"quality":"Auto","type":"hls","provider":"Vega","language":"","name":"Vega · Eos","edge":"cf4-ccb","hostKey":"f0b0ddf5"}],"subtitles":[{"url":"/api/subs/tv/1413/1/1/en.vtt","lang":"en","label":"EN","kind":"subtitles","firstParty":true},{"url":"/api/subs/tv/1413/1/1/es.vtt","lang":"es","label":"ES","kind":"subtitles","firstParty":true},{"url":"/api/subs/tv/1413/1/1/pt.vtt","lang":"pt","label":"PT","kind":"subtitles","firstParty":true},{"url":link,"label":"اَلْعَرَبِيَّةُ","lang":"ar"},{"url":link,"label":"বাংলা","lang":"bn"},{"url":link,"label":"English","lang":"en"},{"url":link,"label":"فارسی","lang":"fa"},{"url":link,"label":"Filipino","lang":"fil"},{"url":link,"label":"Français","lang":"fr"},{"url":link,"label":"Indonesian","lang":"id"},{"url":link,"label":"Malay","lang":"ms"},{"url":link,"label":"ਪੰਜਾਬੀ","lang":""},{"url":link,"label":"Русский","lang":"ru"},{"url":link,"label":"ภาษาไทย","lang":""},{"url":link,"label":"اُردُو","lang":""},{"url":link,"label":"tiếng Việt","lang":"vi"}]}
-
-
-và bên dưới làm nodejs của tôi
-
-
-
-// script goated, version: 1.1 (Added getsv feature)
+// script goated, version: 1.2 (Added NovaHD support)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -41,6 +20,7 @@ module.exports = async (req, res) => {
     mediaType = 'movie', 
     type = 'video', 
     source = 'Valenox', 
+    server, // Hỗ trợ thêm query server=novahd
     play, 
     debug,
     season,
@@ -49,8 +29,12 @@ module.exports = async (req, res) => {
     getsv
   } = req.query;
 
+  // Xác định provider ưu tiên từ param source hoặc server
+  const activeSource = (server || source || 'Valenox').trim();
+  const isNovaHD = activeSource.toLowerCase() === 'novahd';
+
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
-  const isGetSv = getsv === 'true';
+  const isGetSv = getsv === 'true' || req.query.getsv === 'novahd';
 
   // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
@@ -71,10 +55,10 @@ module.exports = async (req, res) => {
   // Làm sạch ID
   const cleanId = String(id).split(',')[0].trim();
 
-  // Tạo Cache Key riêng biệt nếu query tham số getsv
+  // Tạo Cache Key riêng biệt
   const cacheKey = isGetSv 
     ? `getsv_${mediaType}_${cleanId}_${season || ''}_${episode || ''}`
-    : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
+    : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${activeSource}`;
 
   // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
   if (isCacheDisabled) {
@@ -95,8 +79,8 @@ module.exports = async (req, res) => {
         ...cachedItem.data
       };
 
-      if (!isGetSv && play && source !== 'true' && source !== 'all' && type === 'video') {
-        const videoUrl = responseData?.url || responseData?.link;
+      if (!isGetSv && play && activeSource !== 'true' && activeSource !== 'all' && type === 'video') {
+        const videoUrl = responseData?.url || responseData?.link || responseData?.sources?.[0]?.url;
         if (videoUrl && typeof videoUrl === 'string') {
           return res.redirect(302, videoUrl);
         }
@@ -114,11 +98,16 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
-      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-      if (initialRes?.error) throw new Error(initialRes.error);
-
-      const servers = initialRes?.availableSources || ['Valenox'];
+      // Bổ sung server NovaHD vào danh sách servers trả về khi gọi getsv
+      let servers = ['novahd'];
+      try {
+        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
+        if (initialRes?.availableSources) {
+          servers = Array.from(new Set([...servers, ...initialRes.availableSources]));
+        }
+      } catch (e) {
+        // Nếu API PoW lỗi thì vẫn trả về novahd
+      }
 
       resultData = {
         total_servers: servers.length,
@@ -127,13 +116,23 @@ module.exports = async (req, res) => {
 
     } else if (type === 'subtitle' || type === 'sub') {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
-    } else if (source === 'all') {
-      const [firstSourceRes, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+
+    } else if (activeSource === 'all') {
+      const [novaRes, firstSourceRes, subData] = await Promise.all([
+        fetchNovaHD({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(err => ({ error: err.message })),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       const sourcesResult = [];
+
+      // Đưa nguồn NovaHD vào danh sách nếu có
+      if (novaRes && !novaRes.error && novaRes.sources) {
+        sourcesResult.push({
+          sourceName: 'NovaHD',
+          sources: novaRes.sources
+        });
+      }
 
       if (firstSourceRes && !firstSourceRes.error) {
         const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
@@ -175,7 +174,23 @@ module.exports = async (req, res) => {
         subtitles: subData?.subtitles || subData
       };
 
-    } else if (source === 'true') {
+    } else if (isNovaHD) {
+      // Xử lý riêng cho nguồn NovaHD
+      const [novaData, subData] = await Promise.all([
+        fetchNovaHD({ mediaType, id: cleanId, season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
+      ]);
+
+      if (!novaData?.sources || novaData.sources.length === 0) {
+        throw new Error("Không lấy được dữ liệu video từ NovaHD.");
+      }
+
+      resultData = {
+        sources: novaData.sources,
+        subtitles: subData?.subtitles || subData
+      };
+
+    } else if (activeSource === 'true') {
       const [videoData, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
@@ -189,7 +204,7 @@ module.exports = async (req, res) => {
       };
 
     } else {
-      resultData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source, season, episode });
+      resultData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode });
       if (resultData?.error) throw new Error(resultData.error);
     }
 
@@ -213,8 +228,8 @@ module.exports = async (req, res) => {
       ...resultData
     };
 
-    if (!isGetSv && play && source !== 'true' && source !== 'all' && type === 'video') {
-      const videoUrl = resultData?.url || resultData?.link;
+    if (!isGetSv && play && activeSource !== 'true' && activeSource !== 'all' && type === 'video') {
+      const videoUrl = resultData?.url || resultData?.link || resultData?.sources?.[0]?.url;
       if (videoUrl && typeof videoUrl === 'string') {
         return res.redirect(302, videoUrl);
       }
@@ -252,9 +267,37 @@ module.exports = async (req, res) => {
   }
 };
 
+// Hàm lấy dữ liệu trực tiếp từ NovaHD
+async function fetchNovaHD({ mediaType, id, season, episode }) {
+  const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
+  let targetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
+
+  if (normType === 'show') {
+    targetUrl += `&season=${season || 1}&episode=${episode || 1}`;
+  }
+
+  const res = await fetch(targetUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://novahd.cc/'
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error(`Không thể lấy dữ liệu từ NovaHD (Status: ${res.status})`);
+  }
+
+  const data = await res.json();
+  
+  // Trả về mảng sources, bỏ qua hoàn toàn mảng subtitles của NovaHD
+  return {
+    sources: data.sources || []
+  };
+}
+
 // Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
-  const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
+  const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'tv' : 'movie';
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
 
   if (normType === 'tv') {

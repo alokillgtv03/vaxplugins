@@ -511,6 +511,7 @@ function parseMovieDetail(html, url) {
                   var idss = item.showId;
                   item.episodes.forEach(function(box, index) {
                       var id = BASEAPI + "/sources?type=show&tmdbId=" + idss + "&season=" + season + "&episode=" + box.episodeNumber;
+                      // https://novahd.cc/api/sources?type=show&tmdbId=
                       var name = "Tập " + box.episodeNumber;
                       var slug = "tap-" + box.episodeNumber;
                       episodes.push({
