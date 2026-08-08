@@ -1,36 +1,29 @@
 {
   "rewrites": [
-    {
-      "source": "/api/flextv",
-      "destination": "/api/flextv.js"
-    },
-    {
-      "source": "/api/flextv/(.*)",
-      "destination": "/api/flextv.js"
-    },
-    {
-      "source": "/api/novahd",
-      "destination": "/api/novahd.js"
-    },
-    {
-      "source": "/api/novahd/(.*)",
-      "destination": "/api/novahd.js"
-    },
-    {
-      "source": "/api/clbpx",
-      "destination": "/api/clbpx.js"
-    },
-    {
-      "source": "/api/clbpx/(.*)",
-      "destination": "/api/clbpx.js"
-    },
-    {
-      "source": "/api/anime47",
-      "destination": "/api/anime47.js"
-    },
-    {
-      "source": "/api/anime47/(.*)",
-      "destination": "/api/anime47.js"
-    }
+    { "source": "/api/anime47", "destination": "/api/anime47.js" },
+    { "source": "/api/anime47/(.*)", "destination": "/api/anime47.js" },
+
+    { "source": "/api/clbpx", "destination": "/api/clbpx.js" },
+    { "source": "/api/clbpx/(.*)", "destination": "/api/clbpx.js" },
+
+    { "source": "/api/fluxtv", "destination": "/api/fluxtv.js" },
+    { "source": "/api/fluxtv/(.*)", "destination": "/api/fluxtv.js" },
+
+    { "source": "/api/flextv", "destination": "/api/fluxtv.js" },
+    { "source": "/api/flextv/(.*)", "destination": "/api/fluxtv.js" },
+
+    { "source": "/api/goated", "destination": "/api/goated.js" },
+    { "source": "/api/goated/(.*)", "destination": "/api/goated.js" },
+
+    { "source": "/api/json", "destination": "/api/json.js" },
+    { "source": "/api/json/(.*)", "destination": "/api/json.js" },
+
+    { "source": "/api/novahd", "destination": "/api/novahd.js" },
+    { "source": "/api/novahd/(.*)", "destination": "/api/novahd.js" },
+
+    { "source": "/api/themoviedata", "destination": "/api/themoviedb.js" },
+    { "source": "/api/themoviedata/(.*)", "destination": "/api/themoviedb.js" },
+    { "source": "/api/themoviedb", "destination": "/api/themoviedb.js" },
+    { "source": "/api/themoviedb/(.*)", "destination": "/api/themoviedb.js" }
   ]
 }
