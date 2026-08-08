@@ -1,4 +1,4 @@
-// script goated, version: 1.3 (Fixed Cache Key & Route Mapping)
+// script goated, version: 1.5 (Dynamic Multi-Server Support)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -29,17 +29,14 @@ module.exports = async (req, res) => {
     getsv
   } = req.query;
 
-  // Kiểm tra nếu gọi qua endpoint /api/novahd/ hoặc truyền param server/source
   const isNovaRoute = req.url.includes('/novahd') || req.baseUrl?.includes('/novahd');
-  
-  // Xác định chính xác nguồn đang gọi
   let activeSource = (server || source || (isNovaRoute ? 'novahd' : 'Valenox')).trim().toLowerCase();
 
   const isNovaHD = activeSource === 'novahd';
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
   const isGetSv = getsv === 'true' || getsv === 'novahd';
 
-  // 1. KIỂM TRA BẢO MẬT
+  // 1. BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
   const isHeaderValid = clientSecret === APP_SECRET_KEY;
   const isDebugValid = debug === DEBUG_KEY;
@@ -55,15 +52,14 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  // Làm sạch ID
-  const cleanId = String(id).split(',')[0].trim();
+  const cleanId = Array.isArray(id) ? String(id[0]).trim() : String(id).split(',')[0].trim();
 
-  // Tạo Cache Key độc lập cho từng nguồn (phân biệt rõ novahd, valenox, flextv,...)
+  // Cache key phân biệt chính xác theo từng request
   const cacheKey = isGetSv 
     ? `getsv_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}`
     : `src_${activeSource}_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}_T${type}`;
 
-  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
+  // 2. CHECK CACHE
   if (isCacheDisabled) {
     cache.delete(cacheKey);
   } else if (cache.has(cacheKey)) {
@@ -75,7 +71,7 @@ module.exports = async (req, res) => {
         status: "success",
         log: {
           cache_status: "HIT",
-          message: `Lấy dữ liệu thành công từ Cache nguồn [${activeSource.toUpperCase()}]`,
+          message: `Lấy dữ liệu thành công từ Cache [${activeSource.toUpperCase()}]`,
           cached_at: new Date(cachedItem.timestamp).toISOString(),
           age_seconds: ageSeconds
         },
@@ -101,10 +97,10 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      let servers = ['novahd'];
+      let servers = ['NovaHD'];
       try {
         const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-        if (initialRes?.availableSources) {
+        if (initialRes?.availableSources && Array.isArray(initialRes.availableSources)) {
           servers = Array.from(new Set([...servers, ...initialRes.availableSources]));
         }
       } catch (e) {}
@@ -118,7 +114,8 @@ module.exports = async (req, res) => {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
 
     } else if (activeSource === 'all') {
-      const [novaRes, firstSourceRes, subData] = await Promise.all([
+      // BƯỚC 1: Lấy song song NovaHD, Subtitles và request đầu tiên đến PoW để lấy danh sách availableSources thực tế
+      const [novaRes, initialPoWRes, subData] = await Promise.all([
         fetchNovaHD({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(err => ({ error: err.message })),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
@@ -126,24 +123,35 @@ module.exports = async (req, res) => {
 
       const sourcesResult = [];
 
-      if (novaRes && !novaRes.error && novaRes.sources) {
-        sourcesResult.push({
-          sourceName: 'NovaHD',
-          sources: novaRes.sources
+      // 1.1 Thêm tất cả sub-servers/providers từ NovaHD (Viper, Vega, Atlas, Orion,...)
+      if (novaRes && !novaRes.error && Array.isArray(novaRes.sources)) {
+        novaRes.sources.forEach(item => {
+          sourcesResult.push({
+            sourceName: item.provider ? `NovaHD - ${item.provider}` : 'NovaHD',
+            url: item.url,
+            quality: item.quality,
+            type: item.type,
+            provider: item.provider,
+            language: item.language,
+            source: 'NovaHD'
+          });
         });
       }
 
-      if (firstSourceRes && !firstSourceRes.error) {
-        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
+      // 1.2 Thêm dữ liệu từ request PoW đầu tiên (Valenox)
+      if (initialPoWRes && !initialPoWRes.error) {
+        const { subtitles: _, availableSources: __, ...cleanFirst } = initialPoWRes;
         sourcesResult.push({
           sourceName: 'Valenox',
           ...cleanFirst
         });
       }
 
-      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
-      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
+      // 1.3 Lấy TOÀN BỘ danh sách servers còn lại do PoW API trả về
+      const dynamicAvailableSources = initialPoWRes?.availableSources || [];
+      const remainingSources = dynamicAvailableSources.filter(s => s !== 'Valenox');
 
+      // 1.4 Lấy song song tất cả các server còn lại trong availableSources
       if (remainingSources.length > 0) {
         const remainingRequests = remainingSources.map(src =>
           fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode })
@@ -165,7 +173,7 @@ module.exports = async (req, res) => {
       }
 
       if (sourcesResult.length === 0) {
-        throw new Error("Tất cả các nguồn Server đều bị giới hạn hoặc lỗi.");
+        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
       }
 
       resultData = {
@@ -174,14 +182,14 @@ module.exports = async (req, res) => {
       };
 
     } else if (isNovaHD) {
-      // Xử lý riêng cho NovaHD
+      // Xử lý riêng nguồn NovaHD
       const [novaData, subData] = await Promise.all([
         fetchNovaHD({ mediaType, id: cleanId, season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
       ]);
 
       if (!novaData?.sources || novaData.sources.length === 0) {
-        throw new Error("Không lấy được dữ liệu video từ NovaHD.");
+        throw new Error("NovaHD không tìm thấy nguồn video cho ID này.");
       }
 
       resultData = {
@@ -190,7 +198,7 @@ module.exports = async (req, res) => {
       };
 
     } else {
-      // Các nguồn PoW như Valenox, Flextv,...
+      // Gọi cụ thể 1 server PoW (Valenox, Flextv, Orbit, Vidsrc,...)
       const [videoData, subData] = await Promise.all([
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
@@ -204,7 +212,7 @@ module.exports = async (req, res) => {
       };
     }
 
-    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI
+    // 4. LƯU CACHE
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -263,7 +271,7 @@ module.exports = async (req, res) => {
   }
 };
 
-// Hàm lấy dữ liệu trực tiếp từ NovaHD
+// Hàm lấy nguồn từ NovaHD
 async function fetchNovaHD({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
   let targetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
@@ -280,7 +288,7 @@ async function fetchNovaHD({ mediaType, id, season, episode }) {
   });
 
   if (!res.ok) {
-    throw new Error(`Không thể lấy dữ liệu từ NovaHD (Status: ${res.status})`);
+    throw new Error(`NovaHD API trả về lỗi Status: ${res.status}`);
   }
 
   const data = await res.json();
