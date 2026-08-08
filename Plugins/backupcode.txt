@@ -32,6 +32,8 @@ https://subtitles.shegu.st/subtitles?type=tv&tmdb=1413&season=1&episode=1
 https://vidfast.vc/wyzie?id=969681
 
 
+https://vaxplayer.vercel.app/api/json?file=filex.json
+
 https://vaxplayer.vercel.app/api/themoviedb?page=1&with_genres=9648&sort_by=popularity.desc
 
 
