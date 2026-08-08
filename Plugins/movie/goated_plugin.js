@@ -17,6 +17,7 @@ function getManifest() {
       "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/goated.png",
       "isEnabled": true,
       "isAdult": false,
+      "debug": true,
       "adblock": false,
       "layoutType": "HORIZONTAL",
       "type": "MOVIE",
@@ -206,7 +207,7 @@ function parseListResponse(html, $url) {
             results.forEach(function(item) {
                 if (!item) return;
 
-                var idvd = item.id;
+                var idvd = item.id + "&server=goated&getsv=true";
                 
                 var isTV = isTVList || item.media_type === "tv" || item.first_air_date !== undefined || item.name !== undefined;
                 var mediaType = isTV ? "tv" : "movie";
@@ -366,7 +367,7 @@ function parseMovieDetail(html, url) {
             country = $data.production_countries.map(function(c) { return c.name; }).join(", ");
         }
 
-        // Đạo diễn & Diễn viên (Nếu có từ credits object)
+        // Đạo diễn & Diễn viên
         var director = "";
         var casts = "";
         if ($data.credits) {
@@ -379,80 +380,107 @@ function parseMovieDetail(html, url) {
             }
         }
 
-        // Tạo Danh sách Tập (Episodes / Servers)
+        // Trích xuất thông tin Server từ stream_data
+        var streamData = $data.stream_data || {};
+        var availableServers = streamData.servers || [];
+        var totalServers = streamData.total_servers !== undefined ? streamData.total_servers : availableServers.length;
+
         var servers = [];
         var checkExtra = "";
         var tmdbId = $data.id || "";
 
-        if (isTV && $data.seasons && Array.isArray($data.seasons)) {
-            $data.seasons.forEach(function(item) {
-                // Bỏ qua Specials (season 0) nếu muốn
-                var seasonNum = item.season_number !== undefined ? item.season_number : item.seasonNumber;
-                if (seasonNum === 0) return;
+        // Kiếm tra nếu không có server nào hoặc stream_data báo lỗi/không có dữ liệu
+        if (totalServers === 0 || availableServers.length === 0 || streamData.status === "error") {
+            servers = [{
+                name: "Đã có lỗi xảy ra",
+                episodes: [{
+                    id: "",
+                    name: "Phim chưa chiếu hoặc tập phim đã bị lỗi.",
+                    slug: ""
+                }]
+            }];
+        } else {
+            // Có dữ liệu server hợp lệ -> Tiến hành phân loại TV Show / Movie
+            if (isTV && $data.seasons && Array.isArray($data.seasons)) {
+                
+                var baseEpisodes = [];
 
-                var episodes = [];
-                var nameSV = item.name || ("Mùa " + seasonNum);
-                var totalEpisodes = item.episode_count || (item.episodes ? item.episodes.length : 0);
+                $data.seasons.forEach(function(item) {
+                    var seasonNum = item.season_number !== undefined ? item.season_number : item.seasonNumber;
+                    if (seasonNum === 0) return;
 
-                // Nếu API trả về mảng episodes chi tiết
-                if (item.episodes && Array.isArray(item.episodes)) {
-                    item.episodes.forEach(function(box) {
-                        var epNum = box.episode_number !== undefined ? box.episode_number : box.episodeNumber;
-                        var epId = BASEAPI + "/sources?type=show&tmdbId=" + tmdbId + "&season=" + seasonNum + "&episode=" + epNum;
-                        var epName = "Tập " + epNum;
-                        var epSlug = "tap-" + epNum;
+                    var totalEpisodes = item.episode_count || (item.episodes ? item.episodes.length : 0);
 
-                        episodes.push({
-                            id: epId,
-                            name: epName,
-                            slug: epSlug
+                    if (item.episodes && Array.isArray(item.episodes)) {
+                        item.episodes.forEach(function(box) {
+                            var epNum = box.episode_number !== undefined ? box.episode_number : box.episodeNumber;
+                            baseEpisodes.push({
+                                season: seasonNum,
+                                episode: epNum,
+                                name: "Mùa " + seasonNum + " Tập " + epNum,
+                                slug: "mua-" + seasonNum + "-tap-" + epNum
+                            });
                         });
-
-                        if (seasonNum === 1 && epNum === 1) {
-                            checkExtra = epId;
-                        }
-                    });
-                } else if (totalEpisodes > 0) {
-                    // Nếu API chỉ trả về số lượng episode_count, tự generate danh sách tập
-                    for (var i = 1; i <= totalEpisodes; i++) {
-                        var id = BASEAPI + "/api/goated/?mediaType=tv&id="+tmdbId+"&season="+seasonNum+"&episode="+i+"&source=all&debug=9780752"
-                        var epName = "Tập " + i;
-                        var epSlug = "tap-" + i;
-
-                        episodes.push({
-                            id: id,
-                            name: epName,
-                            slug: epSlug
-                        });
-
-                        if (seasonNum === 1 && i === 1) {
-                            checkExtra = id;
+                    } else if (totalEpisodes > 0) {
+                        for (var i = 1; i <= totalEpisodes; i++) {
+                            baseEpisodes.push({
+                                season: seasonNum,
+                                episode: i,
+                                name: "Mùa " + seasonNum + " Tập " + i,
+                                slug: "mua-" + seasonNum + "-tap-" + i
+                            });
                         }
                     }
-                }
+                });
 
-                if (episodes.length > 0) {
-                    servers.push({
-                        name: nameSV,
-                        episodes: episodes
+                if (baseEpisodes.length > 0) {
+                    availableServers.forEach(function(serverName) {
+                        var serverEpisodes = baseEpisodes.map(function(ep) {
+                            var epId = BASEAPI + "/api/goated/?mediaType=tv&id=" + tmdbId + "&season=" + ep.season + "&episode=" + ep.episode + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
+                          
+                            if (ep.season === 1 && ep.episode === 1 && !checkExtra) {
+                                checkExtra = epId;
+                            }
+
+                            return {
+                                id: epId,
+                                name: ep.name,
+                                slug: ep.slug
+                            };
+                        });
+
+                        servers.push({
+                            name: "Server " + serverName,
+                            episodes: serverEpisodes
+                        });
                     });
                 }
-            });
-        } else {
-            // Movie
-            var id = BASEAPI + "/api/goated/?mediaType=movie&id="+tmdbId+"&source=all&debug=9780752";
-            servers.push({
-                name: "Vietsub / HD",
-                episodes: [{
-                    id: id,
-                    name: "Xem Phim",
-                    slug: "full"
-                }]
-            });
-            checkExtra = id;
+
+            } else {
+                // Phim lẻ (Movie)
+                var movieEpisodes = [];
+
+                availableServers.forEach(function(serverName, index) {
+                    var idMovie = BASEAPI + "/api/goated/?mediaType=movie&id=" + tmdbId + "&source=all&debug=9780752" + "&server=" + encodeURIComponent(serverName.toLowerCase());
+                    if (!checkExtra) {
+                        checkExtra = idMovie;
+                    }
+
+                    movieEpisodes.push({
+                        id: idMovie,
+                        name: serverName,
+                        slug: "full-" + (index + 1)
+                    });
+                });
+
+                servers.push({
+                    name: "Server",
+                    episodes: movieEpisodes
+                });
+            }
         }
 
-        return JSON.stringify({
+        var moviedata = JSON.stringify({
             id: url,
             title: title,
             posterUrl: posterUrl,
@@ -471,17 +499,26 @@ function parseMovieDetail(html, url) {
             country: country
         });
 
+        console.log("moviedata: \n" + moviedata);
+        return moviedata;
+
     } catch (e) {
         log("parseMovieDetail[err]:\n " + e);
         return JSON.stringify({
             id: "error",
             title: "Lỗi tải chi tiết",
             description: url + "\n" + e,
-            servers: []
+            servers: [{
+                name: "Đã có lỗi xảy ra",
+                episodes: [{
+                    id: "",
+                    name: "Phim chưa chiếu hoặc tập phim đã bị lỗi.",
+                    slug: ""
+                }]
+            }]
         });
     }
-}
-//var url = "https://novahd.cc/api/show/1413"
+}//var url = "https://novahd.cc/api/show/1413"
 //var url = "http://vkey.vn/novahd/api/show/1413"
 // https://novahd.cc/api/shows/1413
 //var html = sourceHTML;
@@ -508,49 +545,75 @@ function parseDetailResponse(html, url) {
       return item.url && typeof item.url === "string" && item.url.trim() !== "";
     });
 
+    // Trích xuất tham số server từ URL (ví dụ: &server=orbit)
+    var serverParamMatch = url.match(/[?&]server=([^&]+)/i);
+    var targetServer = serverParamMatch ? decodeURIComponent(serverParamMatch[1]).toLowerCase() : "";
+
+    // Nếu URL có truyền &server=tên_server, ưu tiên lọc ra các source khớp tên server đó
+    if (targetServer) {
+      var serverMatchedSources = validSources.filter(function(item) {
+        var sName = (item.sourceName || item.source || "").toLowerCase();
+        return sName === targetServer;
+      });
+
+      // Nếu tìm thấy nguồn khớp server yêu cầu thì dùng, không thì fallback về danh sách nguồn gốc
+      if (serverMatchedSources.length > 0) {
+        validSources = serverMatchedSources;
+      }
+    }
+
     var stream = "";
     var streamType = "";
     var sourceHeaders = {};
 
     if (validSources.length > 0) {
-      var currentIndex = -1;
+      // Xác định Key lưu trữ dựa trên ID, Season, Episode và Server
+      var idMatch = url.match(/[?&]id=([^&]+)/i);
+      var seasonMatch = url.match(/[?&]season=(\d+)/i);
+      var epMatch = url.match(/[?&]episode=(\d+)/i);
 
-      // Trích xuất tham số server=(number) từ URL nếu có ép server
-      var serverMatch = url.match(/[?&]server=(\d+)/i);
-      if (serverMatch) {
-        var serverIndex = parseInt(serverMatch[1], 10);
-        if (serverIndex >= 0 && serverIndex < validSources.length) {
-          currentIndex = serverIndex;
+      var mediaId = idMatch ? idMatch[1] : "default";
+      var season = seasonMatch ? seasonMatch[1] : "0";
+      var episode = epMatch ? epMatch[1] : "0";
+
+      var mediaKey = "stream_history_" + mediaId + "_s" + season + "_e" + episode + "_" + (targetServer || "all");
+
+      // Đọc lịch sử phát gần nhất từ localStorage
+      var historyRaw = localStorage.getItem(mediaKey);
+      var history = { lastIndex: 0, lastUrl: "", lastTime: 0 };
+      if (historyRaw) {
+        try {
+          history = JSON.parse(historyRaw);
+        } catch (e) {
+          console.log("Lỗi parse history cache:", e);
         }
       }
 
-      // Xoay vòng server theo ID phim, Season và Episode để tránh trùng giữa các phim
-      if (currentIndex === -1) {
-        var idMatch = url.match(/[?&]id=([^&]+)/i);
-        var seasonMatch = url.match(/[?&]season=(\d+)/i);
-        var epMatch = url.match(/[?&]episode=(\d+)/i);
+      var now = Date.now();
+      var currentIndex = history.lastIndex || 0;
 
-        var mediaId = idMatch ? idMatch[1] : "default";
-        var season = seasonMatch ? seasonMatch[1] : "0";
-        var episode = epMatch ? epMatch[1] : "0";
-
-        var storageKey = "stream_idx_" + mediaId + "_s" + season + "_e" + episode;
-
-        var savedIndex = parseInt(localStorage.getItem(storageKey), 10);
-        currentIndex = isNaN(savedIndex) ? 0 : savedIndex;
-
+      // Kiểm tra nếu gọi lại trong vòng 1 phút (60,000 ms)
+      if (history.lastTime && (now - history.lastTime < 60000)) {
+        // Chuyển sang nguồn tiếp theo trong mảng
+        currentIndex = (currentIndex + 1) % validSources.length;
+        console.log("🔄 Phát lại trong 1 phút! Tự động chuyển sang server/link tiếp theo: " + (currentIndex + 1));
+      } else {
+        // Đã quá 1 phút hoặc lần đầu gọi -> đảm bảo index hợp lệ
         if (currentIndex >= validSources.length) {
           currentIndex = 0;
         }
-
-        // Lưu index tiếp theo cho lần reload sau
-        var nextIndex = (currentIndex + 1) % validSources.length;
-        localStorage.setItem(storageKey, nextIndex.toString());
       }
 
       var selectedSource = validSources[currentIndex];
       stream = selectedSource.url;
       streamType = selectedSource.format ? String(selectedSource.format).toLowerCase() : "";
+
+      // Lưu lại thông tin link hiện tại và timestamp mới
+      localStorage.setItem(mediaKey, JSON.stringify({
+        lastIndex: currentIndex,
+        lastUrl: stream,
+        lastTime: now
+      }));
 
       // Lấy headers đi kèm của nguồn (nếu API có trả về)
       if (selectedSource.headers) {
@@ -593,58 +656,37 @@ function parseDetailResponse(html, url) {
       var display = (item.display || "").toLowerCase();
       var type = (item.type || "").toLowerCase();
       
-      var encode = item.url.replace("https://subtitles.shegu.st/sub/", "");
-      var decode = BASE64.decode(encode);
+      var itemUrl = item.url;
+      if (itemUrl.indexOf("https://subtitles.shegu.st/sub/") > -1) {
+        var encode = itemUrl.replace("https://subtitles.shegu.st/sub/", "");
+        itemUrl = BASE64.decode(encode);
+      }
       
-      var itemUrl = decode;
-      // Xác định MimeType của Subtitle
-      var subMime = "text/vtt";
       function getSubtitleMimeType(type, itemUrl) {
-        // Chuẩn hóa input về chữ thường để so sánh chính xác
         var ext = (type || "").toLowerCase();
-        var url = (itemUrl || "").toLowerCase();
+        var urlStr = (itemUrl || "").toLowerCase();
       
-        // Kiểm tra extension truyền vào hoặc lấy đuôi file từ URL
         var isExt = function(targetExt) {
-          return ext === targetExt || url.indexOf("." + targetExt) > -1;
+          return ext === targetExt || urlStr.indexOf("." + targetExt) > -1;
         };
       
-        if (isExt("srt")) {
-          return "application/x-subrip";
-        }
-        
-        if (isExt("ass") || isExt("ssa")) {
-          return "text/x-ssa"; // Hoặc "text/x-ass"
-        }
+        if (isExt("srt")) return "application/x-subrip";
+        if (isExt("ass") || isExt("ssa")) return "text/x-ssa";
+        if (isExt("vtt")) return "text/vtt";
+        if (isExt("sub")) return "text/x-microdvd";
+        if (isExt("ttml") || isExt("dfxp") || isExt("xml")) return "application/ttml+xml";
+        if (isExt("lrc")) return "text/x-lrc";
       
-        if (isExt("vtt")) {
-          return "text/vtt";
-        }
-      
-        if (isExt("sub")) {
-          return "text/x-microdvd"; // Hoặc "application/x-subviewer" tùy nguồn sub
-        }
-      
-        if (isExt("ttml") || isExt("dfxp") || isExt("xml")) {
-          return "application/ttml+xml";
-        }
-      
-        if (isExt("lrc")) {
-          return "text/x-lrc";
-        }
-      
-        // Mặc định trả về WebVTT nếu không khớp định dạng nào
         return "text/vtt";
       }
 
-// Cách áp dụng vào đoạn code của bạn:
-      subMime = getSubtitleMimeType(type);
+      var subMime = getSubtitleMimeType(type, itemUrl);
 
       // Ưu tiên Phụ đề Tiếng Việt
       if (lang === "vi" || display.indexOf("vietnamese") > -1 || display.indexOf("vietsub") > -1) {
         viCount++;
         subtitleList.push({
-          lang: "Vietsub " + (viCount > 1 ? viCount : "1") + " ["+subMime+"]",
+          lang: "Vietsub " + (viCount > 1 ? viCount : "1") + " [" + subMime + "]",
           url: itemUrl,
           mimeType: subMime
         });
@@ -653,7 +695,7 @@ function parseDetailResponse(html, url) {
       else if ((lang === "en" || display.indexOf("english") > -1) && enCount < 3) {
         enCount++;
         subtitleList.push({
-          lang: "Engsub " + enCount  + " ["+subMime+"]",
+          lang: "Engsub " + enCount + " [" + subMime + "]",
           url: itemUrl,
           mimeType: subMime
         });
@@ -666,13 +708,14 @@ function parseDetailResponse(html, url) {
       "Referer": "https://goated.cx",
       "Origin": "https://goated.cx"
     }, sourceHeaders);
+
     console.log("streamVD: \n" + stream);
     console.log("subtitleVD: \n" + JSON.stringify(subtitleList));
     
     return JSON.stringify({
       url: stream,
       mimeType: mimeType,
-      isEmbed: false, // Trả thẳng stream cho player mà không qua tầng parseEmbed
+      isEmbed: false,
       headers: finalHeaders,
       subtitles: subtitleList
     });

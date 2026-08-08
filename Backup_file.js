@@ -1,56 +1,29 @@
-[18:05:38.728][goated][LOG] getUrlCategories[url]: 
-https://vaxplayer.vercel.app
-[18:05:40.200][goated][LOG] getUrlList[url]: 
-/api/themoviedb?endpoint=movie/now_playing&language=vi-VN
-[18:05:40.283][goated][LOG] ListGetURL:
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie/now_playing&language=vi-VN&page=1
-[18:05:40.284][goated][LOG] parseListResponse parsed count: 20 for https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie/now_playing&language=vi-VN&page=1
-[18:05:40.290][goated][LOG] getUrlDetail[url]: 
-https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/969681&language=vi-VN
-[18:05:40.290][goated][LOG] getUrlDetail[url]: 
-https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/1368337&language=vi-VN
-[18:05:40.290][goated][LOG] getUrlDetail[url]: 
-https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/634649&language=vi-VN
-[18:05:40.291][goated][LOG] getUrlList[url]: 
-/api/themoviedb?endpoint=tv/top_rated&language=vi-VN
-[18:05:40.291][goated][LOG] getUrlList[url]: 
-/api/themoviedb?endpoint=movie/top_rated&language=vi-VN
-[18:05:40.292][goated][LOG] getUrlList[url]: 
-/api/themoviedb?endpoint=trending/movie/day&language=vi-VN
-[18:05:40.392][goated][LOG] ListGetURL:
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie/top_rated&language=vi-VN&page=1
-[18:05:40.393][goated][LOG] parseListResponse parsed count: 20 for https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie/top_rated&language=vi-VN&page=1
-[18:05:40.394][goated][LOG] ListGetURL:
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=trending/movie/day&language=vi-VN&page=1
-[18:05:40.395][goated][LOG] parseListResponse parsed count: 20 for https://vaxplayer.vercel.app/api/themoviedb?endpoint=trending/movie/day&language=vi-VN&page=1
-[18:05:40.410][goated][LOG] ListGetURL:
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=tv/top_rated&language=vi-VN&page=1
-[18:05:40.411][goated][LOG] parseListResponse parsed count: 20 for https://vaxplayer.vercel.app/api/themoviedb?endpoint=tv/top_rated&language=vi-VN&page=1
-[18:05:40.465][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F969681&language=vi-VN
-[18:05:40.466][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F969681&language=vi-VN","title":"Người Nhện: Khởi Đầu Mới","posterUrl":"https://image.tmdb.org/t/p/w500/wqGZVSCUSXE92WH2zyol2REaqT4.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg","description":"Không còn Tony Stark, MJ hay Ned kề cận, Peter buộc phải đơn thân độc mã đối diện với phe đối đầu bí ẩn. Tuy nhiên, khi áp lực ngày càng gia tăng, nó kích hoạt một sự biến đổi thể chất bất ngờ, đe dọa chính sự tồn tại của anh. Đồng thời, một chuỗi tội phạm bí ẩn mới xuất hiện, kéo theo một trong những mối đe dọa mạnh mẽ nhất mà Spider-Man từng đối mặt.","quality":"HD","year":"2026","rating":"7.9","status":"Released","category":"[Phim Khoa Học Viễn Tưởng](/api/themoviedb?endpoint=discover/movie&with_genres=878&sort_by=popularity.desc&language=vi-VN), [Phim Hành Động](/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN), [Phim Phiêu Lưu](/api/themoviedb?endpoint=discover/movie&with_genres=12&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"150 phút","casts":"","director":"","country":"United States of America"}
-[18:05:40.467][goated][LOG] getUrlDetail[url]: 
-https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/1081003&language=vi-VN
-[18:05:40.537][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1368337&language=vi-VN
-[18:05:40.537][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1368337&language=vi-VN","title":"The Odyssey","posterUrl":"https://image.tmdb.org/t/p/w500/7876PK6gosE13Uq1B6nRxf7AJLT.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/sSIzzVhhLfgLKVBcAUv0X6cLYz9.jpg","description":"Câu chuyện theo chân Odysseus trong hành trình kéo dài 10 năm trở về nhà sau cuộc chiến thành Troy, nơi ông phải đối mặt với các vị thần, quái vật và vô vàn thử thách, đồng thời nỗ lực đoàn tụ với vợ và giành lại vương quốc của mình.","quality":"HD","year":"2026","rating":"8.0","status":"Released","category":"[Phim Phiêu Lưu](/api/themoviedb?endpoint=discover/movie&with_genres=12&sort_by=popularity.desc&language=vi-VN), [Phim Hành Động](/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN), [Phim Giả Tượng](/api/themoviedb?endpoint=discover/movie&with_genres=14&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=1368337&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"173 phút","casts":"","director":"","country":"United Kingdom, United States of America"}
-[18:05:40.543][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F634649&language=vi-VN
-[18:05:40.543][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F634649&language=vi-VN","title":"Người Nhện: Không Còn Nhà","posterUrl":"https://image.tmdb.org/t/p/w500/y4SQ2dJ1y2LBUnxTH7hCe8sr29c.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg","description":"Peter Parker đã bị lộ mặt và không còn có thể tách biệt cuộc sống bình thường của mình với những yêu cầu cao của việc trở thành một Siêu anh hùng. Khi anh ta yêu cầu sự giúp đỡ từ Doctor Strange, mọi thứ càng trở nên nguy hiểm hơn, buộc anh ta phải khám phá ra ý nghĩa thực sự của việc trở thành Người Nhện.","quality":"HD","year":"2021","rating":"7.9","status":"Released","category":"[Phim Hành Động](/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN), [Phim Phiêu Lưu](/api/themoviedb?endpoint=discover/movie&with_genres=12&sort_by=popularity.desc&language=vi-VN), [Phim Khoa Học Viễn Tưởng](/api/themoviedb?endpoint=discover/movie&with_genres=878&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=634649&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"148 phút","casts":"","director":"","country":"United States of America"}
-[18:05:40.543][goated][LOG] getUrlDetail[url]: 
-https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/1339713&language=vi-VN
-[18:05:40.729][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1081003&language=vi-VN
-[18:05:40.729][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1081003&language=vi-VN","title":"Supergirl","posterUrl":"https://image.tmdb.org/t/p/w500/duXkWKOLS7hHAddyjBwk35YY6U.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/4X2YSe8PaYbsBqX3TDmmIU4vOju.jpg","description":"Khi một kẻ thù tàn nhẫn và không ngờ tới ra tay quá gần với những gì cô trân quý, Kara Zor-El, còn được biết đến với cái tên Supergirl, miễn cưỡng hợp tác với một người đồng hành không ai ngờ tới, bước vào hành trình liên thiên hà đầy sử thi để tìm kiếm sự trả thù và công lý.","quality":"HD","year":"2026","rating":"6.8","status":"Released","category":"[Phim Hành Động](/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN), [Phim Phiêu Lưu](/api/themoviedb?endpoint=discover/movie&with_genres=12&sort_by=popularity.desc&language=vi-VN), [Phim Khoa Học Viễn Tưởng](/api/themoviedb?endpoint=discover/movie&with_genres=878&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=1081003&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"108 phút","casts":"","director":"","country":"United States of America"}
-[18:05:40.798][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1339713&language=vi-VN
-[18:05:40.798][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1339713&language=vi-VN","title":"Ám Ảnh","posterUrl":"https://image.tmdb.org/t/p/w500/15qLAM3QM8DoPL9Fps4JOTdqWqt.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/rZfmzpixLKLR3Hg2u0WgC7XLFl8.jpg","description":"Sau khi bẻ gãy \"Liễu Ước Nguyện\" thần bí để có được người mình thầm yêu, gã si tình rốt cuộc cũng cầu được ước thấy, để rồi kinh hãi nhận ra cái giá tăm tối phía sau lời ước đó.","quality":"HD","year":"2026","rating":"8.2","status":"Released","category":"[Phim Kinh Dị](/api/themoviedb?endpoint=discover/movie&with_genres=27&sort_by=popularity.desc&language=vi-VN), [Phim Gây Cấn](/api/themoviedb?endpoint=discover/movie&with_genres=53&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=1339713&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"109 phút","casts":"","director":"","country":"United States of America, United Kingdom"}
-[18:05:46.648][goated][LOG] parseMovieDetail[url]: 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1419406&language=vi-VN
-[18:05:46.649][goated][LOG] moviedata: 
-{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1419406&language=vi-VN","title":"Bổ Phong Truy Ảnh","posterUrl":"https://image.tmdb.org/t/p/w500/5LGUvRBXoXHsMZsZrCGBOVmwOVd.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/4BtL2vvEufDXDP4u6xQjjQ1Y2aT.jpg","description":"Wong Tak-Chung, một cựu chuyên gia giám sát được biết đến với khả năng phân tích dữ liệu và truy vết bậc thầy, bị cảnh sát Ma Cao mời trở lại hợp tác điều tra sau khi xuất hiện hàng loạt vụ cướp quy mô lớn do một tổ chức tội phạm công nghệ cao thực hiện.","quality":"HD","year":"2025","rating":"8.0","status":"Released","category":"[Phim Hành Động](/api/themoviedb?endpoint=discover/movie&with_genres=28&sort_by=popularity.desc&language=vi-VN), [Phim Hình Sự](/api/themoviedb?endpoint=discover/movie&with_genres=80&sort_by=popularity.desc&language=vi-VN), [Phim Chính Kịch](/api/themoviedb?endpoint=discover/movie&with_genres=18&sort_by=popularity.desc&language=vi-VN), [Phim Gây Cấn](/api/themoviedb?endpoint=discover/movie&with_genres=53&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Vietsub / HD","episodes":[{"id":"https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=1419406&source=all&debug=9780752","name":"Xem Phim","slug":"full"}]}],"duration":"142 phút","casts":"","director":"","country":"China, Hong Kong"}
+
+[19:33:40.305][goated][LOG] parseDetailResponse đang xử lý: https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1396&season=1&episode=1&source=all&debug=9780752&server=orbit
+[19:33:40.307][goated][LOG] ▶ Hết thời hạn 1 phút hoặc lượt xem mới. Khởi tạo từ server đầu tiên (index 0).
+[19:33:40.308][goated][LOG] ▶ Playing Server (1/1): Orbit
+[19:33:40.333][goated][LOG] streamVD: 
+https://cdn.reallyfast.xyz/playlist/2636585.m3u8?t=1786190505&s=ac31045a465dc6493d351837cd368cd2058bda67638ec1fd6fb0e304f80fb9cb
+[19:33:40.333][goated][LOG] subtitleVD: 
+[{"lang":"Engsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/771191/Breaking.Bad.S01E01.720p.HDTV.x264-BiA.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 2 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/781385/Watch Breaking Bad- 1x1 on 123Movies.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 3 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/782709/Breaking Bad Season 1 Episode 01 - Pilot.srt","mimeType":"application/x-subrip"},{"lang":"Vietsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/974002/Breaking.Bad.S01E01.mHD.BluRay.DD5.1.x264-EPiK.srt","mimeType":"application/x-subrip"}]
+[19:33:40.439][goated][LOG] parseDetailResponse đang xử lý: https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1396&season=1&episode=2&source=all&debug=9780752&server=orbit
+[19:33:40.441][goated][LOG] ▶ Hết thời hạn 1 phút hoặc lượt xem mới. Khởi tạo từ server đầu tiên (index 0).
+[19:33:40.441][goated][LOG] ▶ Playing Server (1/1): Orbit
+[19:33:40.476][goated][LOG] streamVD: 
+https://cdn.reallyfast.xyz/playlist/2636586.m3u8?t=1786190512&s=54585c93006c9ace11050670548d7fdaeda89232a9b232f38250bb5372fb0bee
+[19:33:40.476][goated][LOG] subtitleVD: 
+[{"lang":"Engsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/258115/S01E02 Cat's in the Bag. -69041982f196f.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 2 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/864502/breaking Bad Season01 Episode02 Bangla Subtitle by Hossain Sadi.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 3 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/891510/Breaking.Bad.S01E02.DVDRip.XviD-ORPHEUS.ind.srt","mimeType":"application/x-subrip"},{"lang":"Vietsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/1466412/Breaking.Bad.S01E02.The.Cat's.in.the.Bag.WEBRip.Netflix.vi.srt","mimeType":"application/x-subrip"}]
+[19:33:48.138][goated][LOG] parseDetailResponse đang xử lý: https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1396&season=1&episode=1&source=all&debug=9780752&server=orbit
+[19:33:48.141][goated][LOG] 🔄 Reload/Thử lại trong vòng 1 phút! Tự động chuyển sang link server tiếp theo index: 0
+[19:33:48.141][goated][LOG] ▶ Playing Server (1/1): Orbit
+[19:33:48.165][goated][LOG] streamVD: 
+https://cdn.reallyfast.xyz/playlist/2636585.m3u8?t=1786190505&s=ac31045a465dc6493d351837cd368cd2058bda67638ec1fd6fb0e304f80fb9cb
+[19:33:48.166][goated][LOG] subtitleVD: 
+[{"lang":"Engsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/771191/Breaking.Bad.S01E01.720p.HDTV.x264-BiA.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 2 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/781385/Watch Breaking Bad- 1x1 on 123Movies.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 3 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/782709/Breaking Bad Season 1 Episode 01 - Pilot.srt","mimeType":"application/x-subrip"},{"lang":"Vietsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/974002/Breaking.Bad.S01E01.mHD.BluRay.DD5.1.x264-EPiK.srt","mimeType":"application/x-subrip"}]
+[19:33:48.246][goated][LOG] parseDetailResponse đang xử lý: https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1396&season=1&episode=2&source=all&debug=9780752&server=orbit
+[19:33:48.249][goated][LOG] 🔄 Reload/Thử lại trong vòng 1 phút! Tự động chuyển sang link server tiếp theo index: 0
+[19:33:48.249][goated][LOG] ▶ Playing Server (1/1): Orbit
+[19:33:48.273][goated][LOG] streamVD: 
+https://cdn.reallyfast.xyz/playlist/2636586.m3u8?t=1786190512&s=54585c93006c9ace11050670548d7fdaeda89232a9b232f38250bb5372fb0bee
+[19:33:48.274][goated][LOG] subtitleVD: 
+[{"lang":"Engsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/258115/S01E02 Cat's in the Bag. -69041982f196f.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 2 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/864502/breaking Bad Season01 Episode02 Bangla Subtitle by Hossain Sadi.srt","mimeType":"application/x-subrip"},{"lang":"Engsub 3 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/891510/Breaking.Bad.S01E02.DVDRip.XviD-ORPHEUS.ind.srt","mimeType":"application/x-subrip"},{"lang":"Vietsub 1 [application/x-subrip]","url":"https://images.chuaxin.com/movie_box/tv/srt/1/5/125/1466412/Breaking.Bad.S01E02.The.Cat's.in.the.Bag.WEBRip.Netflix.vi.srt","mimeType":"application/x-subrip"}]

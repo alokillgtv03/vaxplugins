@@ -93,15 +93,35 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
+      // 1. Lấy danh sách server khả dụng ban đầu
       const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
       if (initialRes?.error) throw new Error(initialRes.error);
 
       const servers = initialRes?.availableSources || ['Valenox'];
 
+      // 2. Lấy chi tiết format/định dạng của từng server bằng cách gọi song song
+      const serverDetailsPromises = servers.map(async (src) => {
+        try {
+          const res = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
+          return {
+            name: src,
+            format: res?.format || res?.type || (res?.url?.includes('.m3u8') ? 'hls' : (res?.url ? 'mp4' : 'unknown')),
+            status: res?.error ? 'error' : 'available'
+          };
+        } catch (e) {
+          return {
+            name: src,
+            format: 'unknown',
+            status: 'error'
+          };
+        }
+      });
+
+      const serversWithFormat = await Promise.all(serverDetailsPromises);
+
       resultData = {
         total_servers: servers.length,
-        servers: servers
+        servers: serversWithFormat
       };
 
     } else if (type === 'subtitle' || type === 'sub') {

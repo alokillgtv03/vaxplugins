@@ -7,126 +7,207 @@ https://player-4aq.pages.dev/embed/movie/1368337?autoPlay=true
 https://www.viduki.net/1/movie/1368337?autoPlay=true
 
 
-https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1413&season=1&episode=1&source=all&debug=9780752&getsv=true
-https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752&getsv=true
-Mình có link như trên và script chạy trên verel để lấy dữ liệu từ server và trả về link phim và phụ đề tương ứng và nó dùng cũng loại id, episode và season như nhau. Nên mình muốn code nodejs bên dưới có thêm dạng &server=goated. thì nó sẽ lấy dữ liệu tương ứng gộp lại vào dữ liệu chung của themoviedb khi tôi gọi dạng link như bên dưới
+https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1396&season=1&episode=2&source=all&debug=9780752&server=orbit
 
-https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1419406&language=vi-VN
-
-
-
-// Danh sách API keys xoay vòng (Fallback list)
-const API_KEYS = [
-  'aa8db17cefbe569dc21a8809090b7b93', // Key mặc định cũ
-  '3d421899d5ce93db8ad4ae4591ccc130',
-  '9e7096a7575623aa30c66e9cc987e411'
-];
-
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+function parseDetailResponse(html, url) {
   try {
-    const queryParams = new URLSearchParams(req.query);
+    console.log("parseDetailResponse đang xử lý: " + url);
+    if (!html) {
+      throw new Error("Dữ liệu html rỗng hoặc không hợp lệ");
+    }
 
-    // 1. Lấy raw endpoint từ query
-    let rawEndpoint = queryParams.get('endpoint') || 'discover/movie';
-    queryParams.delete('endpoint');
+    var $data = (typeof html === "object") ? html : JSON.parse(html);
+    var sources = $data.sources || [];
+    var subtitles = $data.subtitles || [];
 
-    // 2. Nếu trong endpoint chứa sẵn query string (ví dụ "tv/top_rated?language=vi-VN")
-    if (rawEndpoint.includes('?')) {
-      const [path, extraQuery] = rawEndpoint.split('?');
-      rawEndpoint = path;
-      const extraParams = new URLSearchParams(extraQuery);
-      extraParams.forEach((value, key) => {
-        if (!queryParams.has(key)) {
-          queryParams.set(key, value);
+    // 1. Lọc tất cả các nguồn stream hợp lệ
+    var validSources = sources.filter(function(item) {
+      return item.url && typeof item.url === "string" && item.url.trim() !== "";
+    });
+
+    var stream = "";
+    var streamType = "";
+    var sourceHeaders = {};
+
+    if (validSources.length > 0) {
+      var currentIndex = -1;
+
+      // Trích xuất tham số server=(number) từ URL nếu có ép server
+      var serverMatch = url.match(/[?&]server=(\d+)/i);
+      if (serverMatch) {
+        var serverIndex = parseInt(serverMatch[1], 10);
+        if (serverIndex >= 0 && serverIndex < validSources.length) {
+          currentIndex = serverIndex;
         }
-      });
-    }
+      }
 
-    // 3. Thiết lập các tham số mặc định khác
-    if (!queryParams.has('language')) {
-      queryParams.set('language', 'vi-VN');
-    }
-    if (!queryParams.has('include_adult')) {
-      queryParams.set('include_adult', 'false');
-    }
+      // Xoay vòng server theo ID phim, Season và Episode để tránh trùng giữa các phim
+      if (currentIndex === -1) {
+        var idMatch = url.match(/[?&]id=([^&]+)/i);
+        var seasonMatch = url.match(/[?&]season=(\d+)/i);
+        var epMatch = url.match(/[?&]episode=(\d+)/i);
 
-    // Xác định danh sách keys sẽ thử: 
-    // Nếu client tự truyền api_key lên thì ưu tiên dùng key đó trước, sau đó mới đến danh sách fallback
-    const customApiKey = queryParams.get('api_key');
-    const keysToTry = customApiKey 
-      ? [customApiKey, ...API_KEYS.filter(k => k !== customApiKey)] 
-      : [...API_KEYS];
+        var mediaId = idMatch ? idMatch[1] : "default";
+        var season = seasonMatch ? seasonMatch[1] : "0";
+        var episode = epMatch ? epMatch[1] : "0";
 
-    let lastError = null;
-    let successfulData = null;
+        var storageKey = "stream_idx_" + mediaId + "_s" + season + "_e" + episode;
 
-    // 4. Vòng lặp xoay vòng API Keys
-    for (const key of keysToTry) {
-      queryParams.set('api_key', key);
-      const tmdbUrl = `https://api.themoviedb.org/3/${rawEndpoint}?${queryParams.toString()}`;
+        var savedIndex = parseInt(localStorage.getItem(storageKey), 10);
+        currentIndex = isNaN(savedIndex) ? 0 : savedIndex;
 
-      try {
-        const response = await fetch(tmdbUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json;charset=utf-8'
-          }
-        });
-
-        if (response.ok) {
-          successfulData = await response.json();
-          break; // Gọi thành công -> thoát khỏi vòng lặp
+        if (currentIndex >= validSources.length) {
+          currentIndex = 0;
         }
 
-        // Lưu lại thông tin lỗi để fallback nếu tất cả các keys đều thất bại
-        const errorData = await response.json().catch(() => ({}));
-        lastError = {
-          status: response.status,
-          error: errorData
-        };
+        // Lưu index tiếp theo cho lần reload sau
+        var nextIndex = (currentIndex + 1) % validSources.length;
+        localStorage.setItem(storageKey, nextIndex.toString());
+      }
 
-        // Nếu gặp lỗi do API Key (401: Unauthorized, 403: Forbidden, 429: Too Many Requests) 
-        // hoặc lỗi Server (5xx), vòng lặp sẽ tự nhảy sang key tiếp theo.
-      } catch (fetchError) {
-        lastError = { status: 500, error: fetchError.message };
+      var selectedSource = validSources[currentIndex];
+      stream = selectedSource.url;
+      streamType = selectedSource.format ? String(selectedSource.format).toLowerCase() : "";
+
+      // Lấy headers đi kèm của nguồn (nếu API có trả về)
+      if (selectedSource.headers) {
+        try {
+          sourceHeaders = (typeof selectedSource.headers === "object") 
+            ? selectedSource.headers 
+            : JSON.parse(selectedSource.headers);
+        } catch (e) {
+          console.log("Lỗi parse headers của source:", e);
+        }
+      }
+
+      console.log("▶ Playing Server (" + (currentIndex + 1) + "/" + validSources.length + "): " + (selectedSource.sourceName || selectedSource.source || "Unknown"));
+    } else {
+      console.log("Không tìm thấy bất kỳ nguồn stream nào.");
+    }
+
+    // 2. Tự động nhận diện MimeType
+    var mimeType = "application/x-mpegURL"; // Mặc định HLS
+    if (streamType === "mp4" || streamType === "file") {
+      mimeType = "video/mp4";
+    } else if (streamType === "hls" || streamType === "m3u8") {
+      mimeType = "application/x-mpegURL";
+    } else if (stream) {
+      var cleanUrl = stream.split('?')[0].toLowerCase();
+      if (cleanUrl.endsWith(".mp4")) {
+        mimeType = "video/mp4";
       }
     }
 
-    // 5. Trả về kết quả nếu có ít nhất 1 key thành công
-    if (successfulData) {
-      res.setHeader('Cache-Control', 'public, max-age=21600, s-maxage=21600, stale-while-revalidate=86400');
-      res.setHeader('Content-Type', 'application/json;charset=utf-8');
-      return res.status(200).json(successfulData);
-    }
+    // 3. Xử lý Subtitle có sẵn trong $data
+    var subtitleList = [];
+    var viCount = 0;
+    var enCount = 0;
 
-    // Trả về lỗi nếu tất cả các keys trong danh sách đều không khả dụng
-    return res.status(lastError?.status || 500).json({
-      status: "error",
-      message: "Tất cả các API Keys TMDB đều thất bại hoặc không hợp lệ",
-      tmdb_error: lastError?.error
+    subtitles.forEach(function(item) {
+      if (!item.url) return;
+
+      var lang = (item.language || "").toLowerCase();
+      var display = (item.display || "").toLowerCase();
+      var type = (item.type || "").toLowerCase();
+      
+      var encode = item.url.replace("https://subtitles.shegu.st/sub/", "");
+      var decode = BASE64.decode(encode);
+      
+      var itemUrl = decode;
+      // Xác định MimeType của Subtitle
+      var subMime = "text/vtt";
+      function getSubtitleMimeType(type, itemUrl) {
+        // Chuẩn hóa input về chữ thường để so sánh chính xác
+        var ext = (type || "").toLowerCase();
+        var url = (itemUrl || "").toLowerCase();
+      
+        // Kiểm tra extension truyền vào hoặc lấy đuôi file từ URL
+        var isExt = function(targetExt) {
+          return ext === targetExt || url.indexOf("." + targetExt) > -1;
+        };
+      
+        if (isExt("srt")) {
+          return "application/x-subrip";
+        }
+        
+        if (isExt("ass") || isExt("ssa")) {
+          return "text/x-ssa"; // Hoặc "text/x-ass"
+        }
+      
+        if (isExt("vtt")) {
+          return "text/vtt";
+        }
+      
+        if (isExt("sub")) {
+          return "text/x-microdvd"; // Hoặc "application/x-subviewer" tùy nguồn sub
+        }
+      
+        if (isExt("ttml") || isExt("dfxp") || isExt("xml")) {
+          return "application/ttml+xml";
+        }
+      
+        if (isExt("lrc")) {
+          return "text/x-lrc";
+        }
+      
+        // Mặc định trả về WebVTT nếu không khớp định dạng nào
+        return "text/vtt";
+      }
+
+// Cách áp dụng vào đoạn code của bạn:
+      subMime = getSubtitleMimeType(type);
+
+      // Ưu tiên Phụ đề Tiếng Việt
+      if (lang === "vi" || display.indexOf("vietnamese") > -1 || display.indexOf("vietsub") > -1) {
+        viCount++;
+        subtitleList.push({
+          lang: "Vietsub " + (viCount > 1 ? viCount : "1") + " ["+subMime+"]",
+          url: itemUrl,
+          mimeType: subMime
+        });
+      } 
+      // Lấy tối đa 3 Phụ đề Tiếng Anh
+      else if ((lang === "en" || display.indexOf("english") > -1) && enCount < 3) {
+        enCount++;
+        subtitleList.push({
+          lang: "Engsub " + enCount  + " ["+subMime+"]",
+          url: itemUrl,
+          mimeType: subMime
+        });
+      }
     });
 
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Không thể lấy dữ liệu từ TMDB API",
-      error: error.message
+    // Merge default headers nếu trong source không có
+    var finalHeaders = Object.assign({
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Referer": "https://goated.cx",
+      "Origin": "https://goated.cx"
+    }, sourceHeaders);
+    console.log("streamVD: \n" + stream);
+    console.log("subtitleVD: \n" + JSON.stringify(subtitleList));
+    
+    return JSON.stringify({
+      url: stream,
+      mimeType: mimeType,
+      isEmbed: false, // Trả thẳng stream cho player mà không qua tầng parseEmbed
+      headers: finalHeaders,
+      subtitles: subtitleList
+    });
+
+  } catch (e) {
+    console.log("parseDetailResponse[err]:\n " + e);
+    return JSON.stringify({
+      url: "",
+      mimeType: "",
+      isEmbed: false,
+      headers: {},
+      subtitles: []
     });
   }
-};
+}
+dây là url của hàm
+parseDetailResponse(html, url)
 
-
-
-
-
-
+nó có dữ liệu là server=orbit
+khi có tham số này tôi cần bạn cho script ưu tiên lấy server này để stream. Và sửa lại cơ chế thế này, lưu lại mã idmovie để check, khi gọi link đẻ stream hãy lưu lại link đó và thời gian, nếu trong vòng 1 phút link này được gọi lại hãy chuyển sang link server khác và lưu lại link này, cứ thế tuần hoàn. 
 
