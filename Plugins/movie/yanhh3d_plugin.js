@@ -7,7 +7,7 @@ function getManifest() {
         "name": "Yanhh3d",
         "description": "Trang xem phim Hoạt Hình siêu hay.",
       	"info":"Trang này bị nhà mạng chặn nên cần dns để xem. Bạn tải app 1.1.1.1 về dùng hoặc thử bật DNS và DPI trong app này.",
-        "version": "1.3.4",
+        "version": "1.3.5",
         "baseUrl": "http://vkey.vn/yanhh3d",
         "iconUrl": "https://bilutv.asia/img/bilutvlogo-ngang.jpg",
         "isEnabled": true,
