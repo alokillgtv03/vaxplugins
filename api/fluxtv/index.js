@@ -1,4 +1,5 @@
-// script fluxtv version 1.1 (Fixed Safe Version)
+// File: /api/flextv/index.js
+// script flextv version 1.2 (Standalone Folder Route)
 const crypto = require('crypto');
 
 const APP_SECRET_KEY = "VAXPLAYER";
@@ -170,7 +171,7 @@ module.exports = async (req, res) => {
 
     // 2. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
+      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất
       const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
       if (initialRes?.error) throw new Error(initialRes.error);
 
