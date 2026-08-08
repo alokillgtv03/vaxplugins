@@ -1,348 +1,1491 @@
-// script goated, version: 1.6 (Pure Array Dynamic Iteration)
-const crypto = require('crypto');
+var BASEURL = "http://vkey.vn/novahd";
+var BASEAPI = "http://vkey.vn/novahd/api";
+// https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/phimchill.ico
+var DEV = true;
+function getManifest() {
+  return JSON.stringify({
+    id: "novahd",
+    name: "Nguồn NovaHD",
+    description: "Nguồn phim NovaHD",
+    "version": "1.1.3",
+    "author": "Alokillgtv",
+    info: "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này có subtitle riêng nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát",
+    baseUrl: "http://vkey.vn/novahd",
+    iconUrl: "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/novahd.png",
+    isEnabled: true,
+    "adblock": false,
+    "layoutType": "HORIZONTAL",
+    type: "MOVIE",
+    "subtitleCat": false,
+    playerType: "exoplayer"
+  });
+}
 
-const cache = new Map();
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
+function log(msg) {
+  	console.log(msg);
+}
 
-const APP_SECRET_KEY = "VAXPLAYER";
-const DEBUG_KEY = "9780752";
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
 
-  const { 
-    id, 
-    mediaType = 'movie', 
-    type = 'video', 
-    source, 
-    server, 
-    play, 
-    debug,
-    season,
-    episode,
-    cache: cacheParam,
-    getsv
-  } = req.query;
+function getHomeSections() {
+    localStorage.clear();
+    return JSON.stringify([
+        {"slug": "/trending?type=all","title": "Xu Hướng","type": "Horizontal"},
+        {"slug": "/shows?sort=popularity","title": "TV Show Thịnh Hành","type": "Horizontal"},
+       {"slug": "/movies?sort=popularity","title": "Phim Lẻ Thịnh Hành","type": "Grid"},
+    ]);
+}
 
-  const isNovaRoute = req.url.includes('/novahd') || req.baseUrl?.includes('/novahd');
-  let activeSource = (server || source || (isNovaRoute ? 'novahd' : 'Valenox')).trim().toLowerCase();
 
-  const isNovaHD = activeSource === 'novahd';
-  const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
-  const isGetSv = getsv === 'true' || getsv === 'novahd';
 
-  // 1. KIỂM TRA BẢO MẬT
-  const clientSecret = req.headers['x-app-secret'];
-  const isHeaderValid = clientSecret === APP_SECRET_KEY;
-  const isDebugValid = debug === DEBUG_KEY;
-
-  if (!isHeaderValid && !isDebugValid) {
-    return res.status(403).json({ 
-      status: "error",
-      error: "Truy cập bị từ chối! Bạn không có quyền gọi API này." 
-    });
-  }
-
-  if (!id) {
-    return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
-  }
-
-  const cleanId = Array.isArray(id) ? String(id[0]).trim() : String(id).split(',')[0].trim();
-
-  // Cache key phân biệt theo đúng nguồn gọi
-  const cacheKey = isGetSv 
-    ? `getsv_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}`
-    : `src_${activeSource}_${mediaType}_${cleanId}_S${season || 1}_E${episode || 1}_T${type}`;
-
-  // 2. KIỂM TRA CACHE
-  if (isCacheDisabled) {
-    cache.delete(cacheKey);
-  } else if (cache.has(cacheKey)) {
-    const cachedItem = cache.get(cacheKey);
-    if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
-      const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
-      
-      const responseData = {
-        status: "success",
-        log: {
-          cache_status: "HIT",
-          message: `Lấy dữ liệu thành công từ Cache [${activeSource.toUpperCase()}]`,
-          cached_at: new Date(cachedItem.timestamp).toISOString(),
-          age_seconds: ageSeconds
-        },
-        ...cachedItem.data
-      };
-
-      if (!isGetSv && play && activeSource !== 'true' && activeSource !== 'all' && type === 'video') {
-        const videoUrl = responseData?.url || responseData?.link || responseData?.sources?.[0]?.url;
-        if (videoUrl && typeof videoUrl === 'string') {
-          return res.redirect(302, videoUrl);
-        }
-      }
-
-      res.setHeader('X-Cache', 'HIT');
-      return res.status(200).json(responseData);
-    } else {
-      cache.delete(cacheKey);
+function getPrimaryCategories() {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("getPrimaryCategories[err]:\n " + e);
+        return JSON.stringify([]);
     }
-  }
+}
 
-  try {
-    let resultData = {};
-
-    // 3. XỬ LÝ THEO LOẠI REQUEST
-    if (isGetSv) {
-      let servers = ['NovaHD'];
-      try {
-        const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode });
-        if (Array.isArray(initialRes?.availableSources)) {
-          servers = Array.from(new Set([...servers, ...initialRes.availableSources]));
-        }
-      } catch (e) {}
-
-      resultData = {
-        total_servers: servers.length,
-        servers: servers
-      };
-
-    } else if (type === 'subtitle' || type === 'sub') {
-      resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
-
-    } else if (activeSource === 'all') {
-      // BƯỚC 1: Lấy dữ liệu NovaHD, Subtitles và gọi PoW để lấy mảng availableSources
-      const [novaRes, initialPoWRes, subData] = await Promise.all([
-        fetchNovaHD({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
-        fetchApiWithPoW('resolve', mediaType, cleanId, { season, episode }).catch(err => ({ error: err.message })),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
-      ]);
-
-      const sourcesResult = [];
-
-      // BƯỚC 2: Duyệt mảng `sources` của NovaHD (nếu có)
-      if (novaRes && !novaRes.error && Array.isArray(novaRes.sources)) {
-        novaRes.sources.forEach(item => {
-          sourcesResult.push({
-            sourceName: item.provider ? `NovaHD (${item.provider})` : 'NovaHD',
-            url: item.url,
-            quality: item.quality,
-            type: item.type,
-            provider: item.provider,
-            language: item.language,
-            source: 'NovaHD'
-          });
+function getFilterConfig() {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify({
+            category: menulist
         });
-      }
+    } catch (e) {
+        log("getFilterConfig[err]:\n " + e);
+        return JSON.stringify({ category: [] });
+    }
+}
 
-      // BƯỚC 3: Duyệt động toàn bộ mảng `availableSources` từ PoW API trả về
-      const availableList = Array.isArray(initialPoWRes?.availableSources) ? initialPoWRes.availableSources : [];
 
-      if (availableList.length > 0) {
-        // Dùng .map() duyệt qua từng phần tử trong mảng để tạo danh sách Promise
-        const powRequests = availableList.map(serverName =>
-          fetchApiWithPoW('resolve', mediaType, cleanId, { source: serverName, season, episode })
-            .then(res => ({ serverName, data: res }))
-            .catch(err => ({ serverName, error: err.message }))
-        );
+function getUrlList(slug, filtersJson) {
+    try {
+        log("getUrlList[url]: \n" + slug);
 
-        const powResponses = await Promise.all(powRequests);
+        // 1. Kiểm tra nếu slug là link tuyệt đối (chứa http)
+        if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
+            return slug;
+        }
 
-        // Duyệt kết quả trả về của từng server trong mảng
-        powResponses.forEach(item => {
-          if (item.data && !item.data.error) {
-            const { subtitles: _, availableSources: __, ...cleanData } = item.data;
-            sourcesResult.push({
-              sourceName: item.serverName,
-              ...cleanData
-            });
+        var page = 1;
+        var path = slug || "";
+
+        // 2. Xử lý an toàn filtersJson cho link tương đối
+        if (filtersJson) {
+            var fixedJson2 = filtersJson
+                .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                .replace(/:,/g, ':');
+
+            try {
+                var filters = JSON.parse(fixedJson2);
+                page = parseInt(filters.page) || 1;
+
+                if (filters.category) {
+                    if (Array.isArray(filters.category) && filters.category.length > 0) {
+                        path = filters.category[0].slug;
+                    } else if (typeof filters.category === 'string') {
+                        path = filters.category;
+                    }
+                }
+            } catch (jsonErr) {}
+        }
+
+        // 3. Ghép URL an toàn với BASEURL
+        var resultUrl = BASEAPI;
+        
+        if (path) {
+            resultUrl += (path.indexOf("/") === 0 ? "" : "/") + path;
+        }
+
+        // 4. Ghép tham số phân trang page (tự động nhận biết ? hay &)
+        if (page > 0 && resultUrl.indexOf("page=") === -1) {
+            resultUrl += "&page=" + page;
+        }
+
+        // 5. Làm sạch dấu // thừa ở path (giữ nguyên https://)
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalUrl);
+        return finalUrl;
+
+    } catch (e) {
+        log("getUrlList[err]:\n " + e);
+        if (slug && slug.indexOf("http") > -1) {
+            log("getUrlList[url]: \n" + slug);
+            return slug;
+        }
+        var fallback = BASEAPI + (slug ? (slug.indexOf("/") === 0 ? slug : "/" + slug) : "");
+        var finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlList[url]: \n" + finalFallback);
+        return finalFallback;
+    }
+}
+function getUrlSearch(keyword, filtersJson) {
+    try {
+        var page = 1;
+
+        // 1. Giải mã filtersJson lấy trang đúng chuẩn hàm gốc
+        if (filtersJson) {
+            var fixedJson = filtersJson
+                .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                .replace(/:,/g, ':');
+
+            try {
+                var filters = JSON.parse(fixedJson);
+                page = parseInt(filters.page) || 1;
+            } catch (jsonErr) {}
+        }
+
+        // 2. Khởi tạo URL tìm kiếm kèm cấu trúc /search?lang=vi-VN&q=
+        var encodedKeyword = encodeURIComponent(keyword || "");
+        var resultUrl = BASEAPI + "/search?search=" + encodedKeyword;
+
+        // 3. Nếu page > 1 thì nối thêm &page=
+        if (page > 1) {
+            resultUrl += "&page=" + page;
+        }
+
+        var finalUrl = resultUrl.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalUrl);
+        return finalUrl;
+
+    } catch (e) {
+        log("getUrlSearch[err]:\n " + e);
+        var fallback = BASEAPI + "/search?search=" + encodeURIComponent(keyword || "");
+        var finalFallback = fallback.replace(/([^:]\/)\/+/g, "$1");
+        log("getUrlSearch[url]: \n" + finalFallback);
+        return finalFallback;
+    }
+}
+
+// http://vkey.vn/animevv
+// /quoc-gia/M%E1%BB%B9
+// /top
+//filtersJson = "{page:5}"
+//getUrlList("/top", filtersJson)
+//getUrlSearch("girl", filtersJson)
+
+function getUrlDetail(slug) {
+    try {
+        log("getUrlDetail[url]: \n" + slug);
+        if (!slug) return "";
+        if (slug.indexOf('http') === 0) return slug;
+        var detailUrl = BASEURL + "/" + slug;
+        log("getUrlDetail[url]: \n" + detailUrl);
+        return detailUrl;
+    } catch (e) {
+        log("getUrlDetail[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlCategories() { 
+    try {
+        log("getUrlCategories[url]: \n" + BASEURL);
+        return BASEURL; 
+    } catch (e) {
+        log("getUrlCategories[err]:\n " + e);
+        return "";
+    }
+}
+
+
+function getUrlCountries() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlCountries[err]:\n " + e);
+        return "";
+    }
+}
+
+function getUrlYears() { 
+    try {
+        return ""; 
+    } catch (e) {
+        log("getUrlYears[err]:\n " + e);
+        return "";
+    }
+}
+
+// =============================================================================
+// PARSERS
+// =============================================================================
+
+// https://novahd.cc/api/movies/337167
+function getLanguageName(langCode) {
+    // 1. Kiểm tra nếu không phải string hoặc chuỗi rỗng
+    if (typeof langCode !== "string" || !langCode.trim()) {
+        return "";
+    }
+    const languageMap = { en: "Anh", vi: "Việt", ja: "Nhật", jp: "Nhật", ko: "Hàn", zh: "Trung", cn: "Trung", th: "Thái", fr: "Pháp", de: "Đức", ru: "Nga", es: "Tây Ban Nha", it: "Ý", pt: "Bồ Đào Nha", hi: "Ấn Độ", id: "Indonesia", tl: "Thái" };
+
+    const code = langCode.trim().toLowerCase();
+
+    // 2. Trả về tên tiếng Việt nếu có trong danh sách, ngược lại trả về mã gốc
+    return languageMap[code] || langCode;
+}
+
+
+function parseListResponse(html, $url) {
+    try {
+        if(localStorage.getItem("typeMovie")){
+          localStorage.removeItem("typeMovie");
+        }
+        var tags = "shows";
+        var $data = JSON.parse(html);
+        var results = $data.results;
+        if($url.indexOf("movie") > -1){
+            tags = "movies"
+        }
+        else{
+          tags = "shows"
+        }
+        var items = [];
+        results.forEach(function(item){
+            if(item.type){
+                tags = item.type + "s";
+            }
+            var id = BASEAPI + "/"+tags+"/" + item.tmdbId;
+            var title = item.title;
+            var poster = "https://image.tmdb.org/t/p/w780/" + item.posterPath;
+            var background = poster;
+            var genres = "";
+            if (typeof item?.genres === "string") {
+                genres = item.genres.replace(/,/g, " -");
+            }
+            var quality = getLanguageName(item.originalLanguage);
+            var episode_current = "";
+            var year = "";
+            var lang = genres;
+          
+            if(title.length > 1 && poster.length > 5){
+                items.push({
+                    "id": id || "",
+                    "title": title || "",
+                    "quality": quality || "",
+                    "episode_current": episode_current || "",
+                    "posterUrl": poster || "",
+                    "backdropUrl": background || "",
+                    "year": year || "",
+                    "lang": lang || ""
+                });     
+            }
+        })
+        console.log("List item ["+$url+"]: \n" + JSON.stringify(items))
+        return JSON.stringify({
+            "items": items,
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 9999
+            }
+        });
+    } catch (e) {
+        log("parseListResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [{
+                "id": $url || "error_url",
+                "title": "Lỗi: " + e,
+                "posterUrl": "",
+                "backdropUrl": ""
+            }],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
+}
+
+//html = sourceHTML;
+
+//$data = parseJSDataIsolated(script);
+
+
+function parseSearchResponse(html, url) {
+    try {
+        log("parseSearchResponse[url]: \n" + url);
+        return parseListResponse(html, url);
+    } catch (e) {
+        log("parseSearchResponse[err]:\n " + e);
+        return JSON.stringify({
+            "items": [],
+            "pagination": {
+                "currentPage": 1,
+                "totalPages": 1
+            }
+        });
+    }
+
+function decodeHTMLEntities(str) {
+}
+    try {
+        if (!str) return "";
+        return str.replace(/&#(\d+);|&#x([0-9a-fA-F]+);/g, (match, dec, hex) => {
+            if (dec) {
+                return String.fromCharCode(parseInt(dec, 10));
+            }
+            if (hex) {
+                return String.fromCharCode(parseInt(hex, 16));
+            }
+            return match;
+        });
+    } catch (e) {
+        log("decodeHTMLEntities[err]:\n " + e);
+    }
+}
+
+// https://novahd.cc/api/sources?type=movie&tmdbId=216015
+// https://novahd.cc/api/sources?type=show&tmdbId=1413&season=1&episode=1
+// /api/sources?type=show&tmdbId=1413&season=1&episode=1
+// http://vkey.vn/novahd/api/show/1413
+function extractYear(dateString) {
+    if (typeof dateString !== "string") {
+        return null;
+    }
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if (!regex.test(dateString.trim())) {
+        return null; // Không đúng định dạng
+    }
+    const yearNumber = parseInt(dateString.slice(0, 4), 10);
+    return isNaN(yearNumber) ? null : yearNumber;
+}
+
+function parseMovieDetail(html, url) {
+    try {        
+        log("parseMovieDetail[url]: \n" + url);
+        // === BƯỚC 2: TRÍCH XUẤT THÔNG TIN PHIM ===
+        var $data = JSON.parse(html);
+
+        // --- BỔ SUNG: Lấy tmdbId để làm Key riêng cho từng phim ---
+        var tmdbId = $data.tmdbId;
+        if (!tmdbId && url) {
+            var match = url.match(/tmdbId=(\d+)/);
+            if (match) tmdbId = match[1];
+        }
+        var keyType = "typeMovie_" + (tmdbId || "");
+        var keyBasicUrl = "basicurl_" + (tmdbId || "");
+        var keyServers = "servers_" + (tmdbId || "");
+        // ---------------------------------------------------------
+
+        if($data.sources){        
+          if($data.sources.length == 0){
+            log("Dữ liệu phim rỗng, báo lỗi.\n")
+            var servers = [{
+              name: "Dữ liệu phim này không có",
+              episodes: [{
+                id: "",
+                name: "[Đã Lỗi] kiếm phim khác đi bạn ơi.",
+                slug: ""
+              }]
+            }]
           }
+          else{
+            log("Có dữ liệu tập phim.\n");
+            var type = localStorage.getItem(keyType);
+            if(type == "movies"){
+              var servers = [];
+              var episodes = [];             
+              $data.sources.forEach(function(item, index){
+                  var name = "Server NUMBER (" + item.language + ") ["+ item.quality.replace("auto","Auto") + "]";
+                  var id = localStorage.getItem(keyBasicUrl) + "&server=" + index;
+                  
+                  episodes.push({
+                      id: id,
+                      name: name,
+                      slug: "full"
+                  })
+              })
+
+// 1. Hàm gán độ ưu tiên sắp xếp
+            function getPriority(name) {
+                var lowerName = name.toLowerCase();
+                
+                // Regex \b giúp khớp chính xác từ đứng độc lập (không dính vào từ khác)
+                // - Khớp Tiếng Việt: viet, vietnam, vietnamese, vi, vie
+                var isViet = /\b(viet|vietnam|vietnamese|vi|vie)\b/.test(lowerName);
+            
+                if (isViet) {
+                    if (lowerName.includes("4k")) return 1;
+                    if (lowerName.includes("1080")) return 2;
+                    if (lowerName.includes("720")) return 3;
+                    return 4; // Tiếng Việt các độ phân giải còn lại
+                }
+            
+                // - Khớp Tiếng Anh: english, en, eng
+                var isEnglish = /\b(english|en|eng)\b/.test(lowerName);
+            
+                if (isEnglish) {
+                    if (lowerName.includes("4k")) return 5;
+                    if (lowerName.includes("1080")) return 6;
+                    if (lowerName.includes("720")) return 7;
+                    return 8; // Tiếng Anh các độ phân giải còn lại
+                }
+                
+                return 9; // Các ngôn ngữ khác xếp sau cùng
+            }
+            
+            // 2. Sắp xếp mảng episodes theo độ ưu tiên
+            episodes.sort(function(a, b) {
+                return getPriority(a.name) - getPriority(b.name);
+            });
+            
+            // 3. Đánh lại số thứ tự từ 1 đến hết sau khi sort
+            episodes.forEach(function(item, idx) {
+                item.name = item.name.replace("NUMBER", idx + 1);
+            });
+            
+            servers.push({
+                name: "Servers",
+                episodes: episodes
+            })
+              log("server Movie: \n" + JSON.stringify(servers))
+            }
+            else{
+              var svstring = localStorage.getItem(keyServers);
+              var servers = svstring ? JSON.parse(svstring) : [];
+            }
+            log("Servers từ localstore: " + servers)
+          }
+        }
+        else{
+          var id = url;
+          var posterUrl = "https://image.tmdb.org/t/p/w780/" + $data.posterPath;
+          var backdropUrl = "https://image.tmdb.org/t/p/w780/" + $data.backdropPath;
+          var title = $data.title;
+          var description = $data.overview;
+          var director = $data.director;
+          /*
+          // menu casts
+          var merge = [];
+          $doc.find("#extras:content('Diễn|viên:')").find("a").each(function(){
+          merge.push("[" + this.attr("title") + "](" + this.attr("href") + ")");
+          })
+          var casts = merge.join(", ");
+          */
+          var casts = $data.cast
+          // menu casts
+          /*
+          // menu category
+          var merge = [];
+          $doc.find("#extras:content('Thể|loại:')").find("a").each(function(){
+          merge.push("[" + this.attr("title") + "](" + this.attr("href") + ")");
+          })
+          var category = merge.join(", ");
+          */
+          var category = $data.genres;
+          // menu category
+          var duration = "";
+          var status = "";
+          var episode_current = "";
+          var year = extractYear($data.releaseDate)
+          var quality = "HD";
+          var rating = "";
+          var country = getLanguageName($data.originalLanguage);
+          var tags = "movie";
+          if (url) {
+              if(url.indexOf("show") > -1){
+                tags = "show";
+              }         
+          }
+          var extra = ""; //BASEAPI + "/sources?type="+tags+"&tmdbId=" + $data.tmdbId;
+          var checkExtra = ""
+          var servers = [];
+          // https://novahd.cc/api/sources?type=movie&tmdbId=216015
+          // https://novahd.cc/api/sources?type=show&tmdbId=1413&season=1&episode=1
+          // https://novahd.cc/api/sources?type=show&tmdbId=1413&season=1&episode=1
+          localStorage.setItem(keyType, "movies");
+          if ($data.seasons) {
+              localStorage.setItem(keyType, "show");
+              $data.seasons.forEach(function(item) {
+                  var episodes = [];
+                  var season = item.seasonNumber;
+                  var nameSV = "Mùa " + season;
+                  var idss = item.showId;
+                  item.episodes.forEach(function(box, index) {
+                      var id = BASEAPI + "/sources?type=show&tmdbId=" + idss + "&season=" + season + "&episode=" + box.episodeNumber;
+                      // https://novahd.cc/api/
+                      var name = "Tập " + box.episodeNumber;
+                      var slug = "tap-" + box.episodeNumber;
+                      episodes.push({
+                          id: id,
+                          name: name,
+                          slug: slug
+                      })
+                      if(season == 1 && box.episodeNumber == 1){
+                        checkExtra = id;
+                      }
+                  })
+                  servers.push({
+                      name: nameSV,
+                      episodes: episodes
+                  })
+              })
+          } else {
+              // https://novahd.cc/api/sources?type=movie&tmdbId=216015
+              var id = BASEAPI + "/sources?type=movie&tmdbId=" + $data.tmdbId;
+              localStorage.setItem(keyBasicUrl, id);
+              servers.push({
+                  name: "Server",
+                  episodes: [{
+                      id: id,
+                      name: "Xem Ngay",
+                      slug: "fullVideo"
+                  }]            
+             })
+            checkExtra = id
+          }
+          log("Có extra url: " + checkExtra)
+          extra = checkExtra; 
+          localStorage.setItem(keyServers, JSON.stringify(servers));
+          servers = [];
+        }
+      
+        return JSON.stringify({
+            id: url || "",
+            title: title || "",
+            posterUrl: posterUrl || "",
+            backdropUrl: backdropUrl || "",
+            description: description || "",
+            quality: quality || "",
+            year: year || 2026,
+            rating: rating || 8.0,
+            status: status || "",
+            category: category || "",
+            episode_current: episode_current || "",
+            servers: servers || "",
+            duration: duration || "",
+            casts: casts || "",
+            director: director || "",
+            country: country || "",
+            extra: extra || ""
         });
-      }
 
-      if (sourcesResult.length === 0) {
-        throw new Error("Không thể lấy dữ liệu từ bất kỳ mảng server nào.");
-      }
-
-      resultData = {
-        sources: sourcesResult,
-        subtitles: subData?.subtitles || subData
-      };
-
-    } else if (isNovaHD) {
-      // Xử lý riêng nguồn NovaHD
-      const [novaData, subData] = await Promise.all([
-        fetchNovaHD({ mediaType, id: cleanId, season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
-      ]);
-
-      if (!novaData?.sources || novaData.sources.length === 0) {
-        throw new Error("NovaHD không tìm thấy nguồn video cho ID này.");
-      }
-
-      resultData = {
-        sources: novaData.sources,
-        subtitles: subData?.subtitles || subData
-      };
-
-    } else {
-      // Xử lý cho từng server đơn lẻ
-      const [videoData, subData] = await Promise.all([
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: activeSource, season, episode }),
-        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
-      ]);
-
-      if (videoData?.error) throw new Error(videoData.error);
-
-      resultData = {
-        ...videoData,
-        subtitles: subData?.subtitles || subData
-      };
+    } catch (e) {
+        log("parseMovieDetail[err]:\n " + e);
+        return JSON.stringify({
+            id: url || url || "error",
+            title: "error",
+            servers: []
+        });
+    }
+}
+function parseDetailResponse(html, url) {
+  try {
+    console.log("parseDetailResponse dang xu ly: " + url);
+    
+    if (!html || typeof html !== "string") {
+      throw new Error("Dữ liệu html rỗng hoặc không hợp lệ");
     }
 
-    // 4. LƯU CACHE
-    const now = Date.now();
-    cache.set(cacheKey, {
-      timestamp: now,
-      data: resultData
+    var $data = JSON.parse(html);
+    var sources = $data.sources || [];
+    var subtitles = $data.subtitles || [];
+
+    // 1. Lọc tất cả các nguồn có link url hợp lệ
+    var validSources = sources.filter(function(item) {
+      return item.url && typeof item.url === "string" && item.url.trim() !== "";
     });
 
-    const finalResponse = {
-      status: "success",
-      log: {
-        cache_status: isCacheDisabled ? "BYPASS_REFRESH" : "MISS",
-        message: isCacheDisabled 
-          ? "Đã làm mới dữ liệu thành công" 
-          : `Dữ liệu nguồn [${activeSource.toUpperCase()}] đã lưu vào Cache`,
-        cached_at: new Date(now).toISOString(),
-        age_seconds: 0
-      },
-      ...resultData
-    };
+    var stream = "";
+    var streamType = "";
 
-    if (!isGetSv && play && activeSource !== 'true' && activeSource !== 'all' && type === 'video') {
-      const videoUrl = resultData?.url || resultData?.link || resultData?.sources?.[0]?.url;
-      if (videoUrl && typeof videoUrl === 'string') {
-        return res.redirect(302, videoUrl);
+    if (validSources.length > 0) {
+      var currentIndex = -1;
+
+      // 2. Trích xuất tham số server=(number) từ URL truyền vào
+      var serverMatch = url.match(/[?&]server=(\d+)/i);
+      if (serverMatch) {
+        var serverIndex = parseInt(serverMatch[1], 10);
+        if (serverIndex >= 0 && serverIndex < validSources.length) {
+          currentIndex = serverIndex;
+          console.log("Lấy nguồn theo tham số server=" + currentIndex);
+        }
+      }
+
+      // 3. Fallback xoay vòng localStorage theo URL duy nhất của tập phim
+      var storageKey = "stream_index_" + encodeURIComponent(url);
+      if (currentIndex === -1) {
+        var savedIndex = parseInt(localStorage.getItem(storageKey), 10);
+        currentIndex = isNaN(savedIndex) ? 0 : savedIndex;
+
+        if (currentIndex >= validSources.length) {
+          currentIndex = 0;
+        }
+
+        var nextIndex = (currentIndex + 1) % validSources.length;
+        localStorage.setItem(storageKey, nextIndex.toString());
+      }
+
+      var selectedSource = validSources[currentIndex];
+      stream = selectedSource.url;
+      streamType = selectedSource.type ? String(selectedSource.type).toLowerCase() : "";
+
+      console.log("Đang thử nguồn (" + (currentIndex + 1) + "/" + validSources.length + "): " + stream);
+
+    } else {
+      console.log("Không tìm thấy bất kỳ nguồn stream nào.");
+    }
+
+    // --- 4. TỐI ƯU BẮT MIMETYPE & ĐỊNH DẠNG LOG ---
+    var mimeType = "";
+    var detectedFormat = "UNKNOWN";
+
+    if (streamType === "mp4" || streamType === "file") {
+      mimeType = "video/mp4";
+      detectedFormat = "MP4";
+    } else if (streamType === "hls" || streamType === "m3u8") {
+      mimeType = "application/x-mpegURL";
+      detectedFormat = "HLS (m3u8)";
+    } 
+    
+    if (!mimeType && stream) {
+      var cleanStreamUrl = stream.split('?')[0].toLowerCase();
+      if (cleanStreamUrl.endsWith(".mp4")) {
+        mimeType = "video/mp4";
+        detectedFormat = "MP4 (nhận diện qua URL)";
+      } else if (cleanStreamUrl.endsWith(".m3u8")) {
+        mimeType = "application/x-mpegURL";
+        detectedFormat = "HLS (nhận diện qua URL)";
       }
     }
 
-    res.setHeader('X-Cache', isCacheDisabled ? 'BYPASS' : 'MISS');
-    res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
-    return res.status(200).json(finalResponse);
+    if (!mimeType) {
+      mimeType = "application/x-mpegURL";
+      detectedFormat = "HLS (Mặc định Fallback)";
+    }
 
-  } catch (error) {
-    if (cache.has(cacheKey)) {
-      const fallbackItem = cache.get(cacheKey);
-      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
+    console.log("🎬 Định dạng File: [" + detectedFormat + "] | MimeType: " + mimeType);
 
-      return res.status(200).json({
-        status: "success",
-        log: {
-          cache_status: "HIT_FALLBACK",
-          message: `Request mới bị lỗi (${error.message}). Dùng Cache dự phòng của [${activeSource.toUpperCase()}].`,
-          cached_at: new Date(fallbackItem.timestamp).toISOString(),
-          age_seconds: ageSeconds
-        },
-        ...fallbackItem.data
+    // 5. Xử lý Subtitle tĩnh có sẵn từ API gốc
+    var subtitleList = [];
+    var baseUrlStr = typeof BASEURL !== "undefined" ? BASEURL : "";
+
+    subtitles.forEach(function(item) {
+      if (!item.lang || !item.url) return;
+      if (item.lang.match(/en|eng|english/i)) {
+        subtitleList.push({
+          lang: "ENG",
+          url: baseUrlStr + item.url
+        });
+      } else if (item.lang.match(/vi|vie|viet/i)) {
+        subtitleList.push({
+          lang: "VIET",
+          url: baseUrlStr + item.url
+        });
+      }
+    });
+
+    // 6. Xử lý Chuyển sang Subtitle Proxy Service
+    var tmdbMatch = url.match(/[?&]tmdbId=(\d+)/i);
+    if (tmdbMatch && tmdbMatch[1]) {
+      var tmdbId = tmdbMatch[1];
+      var linkstream = {
+        mime: mimeType,
+        url: stream
+      };
+      
+      // Xóa cache cũ trước khi ghi dữ liệu tập mới vào LocalStorage
+      localStorage.removeItem("saveM3U8");
+      localStorage.setItem("saveM3U8", JSON.stringify(linkstream));
+      
+      var encode = BASE64.encode(JSON.stringify(linkstream));
+      var suburl = "";
+
+      // Kiểm tra nếu là TV Show
+      if (url.indexOf("type=show") > -1) {
+        // Trích xuất đúng query string phía sau tmdbId bao gồm season, episode...
+        var queryParams = url.split("?")[1] || "";
+        suburl = "https://subtitles.shegu.st/subtitles?type=tv&tmdb=" + queryParams.replace("type=show&tmdbId=","") + "&encode=" + encode;
+      } else {
+        // Nếu là Movie
+        suburl = "https://subtitles.shegu.st/subtitles?type=movie&tmdb=" + tmdbId + "&encode=" + encode;
+      }
+
+      console.log("linkSub:\n" + suburl);
+
+      return JSON.stringify({
+        url: suburl,
+        isEmbed: true, // Chuyển sang tầng parseEmbedResponse
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://novahd.cc",
+          "Origin": "https://novahd.cc"
+        }
       });
     }
-
-    return res.status(500).json({
-      status: "error",
-      log: {
-        cache_status: "FAILED",
-        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
+    
+    return JSON.stringify({
+      url: stream,
+      mimeType: mimeType,
+      isEmbed: false,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://novahd.cc",
+        "Origin": "https://novahd.cc"
       },
-      error: error.message
+      subtitles: subtitleList,
     });
+  } catch (e) {
+    console.log("parseDetailResponse[err]:\n " + e);
+    return JSON.stringify({
+      url: "",
+      mimeType: "",
+      isEmbed: false,
+      headers: {},
+      subtitles: [],
+    });
+  }
+}
+
+function parseEmbedResponse(html, url) {
+  console.log("parseEmbedResponse [Tầng tiếp theo]: " + url);
+  try {
+    var linkstream = null;
+    
+    // 1. Ưu tiên giải mã stream trực tiếp từ tham số encode trong URL
+    var encode64 = url.match(/[?&]encode=([^&]+)/i);
+    if (encode64 && encode64[1]) {
+      var decodedStr = BASE64.decode(encode64[1]);
+      if (decodedStr) {
+        linkstream = JSON.parse(decodedStr);
+        console.log("✓ Link stream lấy thành công từ URL encode");
+      }
+    }
+
+    // 2. Fallback nếu URL không chứa encode thì mới dùng LocalStorage
+    if (!linkstream) {
+      var store = localStorage.getItem("saveM3U8");
+      if (store) {
+        linkstream = JSON.parse(store);
+        console.log("⚠️ Link stream lấy từ LocalStorage (Fallback)");
+      }
+    }
+
+    if (!linkstream || !linkstream.url) {
+      throw new Error("Không thể tìm thấy thông tin stream URL");
+    }
+
+    var $data = JSON.parse(html);
+    var subtitles = $data.subtitles || [];
+    var subtitle = [];
+    var numsub = 1;
+    var numeng = 0;
+
+    subtitles.forEach(function(item) {
+      var language = item.language;
+      var type = item.type;
+      var itemUrl = item.url;
+      var display = item.display.replace(/^.*?(?:-(\d+))?\.([^.]+)$/, '$1.$2').replace(/^\./, '');
+      var encode = itemUrl.replace("https://subtitles.shegu.st/sub/", "");
+      var decode = BASE64.decode(encode);
+      
+      itemUrl = decode;
+      
+     var subMime = getSubtitleMimeType(type);
+      
+      if (language === "vi") {
+        subtitle.push({
+          lang: "Vietsub " + numsub  + " ["+subMime+" - "+display+"]",
+          url: itemUrl,
+          mimeType: subMime
+        });
+        numsub++;
+      }
+      if (language === "en") {
+        if (numeng < 3) {
+          numeng++;
+          subtitle.push({
+            lang: "Engsub " + numeng  + " ["+subMime+" - "+display+"]",
+            url: itemUrl,
+            mimeType: subMime
+          });
+        }
+      }
+    });
+function getSubtitleMimeType(type, itemUrl) {
+  // Chuẩn hóa input về chữ thường để so sánh chính xác
+  var ext = (type || "").toLowerCase();
+  var url = (itemUrl || "").toLowerCase();
+
+  // Kiểm tra extension truyền vào hoặc lấy đuôi file từ URL
+  var isExt = function(targetExt) {
+    return ext === targetExt || url.indexOf("." + targetExt) > -1;
+  };
+
+  if (isExt("srt")) {
+    return "application/x-subrip";
+  }
+  
+  if (isExt("ass") || isExt("ssa")) {
+    return "text/x-ssa"; // Hoặc "text/x-ass"
+  }
+
+  if (isExt("vtt")) {
+    return "text/vtt";
+  }
+
+  if (isExt("sub")) {
+    return "text/x-microdvd"; // Hoặc "application/x-subviewer" tùy nguồn sub
+  }
+
+  if (isExt("ttml") || isExt("dfxp") || isExt("xml")) {
+    return "application/ttml+xml";
+  }
+
+  if (isExt("lrc")) {
+    return "text/x-lrc";
+  }
+
+  // Mặc định trả về WebVTT nếu không khớp định dạng nào
+  return "text/vtt";
+}
+    console.log("subtitle: \n" + JSON.stringify(subtitle));
+
+    return JSON.stringify({
+      url: linkstream.url,
+      mimeType: linkstream.mime,
+      isEmbed: false, // Dừng tầng embed, trả về link trực tiếp cho player
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://novahd.cc",
+        "Origin": "https://novahd.cc"
+      },
+      subtitles: subtitle
+    });
+  } catch (e) {
+    console.log("[Lỗi parseEmbedResponse]", e);
+    return JSON.stringify({ url: "", isEmbed: false, headers: {} });
+  }
+}
+
+
+/**
+ * HÀM BỔ SUNG: Báo lỗi khi Video Player không phát được.
+ * Gọi hàm này từ sự kiện onError của Video Player để chuyển sang link kế tiếp.
+ */
+function reportStreamError(url) {
+  var storageKey = "stream_index_" + url;
+  var savedIndex = parseInt(localStorage.getItem(storageKey), 10);
+  var currentIndex = isNaN(savedIndex) ? 0 : savedIndex;
+
+  // Tăng index lên 1 để lần gọi parseDetailResponse tiếp theo lấy link mới
+  localStorage.setItem(storageKey, (currentIndex + 1).toString());
+  console.log("Đã chuyển index tiếp theo cho URL:", url, "Index mới:", currentIndex + 1);
+}
+
+function parseCategoriesResponse(apiResponseJson) {
+    try {
+        var listurl = getLISTmenu();
+        var menulist = buildMenu(listurl);
+        return JSON.stringify(menulist);
+    } catch (e) {
+        log("parseCategoriesResponse[err]:\n " + e);
+        return JSON.stringify([]);
+    }
+}
+
+function parseCountriesResponse(html) {
+    try {
+        return "[]";
+    } catch (e) {
+        log("parseCountriesResponse[err]:\n " + e);
+        return "[]";
+    }
+}
+
+function parseYearsResponse(html) {
+    try {
+        return "[]";
+    } catch (e) {
+        log("parseYearsResponse[err]:\n " + e);
+        return "[]";
+    }
+}
+
+
+// https://vsmov.com/api/the-loai/hanh-dong
+function getLISTmenu() {
+    return `[
+{"link":"/shows?sort=popularity","name":"TV Show"},
+{"link":"/movies?sort=popularity","name":"Phim Lẻ"},
+{"link":"/search?search=action","name":"Hành Động"},
+{"link":"/search?search=horror","name":"Kinh Dị"},
+{"link":"/search?search=fantasy","name":"Huyền Ảo"},
+{"link":"/search?search=anime","name":"Anime"},
+{"link":"/search?search=cartoon","name":"Hoạt Hình"},
+{"link":"/search?search=romance","name":"Tình Cảm"},
+{"link":"/search?search=comedy","name":"Hài Hước"},
+{"link":"/search?search=scifi","name":"Viễn Tưởng"},
+{"link":"/search?search=crime","name":"Trinh Thám"}
+]`;
+}
+
+function buildMenu(menuStr, type) { 
+    var menuArray = JSON.parse(menuStr); 
+    let menulist = []; 
+    if (!menuArray || !Array.isArray(menuArray)) return menulist; 
+    var typeStr = type !== undefined ? String(type).trim() : undefined; 
+    for (var i = 0; i < menuArray.length; i++) { 
+        var item = menuArray[i]; 
+        if (!item) continue; 
+        var link = item.link ? String(item.link).trim() : ""; 
+        var name = item.name ? String(item.name).trim() : ""; 
+        if (!link || !name) continue; 
+        var menuItem = {}; 
+        if (typeStr === "false") { 
+            menuItem = { "slug": link, "title": name, "type": "Horizontal" }; 
+        } else if (typeStr === "true") { 
+            menuItem = { "slug": link, "title": name, "type": "Grid" }; 
+        } else { 
+            menuItem = { "slug": link, "name": name }; 
+        } 
+        menulist.push(menuItem); 
+    } 
+    return menulist; 
+}
+
+BASE64 = {
+  encode: function (str) {
+    try {
+      if (!str) return "";
+
+      // 1. Encode String ra mảng UTF-8 Bytes trước
+      var utf8Bytes = [];
+      for (var i = 0; i < str.length; i++) {
+        var code = str.charCodeAt(i);
+        if (code < 128) {
+          utf8Bytes.push(code);
+        } else if (code < 2048) {
+          utf8Bytes.push((code >> 6) | 192, (code & 63) | 128);
+        } else if (
+          (code & 0xfc00) === 0xd800 &&
+          i + 1 < str.length &&
+          (str.charCodeAt(i + 1) & 0xfc00) === 0xdc00
+        ) {
+          // Ký tự Surrogate Pair
+          code =
+            0x10000 + ((code & 0x03ff) << 10) + (str.charCodeAt(++i) & 0x03ff);
+          utf8Bytes.push(
+            (code >> 18) | 240,
+            ((code >> 12) & 63) | 128,
+            ((code >> 6) & 63) | 128,
+            (code & 63) | 128
+          );
+        } else {
+          utf8Bytes.push(
+            (code >> 12) | 224,
+            ((code >> 6) & 63) | 128,
+            (code & 63) | 128
+          );
+        }
+      }
+
+      // 2. Chuyển mảng UTF-8 Bytes thành chuỗi Base64
+      var chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+      var encoded = "";
+      var byte1, byte2, byte3;
+      var b1, b2, b3, b4;
+
+      for (var j = 0; j < utf8Bytes.length; j += 3) {
+        byte1 = utf8Bytes[j];
+        byte2 = j + 1 < utf8Bytes.length ? utf8Bytes[j + 1] : NaN;
+        byte3 = j + 2 < utf8Bytes.length ? utf8Bytes[j + 2] : NaN;
+
+        b1 = byte1 >> 2;
+        b2 = ((byte1 & 3) << 4) | (isNaN(byte2) ? 0 : byte2 >> 4);
+        b3 = isNaN(byte2)
+          ? 64
+          : ((byte2 & 15) << 2) | (isNaN(byte3) ? 0 : byte3 >> 6);
+        b4 = isNaN(byte3) ? 64 : byte3 & 63;
+
+        encoded +=
+          chars.charAt(b1) +
+          chars.charAt(b2) +
+          chars.charAt(b3) +
+          chars.charAt(b4);
+      }
+
+      return encoded;
+    } catch (e) {
+      console.log("[BASE64.encode Error]:", e.message || e);
+      return "";
+    }
+  },
+
+  decode: function (base64String) {
+    try {
+      if (!base64String) return "";
+
+      // 1. Dọn dẹp chuỗi & xử lý nếu URL-encoded (ví dụ: %2B, %2F)
+      var str = decodeURIComponent(base64String.trim());
+
+      // Chuyển URL-safe base64 về base64 chuẩn
+      str = str.replace(/-/g, "+").replace(/_/g, "/");
+
+      // Bảng ký tự Base64
+      var chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+      var output = [];
+      var buffer = 0,
+        bits = 0;
+
+      // 2. Decode Base64 thành Mảng Byte
+      for (var i = 0; i < str.length; i++) {
+        var char = str.charAt(i);
+        if (char === "=") break; // Bỏ qua padding
+        var index = chars.indexOf(char);
+        if (index === -1) continue; // Bỏ qua ký tự không hợp lệ
+
+        buffer = (buffer << 6) | index;
+        bits += 6;
+
+        if (bits >= 8) {
+          bits -= 8;
+          output.push((buffer >> bits) & 0xff);
+        }
+      }
+
+      // 3. Decode UTF-8 từ mảng Byte ra String
+      var result = "";
+      var j = 0;
+      while (j < output.length) {
+        var c = output[j++];
+        if (c < 128) {
+          result += String.fromCharCode(c);
+        } else if (c > 191 && c < 224) {
+          var c2 = output[j++];
+          result += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+        } else if (c > 223 && c < 240) {
+          var c2 = output[j++];
+          var c3 = output[j++];
+          result += String.fromCharCode(
+            ((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63)
+          );
+        } else if (c >= 240) {
+          var c2 = output[j++];
+          var c3 = output[j++];
+          var c4 = output[j++];
+          var u =
+            (((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 & 63)) -
+            0x10000;
+          result += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 0x3ff));
+        }
+      }
+
+      return result;
+    } catch (e) {
+      console.log("[BASE64.decode Error]:", e.message || e);
+      return "";
+    }
   }
 };
 
-// Hàm lấy nguồn từ NovaHD
-async function fetchNovaHD({ mediaType, id, season, episode }) {
-  const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
-  let targetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
 
-  if (normType === 'show') {
-    targetUrl += `&season=${season || 1}&episode=${episode || 1}`;
-  }
 
-  const res = await fetch(targetUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer': 'https://novahd.cc/'
+function _$(param) {
+    // -------------------------------------------------------------
+    // 1. HELPER PARSER & UTILS
+    // -------------------------------------------------------------
+    function parseHTML(htmlString) {
+        let nodes = [];
+        let root = { id: 0, tag: "ROOT", attrs: {}, childrenIds: [], parentId: null };
+        nodes.push(root);
+
+        try {
+            let html = (htmlString || "").trim();
+            if (!html) return { root, nodes };
+
+            const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+            let stack = [0];
+            let tagRegex = /<(?:\/([a-zA-Z0-9_-]+)|([a-zA-Z0-9_-]+)([^>]*?)(\/)?)\s*>/g;
+            
+            let lastIndex = 0;
+            let match;
+            let maxIter = 50000;
+            let iter = 0;
+
+            while ((match = tagRegex.exec(html)) !== null && iter++ < maxIter) {
+                let textBefore = html.slice(lastIndex, match.index).trim();
+                let parentId = stack[stack.length - 1];
+
+                if (textBefore) {
+                    let textId = nodes.length;
+                    nodes.push({ id: textId, tag: "#text", text: textBefore, attrs: {}, childrenIds: [], parentId: parentId });
+                    nodes[parentId].childrenIds.push(textId);
+                }
+
+                lastIndex = tagRegex.lastIndex;
+                let isCloseTag = !!match[1];
+                let tagName = (match[1] || match[2] || "").toLowerCase();
+                let attrStr = match[3] || "";
+                let isSelfClosing = !!match[4] || VOID_TAGS.has(tagName);
+
+                if (isCloseTag) {
+                    for (let i = stack.length - 1; i > 0; i--) {
+                        if (nodes[stack[i]].tag === tagName) {
+                            stack.splice(i);
+                            break;
+                        }
+                    }
+                } else {
+                    let attrs = {};
+                    let attrRegex = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+                    let attrMatch;
+                    while ((attrMatch = attrRegex.exec(attrStr)) !== null) {
+                        attrs[attrMatch[1].toLowerCase()] = attrMatch[2] || attrMatch[3] || attrMatch[4] || "";
+                    }
+
+                    let nodeId = nodes.length;
+                    let node = { id: nodeId, tag: tagName, attrs: attrs, childrenIds: [], parentId: parentId };
+                    nodes.push(node);
+                    nodes[parentId].childrenIds.push(nodeId);
+
+                    if (!isSelfClosing) {
+                        stack.push(nodeId);
+                    }
+                }
+            }
+
+            let remainingText = html.slice(lastIndex).trim();
+            if (remainingText && stack.length > 0) {
+                let parentId = stack[stack.length - 1];
+                let textId = nodes.length;
+                nodes.push({ id: textId, tag: "#text", text: remainingText, attrs: {}, childrenIds: [], parentId: parentId });
+                nodes[parentId].childrenIds.push(textId);
+            }
+        } catch (err) {
+            if (typeof window !== "undefined" && window.log) window.log("parseHTML error: " + err.message);
+        }
+        return { root, nodes };
     }
-  });
 
-  if (!res.ok) {
-    throw new Error(`NovaHD API trả về lỗi Status: ${res.status}`);
-  }
-
-  const data = await res.json();
-
-  return {
-    sources: data.sources || []
-  };
-}
-
-// Hàm lấy Phụ đề từ Shegust
-async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
-  const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'tv' : 'movie';
-  let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
-
-  if (normType === 'tv') {
-    if (season) targetUrl += `&season=${season}`;
-    if (episode) targetUrl += `&episode=${episode}`;
-  }
-
-  const res = await fetch(targetUrl);
-  if (!res.ok) {
-    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status})`);
-  }
-  return await res.json();
-}
-
-// Hàm giải mã Video Link qua Challenge / PoW
-async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
-  const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
-  if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
-  
-  const challengeData = await challengeRes.json();
-  const { challenge, difficulty = 4 } = challengeData;
-
-  const nonce = solvePoWNode(challenge, difficulty);
-
-  const payload = {
-    mediaType,
-    id: isNaN(id) ? id : Number(id),
-    challenge,
-    nonce: nonce.toString(),
-    ...extraParams
-  };
-
-  const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  return await apiRes.json();
-}
-
-function solvePoWNode(challenge, difficulty) {
-  const targetPrefix = '0'.repeat(difficulty);
-  let nonce = 0;
-
-  while (nonce < 1000000) {
-    const hash = crypto.createHash('sha256').update(challenge + nonce).digest('hex');
-    if (hash.startsWith(targetPrefix)) {
-      return nonce;
+    function getNodeText(node, nodes, depth) {
+        if (!node || (depth || 0) > 20) return "";
+        if (node.tag === "#text") return node.text || "";
+        let text = "";
+        if (node.childrenIds) {
+            for (let cid of node.childrenIds) {
+                text += getNodeText(nodes[cid], nodes, (depth || 0) + 1) + " ";
+            }
+        }
+        return text.trim();
     }
-    nonce++;
-  }
-  return nonce;
+
+    // -------------------------------------------------------------
+    // 2. QUERY ENGINE & SELECTOR MATCHING
+    // -------------------------------------------------------------
+    function matchSingleSelector(node, sel, nodes) {
+        if (!node || node.tag === "#text" || node.tag === "ROOT") return false;
+
+        let cleanSel = sel;
+        
+        // 1. Tách pseudo positional (:first, :last, :eq)
+        cleanSel = cleanSel.replace(/:first|:last|:eq\([0-9]+\)/gi, "").trim();
+
+        // 2. Tách pseudo :content(...)
+        let pseudoContentArg = null;
+        let contentMatch = cleanSel.match(/:content\((['"]?)(.*?)\1\)/i);
+        if (contentMatch) {
+            pseudoContentArg = contentMatch[2];
+            cleanSel = cleanSel.replace(contentMatch[0], "").trim();
+        }
+
+        // 3. Khớp Selector gốc
+        if (cleanSel && cleanSel !== "*") {
+            let tagMatch = cleanSel.match(/^[a-zA-Z0-9_-]+/);
+            if (tagMatch && node.tag !== tagMatch[0].toLowerCase()) return false;
+
+            let idMatch = cleanSel.match(/#([a-zA-Z0-9_-]+)/);
+            if (idMatch && (!node.attrs || node.attrs.id !== idMatch[1])) return false;
+
+            // Class matching (hỗ trợ Tailwind)
+            let classMatches = cleanSel.match(/\.([a-zA-Z0-9_\-\/\\:]+)/g);
+            if (classMatches) {
+                if (!node.attrs || !node.attrs.class) return false;
+                let elClasses = node.attrs.class.split(/\s+/);
+                for (let c of classMatches) {
+                    let targetClass = c.substring(1);
+                    if (!elClasses.includes(targetClass)) return false;
+                }
+            }
+
+            let attrMatch = cleanSel.match(/\[([a-zA-Z0-9_-]+)(?:=['"]?(.*?)['"]?)?\]/);
+            if (attrMatch) {
+                let attrName = attrMatch[1].toLowerCase();
+                let attrVal = attrMatch[2];
+                if (!node.attrs || !(attrName in node.attrs)) return false;
+                if (attrVal !== undefined && node.attrs[attrName] !== attrVal) return false;
+            }
+        }
+
+        if (pseudoContentArg !== null) {
+            let fullText = getNodeText(node, nodes, 0);
+            let keywords = pseudoContentArg.split("|").map(k => k.trim().toLowerCase());
+            let found = keywords.some(kw => fullText.toLowerCase().includes(kw));
+            if (!found) return false;
+        }
+
+        return true;
+    }
+
+    function querySelectorAllSingleLevel(startNode, selector, nodes) {
+        let results = [];
+        function search(currentId, depth) {
+            if (depth > 50) return;
+            let current = nodes[currentId];
+            if (!current) return;
+
+            if (current.tag !== "ROOT" && current.tag !== "#text" && current.id !== startNode.id) {
+                if (matchSingleSelector(current, selector, nodes)) {
+                    results.push(current);
+                }
+            }
+            if (current.childrenIds) {
+                for (let cid of current.childrenIds) {
+                    search(cid, depth + 1);
+                }
+            }
+        }
+        search(startNode.id, 0);
+
+        if (selector.indexOf(":first") !== -1) return results.slice(0, 1);
+        if (selector.indexOf(":last") !== -1) return results.slice(-1);
+        
+        let eqMatch = selector.match(/:eq\(([0-9]+)\)/i);
+        if (eqMatch) {
+            let idx = parseInt(eqMatch[1], 10);
+            return results[idx] ? [results[idx]] : [];
+        }
+
+        return results;
+    }
+
+    function querySelectorAll(startNode, selector, nodes) {
+        try {
+            if (!startNode || !selector) return [];
+
+            if (selector.indexOf(',') !== -1) {
+                let groupSelectors = selector.split(',').map(s => s.trim());
+                let resMap = new Map();
+                for (let gSel of groupSelectors) {
+                    let subRes = querySelectorAll(startNode, gSel, nodes);
+                    for (let r of subRes) resMap.set(r.id, r);
+                }
+                return Array.from(resMap.values());
+            }
+
+            let spaceParts = selector.trim().split(/\s+/);
+            if (spaceParts.length > 1) {
+                let currentNodes = [startNode];
+                for (let part of spaceParts) {
+                    let nextLevelNodes = [];
+                    let addedIds = new Set();
+                    for (let cNode of currentNodes) {
+                        let subResults = querySelectorAllSingleLevel(cNode, part, nodes);
+                        for (let r of subResults) {
+                            if (!addedIds.has(r.id)) {
+                                addedIds.add(r.id);
+                                nextLevelNodes.push(r);
+                            }
+                        }
+                    }
+                    currentNodes = nextLevelNodes;
+                    if (currentNodes.length === 0) break;
+                }
+                return currentNodes;
+            }
+
+            return querySelectorAllSingleLevel(startNode, selector, nodes);
+        } catch (err) {
+            return [];
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 3. MINIJQ CLASS CONSTRUCTOR & PROTOTYPE
+    // -------------------------------------------------------------
+    function MiniJQ(elements, nodesStore) {
+        this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
+        this.nodes = nodesStore || [];
+        this.length = this.elements.length;
+    }
+
+    MiniJQ.prototype = {
+        find: function(selector) {
+            if (this.elements.length === 0) return new MiniJQ([], this.nodes);
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let res = querySelectorAll(el, selector, this.nodes);
+                for (let r of res) {
+                    if (!addedIds.has(r.id)) {
+                        addedIds.add(r.id);
+                        matched.push(r);
+                    }
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        },
+
+        text: function() {
+            if (this.elements.length === 0) return "";
+            return getNodeText(this.elements[0], this.nodes, 0);
+        },
+
+        html: function() {
+            if (this.elements.length === 0) return "";
+            let self = this;
+            let serialize = function(nodeId, depth) {
+                if (depth > 20) return "";
+                let node = self.nodes[nodeId];
+                if (!node) return "";
+                if (node.tag === "#text") return node.text || "";
+                let attrs = Object.entries(node.attrs || {}).map(([k, v]) => ` ${k}="${v}"`).join("");
+                let childrenHTML = (node.childrenIds || []).map(cid => serialize(cid, depth + 1)).join("");
+                return `<${node.tag}${attrs}>${childrenHTML}</${node.tag}>`;
+            };
+            return (this.elements[0].childrenIds || []).map(cid => serialize(cid, 0)).join("");
+        },
+
+        attr: function(name, value) {
+            if (value !== undefined) {
+                for (let el of this.elements) {
+                    if (el && el.tag !== "#text") {
+                        if (!el.attrs) el.attrs = {};
+                        el.attrs[name] = value;
+                    }
+                }
+                return this;
+            }
+            if (this.elements.length === 0 || !this.elements[0].attrs) return "";
+            return this.elements[0].attrs[name] || "";
+        },
+
+        each: function(callback) {
+            if (typeof callback !== 'function') return this;
+            this.elements.forEach((el, index) => {
+                let jqEl = new MiniJQ([el], this.nodes);
+                callback.call(jqEl, index, jqEl);
+            });
+            return this;
+        },
+
+        textAll: function(delimiter) {
+            if (delimiter === undefined) delimiter = " ";
+            let texts = [];
+            for (let el of this.elements) {
+                texts.push(getNodeText(el, this.nodes, 0));
+            }
+            return texts.join(delimiter);
+        },
+
+        first: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[0]] : [], this.nodes);
+        },
+
+        last: function() {
+            return new MiniJQ(this.elements.length > 0 ? [this.elements[this.elements.length - 1]] : [], this.nodes);
+        },
+
+        eq: function(index) {
+            return new MiniJQ(this.elements[index] ? [this.elements[index]] : [], this.nodes);
+        },
+
+        parent: function() {
+            let parents = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                if (el && el.parentId !== null && el.parentId !== 0) {
+                    let pNode = this.nodes[el.parentId];
+                    if (pNode && !addedIds.has(pNode.id)) {
+                        addedIds.add(pNode.id);
+                        parents.push(pNode);
+                    }
+                }
+            }
+            return new MiniJQ(parents, this.nodes);
+        },
+
+        next: function() {
+            let nexts = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx !== -1 && idx + 1 < siblings.length) {
+                    nexts.push(siblings[idx + 1]);
+                }
+            }
+            return new MiniJQ(nexts, this.nodes);
+        },
+
+        before: function() {
+            let befores = [];
+            for (let el of this.elements) {
+                if (!el || el.parentId === null) continue;
+                let pNode = this.nodes[el.parentId];
+                if (!pNode) continue;
+
+                let siblings = pNode.childrenIds.map(cid => this.nodes[cid]).filter(c => c && c.tag !== "#text");
+                let idx = siblings.findIndex(s => s.id === el.id);
+                if (idx > 0) {
+                    befores.push(siblings[idx - 1]);
+                }
+            }
+            return new MiniJQ(befores, this.nodes);
+        },
+
+        after: function() {
+            return this.next();
+        },
+
+        closest: function(selector) {
+            let matched = [];
+            let addedIds = new Set();
+            for (let el of this.elements) {
+                let currParentId = el.parentId;
+                let depth = 0;
+                while (currParentId !== null && currParentId !== 0 && depth++ < 30) {
+                    let curr = this.nodes[currParentId];
+                    if (!curr) break;
+                    if (matchSingleSelector(curr, selector, this.nodes)) {
+                        if (!addedIds.has(curr.id)) {
+                            addedIds.add(curr.id);
+                            matched.push(curr);
+                        }
+                        break;
+                    }
+                    currParentId = curr.parentId;
+                }
+            }
+            return new MiniJQ(matched, this.nodes);
+        }
+    };
+
+    // -------------------------------------------------------------
+    // 4. MAIN ENTRY POINT LOGIC FOR _$
+    // -------------------------------------------------------------
+    try {
+        if (!param) return new MiniJQ([], []);
+        if (param instanceof MiniJQ) return param;
+        if (typeof param === "string") {
+            let parsed = parseHTML(param);
+            return new MiniJQ(parsed.root, parsed.nodes);
+        }
+        return new MiniJQ(param, []);
+    } catch (err) {
+        return new MiniJQ([], []);
+    }
 }
