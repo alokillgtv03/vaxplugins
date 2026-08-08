@@ -15,6 +15,10 @@
     {
       "source": "/api/anime47/(.*)",
       "destination": "/api/anime47"
+    },
+    {
+      "source": "/json",
+      "destination": "/api/json/index.js"
     }
   ]
 
