@@ -2,24 +2,47 @@
   "rewrites": [
     {
       "source": "/api/clbpx",
-      "destination": "/api/clbpx"
+      "destination": "/api/index.js"
     },
     {
       "source": "/api/clbpx/(.*)",
-      "destination": "/api/clbpx"
+      "destination": "/api/index.js"
     },
     {
       "source": "/api/anime47",
-      "destination": "/api/anime47"
+      "destination": "/api/index.js"
     },
     {
       "source": "/api/anime47/(.*)",
-      "destination": "/api/anime47"
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/novahd",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/novahd/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/goated",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/goated/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/flextv",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/flextv/(.*)",
+      "destination": "/api/index.js"
     },
     {
       "source": "/json",
       "destination": "/api/json/index.js"
     }
   ]
-
 }
