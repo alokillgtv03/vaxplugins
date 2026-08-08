@@ -12,10 +12,19 @@ https://vaxplayer.vercel.app/api/goated/?mediaType=tv&id=1413&season=1&episode=1
 
 //novahd
 Loại movie
-https://vaxplayer.vercel.app/api/novahd/?mediaType=movie&id=969681&id=969681&source=all&debug=9780752
+https://vaxplayer.vercel.app/api/novahd/?mediaType=movie&id=[22:18:23.293][novahd][LOG] getUrlDetail[url]: 
+https://vaxplayer.vercel.app//api/themoviedb?endpoint=movie/1307118&server=novahd&getsv=true&language=vi-VN
+[22:18:24.903][novahd][LOG] parseMovieDetail[url]: 
+https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1307118&server=novahd&getsv=true&language=vi-VN
+[22:18:24.904][novahd][LOG] moviedata: 
+{"id":"https://vaxplayer.vercel.app/api/themoviedb?endpoint=movie%2F1307118&server=novahd&getsv=true&language=vi-VN","title":"Soulm8te","posterUrl":"https://image.tmdb.org/t/p/w500/bNErActDctl6cdUGw9pnjSCmyhQ.jpg","backdropUrl":"https://image.tmdb.org/t/p/w780/ebcOSaZLxdCMHDjJJQzx5PiEyzl.jpg","description":"Đang cập nhật nội dung...","quality":"HD","year":"2026","rating":"6.5","status":"Released","category":"[Phim Kinh Dị](/api/themoviedb?endpoint=discover/movie&with_genres=27&sort_by=popularity.desc&language=vi-VN), [Phim Khoa Học Viễn Tưởng](/api/themoviedb?endpoint=discover/movie&with_genres=878&sort_by=popularity.desc&language=vi-VN), [Phim Gây Cấn](/api/themoviedb?endpoint=discover/movie&with_genres=53&sort_by=popularity.desc&language=vi-VN)","episode_current":"Phim Lẻ","servers":[{"name":"Đã có lỗi xảy ra","episodes":[{"id":"","name":"Phim chưa chiếu hoặc tập phim đã bị lỗi.","slug":""}]}],"duration":"99 phút","casts":"","director":"","country":"United States of America"}1&id=969681&source=all&debug=9780752
 
 loại tvshow
 https://vaxplayer.vercel.app/api/novahd/?mediaType=tv&id=1413&season=1&episode=1&source=all&debug=9780752
+
+
+// https://novahd.cc/api/sources?type=movie&tmdbId=216015
+// https://novahd.cc/api/sources?type=show&tmdbId=1396&season=1&episode=1
 
 
 https://vaxplayer.vercel.app/api/goated/?mediaType=movie&id=969681&source=all&debug=9780752
