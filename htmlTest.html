@@ -1,15 +1,304 @@
-[08:56:13.398][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/phim-chieu-rap?page=1&limit=24
-[08:56:13.400][ophim][LOG] {"id":"am-anh-2026","title":"Ám Ảnh","posterUrl":"https://ophim1.com/uploads/movies/am-anh-2026-thumb.jpg","backdropUrl":"https://ophim1.com/uploads/movies/am-anh-2026-poster.jpg","year":2026,"quality":"HD","episode_current":"Full","lang":"Vietsub"}
-[08:56:13.528][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/phim-le?page=1&limit=24
-[08:56:13.529][ophim][LOG] {"id":"soulm8te","title":"Soulm8te","posterUrl":"https://ophim1.com/uploads/movies/soulm8te-thumb.webp","backdropUrl":"https://ophim1.com/uploads/movies/soulm8te-poster.webp","year":2026,"quality":"FHD","episode_current":"Full","lang":"Vietsub"}
-[08:56:13.550][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/hoat-hinh?page=1&limit=24
-[08:56:13.562][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/phim-bo?page=1&limit=24
-[08:56:13.612][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/tv-shows?page=1&limit=24
-[08:56:13.615][ophim][LOG] {"id":"nhip-dieu-thu-han","title":"Nhịp Điệu Thù Hận","posterUrl":"https://ophim1.com/uploads/movies/nhip-dieu-thu-han-thumb.jpg","backdropUrl":"https://ophim1.com/uploads/movies/nhip-dieu-thu-han-poster.jpg","year":2026,"quality":"HD","episode_current":"Hoàn tất (30/30)","lang":"Vietsub"}
-[08:56:13.630][ophim][LOG] parseListResponse: 
-https://ophim1.com/v1/api/danh-sach/phim-moi?page=1&limit=24
+https://nflixmovies.app/api/titan/embed-access?type=movie&id=980431&public_embed=1&sid=38e82311-6117-4a24-8e3b-194b9e89d3a9&parent=nflixmovies.app
+https://nflixmovies.app/api/titan/play?id=94997&type=tv&season=1&episode=1&skip=signalvault&cache_only=1&browserPlatform=desktop&browserHevc=1&browserH2644k=1&browserMatroska=1&public_embed=1&sid=06942e44-7b1e-48c4-a5dd-31abe1aadefd&parent=nflixmovies.app
+const EMBED_SID = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function withEmbedSid(q, parentHost = '') {
+  let s = String(q || '');
+
+  // 1. Nối thêm sid nếu chưa có
+  if (!/(?:^|&)sid=/.test(s)) {
+    s = `${s}${s.length ? '&' : ''}sid=${encodeURIComponent(EMBED_SID)}`;
+  }
+
+  // 2. Nối thêm parent nếu chưa có
+  if (!/(?:^|&)parent=/.test(s)) {
+    // Ưu tiên truyền tay parentHost, nếu không truyền thì lấy location.hostname
+    const host = parentHost || (typeof window !== 'undefined' ? window.location.hostname : '');
+    if (host) {
+      s = `${s}&parent=${encodeURIComponent(host)}`;
+    }
+  }
+
+  return s;
+}
+Tôi có 2 đuong link như bên trên và cơ chế lấy link phim cũng tuong tự như script nodeJS chạy trên vercel của tôi, tui nhien nó có cơ chế tạo thêm sid vào link và tôi có hàm js bên trên để tạo sid, bạn dùng nodejs làm nó luôn nhé. Và vẫn giữ nguyên cơ chế tự động lấy id, type, session episode để tạo thành link hoàn chỉnh để lấy subtitle như nodejs của tôi. Và tự ghép dữ liệu khi ghép link nflixmovies luôn.
+dữ liệu phim khi trả về sẽ có dạng như sau:. Lưu ý, nguồn này ko cần lấy cache nha bạn. hãy bỏ nó ra.
+{"cdnWarm":false,"directExternal":true,"directPlay":false,"directUrl":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","elapsedMs":1,"hlsPath":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","hlsUrl":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","instantPlay":true,"instantProvider":"dulopengu","label":"Dulo/Pengu (HD)","menuSources":[{"directExternal":true,"directPlay":false,"directUrl":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","label":"Dulo/Pengu (HD)","menuOnly":false,"noIos":false,"probe":{"kind":"hls","ok":true},"progressiveQuality":"","progressiveUrl":"","provider":"dulopengu","quality":"HD","signCookie":"","type":"hls","url":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102"}],"ok":true,"playableVerified":true,"playlistPath":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","probe":{"kind":"hls","ok":true},"progressiveQuality":"","progressiveUrl":"","provider":"dulopengu","proxiedHlsUrl":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","quality":"HD","signCookie":"","sources":[{"directExternal":true,"directPlay":false,"directUrl":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102","label":"Dulo/Pengu (HD)","menuOnly":false,"noIos":false,"probe":{"kind":"hls","ok":true},"progressiveQuality":"","progressiveUrl":"","provider":"dulopengu","quality":"HD","signCookie":"","type":"hls","url":"https://www.herewego24.com/mov/F7994B515CA5BF8509F99B5E3062E054/index.m3u8?expire=1786153764\u0026auth=2522b3d31f2392425116cc1db0fa6b64f32ae4650023efc4646389b2914d5029\u0026xaid=33ce990413e37fcc\u0026p1=23271,494,169.58.66.102"}],"subtitleTracks":[],"tier":"vps-local","type":"hls"}
+
+hãy đồng bộ và ghép dữ liệu phim và subtitle như nodejs của tôi đang làm
+
+
+const crypto = require('crypto');
+
+const cache = new Map();
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
+
+const APP_SECRET_KEY = "VAXPLAYER";
+const DEBUG_KEY = "9780752";
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const { 
+    id, 
+    mediaType = 'movie', 
+    type = 'video', 
+    source = 'Valenox', 
+    play, 
+    debug,
+    season,
+    episode,
+    cache: cacheParam
+  } = req.query;
+
+  const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
+
+  // 1. KIỂM TRA BẢO MẬT
+  const clientSecret = req.headers['x-app-secret'];
+  const isHeaderValid = clientSecret === APP_SECRET_KEY;
+  const isDebugValid = debug === DEBUG_KEY;
+
+  if (!isHeaderValid && !isDebugValid) {
+    return res.status(403).json({ 
+      status: "error",
+      error: "Truy cập bị từ chối! Bạn không có quyền gọi API này." 
+    });
+  }
+
+  if (!id) {
+    return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
+  }
+
+  // Làm sạch ID (nếu truyền vào dạng "969681,969681" hoặc chứa khoảng trắng)
+  const cleanId = String(id).split(',')[0].trim();
+
+  const cacheKey = `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
+
+  // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
+  if (isCacheDisabled) {
+    cache.delete(cacheKey);
+  } else if (cache.has(cacheKey)) {
+    const cachedItem = cache.get(cacheKey);
+    if (Date.now() - cachedItem.timestamp < CACHE_TTL) {
+      const ageSeconds = Math.floor((Date.now() - cachedItem.timestamp) / 1000);
+      
+      const responseData = {
+        status: "success",
+        log: {
+          cache_status: "HIT",
+          message: "Lấy dữ liệu thành công từ Cache trước đó",
+          cached_at: new Date(cachedItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...cachedItem.data
+      };
+
+      if (play && source !== 'true' && source !== 'all' && type === 'video') {
+        const videoUrl = responseData?.url || responseData?.link;
+        if (videoUrl && typeof videoUrl === 'string') {
+          return res.redirect(302, videoUrl);
+        }
+      }
+
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(responseData);
+    } else {
+      cache.delete(cacheKey);
+    }
+  }
+
+  try {
+    let resultData = {};
+
+    // 3. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
+    if (type === 'subtitle' || type === 'sub') {
+      resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
+    } else if (source === 'all') {
+      const [firstSourceRes, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+      ]);
+
+      const sourcesResult = [];
+
+      if (firstSourceRes && !firstSourceRes.error) {
+        const { subtitles: _, availableSources: __, ...cleanFirst } = firstSourceRes;
+        sourcesResult.push({
+          sourceName: 'Valenox',
+          ...cleanFirst
+        });
+      }
+
+      const allAvailable = firstSourceRes?.availableSources || ['Valenox', 'Orbit'];
+      const remainingSources = allAvailable.filter(s => s !== 'Valenox');
+
+      if (remainingSources.length > 0) {
+        const remainingRequests = remainingSources.map(src =>
+          fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode })
+            .then(res => ({ sourceName: src, data: res }))
+            .catch(err => ({ sourceName: src, error: err.message }))
+        );
+
+        const remainingResponses = await Promise.all(remainingRequests);
+
+        remainingResponses.forEach(item => {
+          if (item.data && !item.data.error) {
+            const { subtitles: _, availableSources: __, ...cleanData } = item.data;
+            sourcesResult.push({
+              sourceName: item.sourceName,
+              ...cleanData
+            });
+          }
+        });
+      }
+
+      if (sourcesResult.length === 0) {
+        throw new Error("Tất cả các nguồn Server đều bị giới hạn (Limit) hoặc lỗi.");
+      }
+
+      resultData = {
+        sources: sourcesResult,
+        subtitles: subData?.subtitles || subData
+      };
+
+    } else if (source === 'true') {
+      const [videoData, subData] = await Promise.all([
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }),
+        fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode })
+      ]);
+
+      if (videoData?.error) throw new Error(videoData.error);
+
+      resultData = {
+        ...videoData,
+        subtitles: subData?.subtitles || subData
+      };
+
+    } else {
+      resultData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source, season, episode });
+      if (resultData?.error) throw new Error(resultData.error);
+    }
+
+    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI (CACHE MISS HOẶC CACHE REFRESH)
+    const now = Date.now();
+    cache.set(cacheKey, {
+      timestamp: now,
+      data: resultData
+    });
+
+    const finalResponse = {
+      status: "success",
+      log: {
+        cache_status: isCacheDisabled ? "BYPASS_REFRESH" : "MISS",
+        message: isCacheDisabled 
+          ? "Đã làm mới dữ liệu thành công (bỏ qua Cache cũ)" 
+          : "Dữ liệu mới tạo thành công và đã được lưu vào Cache",
+        cached_at: new Date(now).toISOString(),
+        age_seconds: 0
+      },
+      ...resultData
+    };
+
+    if (play && source !== 'true' && source !== 'all' && type === 'video') {
+      const videoUrl = resultData?.url || resultData?.link;
+      if (videoUrl && typeof videoUrl === 'string') {
+        return res.redirect(302, videoUrl);
+      }
+    }
+
+    res.setHeader('X-Cache', isCacheDisabled ? 'BYPASS' : 'MISS');
+    res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400');
+    return res.status(200).json(finalResponse);
+
+  } catch (error) {
+    if (cache.has(cacheKey)) {
+      const fallbackItem = cache.get(cacheKey);
+      const ageSeconds = Math.floor((Date.now() - fallbackItem.timestamp) / 1000);
+
+      return res.status(200).json({
+        status: "success",
+        log: {
+          cache_status: "HIT_FALLBACK",
+          message: `Request mới bị lỗi (${error.message}). Tự động dùng Cache dự phòng trước đó.`,
+          cached_at: new Date(fallbackItem.timestamp).toISOString(),
+          age_seconds: ageSeconds
+        },
+        ...fallbackItem.data
+      });
+    }
+
+    return res.status(500).json({
+      status: "error",
+      log: {
+        cache_status: "FAILED",
+        message: "Request thất bại và không tìm thấy Cache cũ để phục hồi."
+      },
+      error: error.message
+    });
+  }
+};
+
+// Hàm lấy Phụ đề từ Shegust
+async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
+  // Đảm bảo loại mediaType khớp chuẩn (movie / tv)
+  const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
+  
+  // Tự ghép chuỗi URL thủ công để đảm bảo đúng chuẩn mẫu
+  let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
+
+  if (normType === 'tv') {
+    if (season) targetUrl += `&season=${season}`;
+    if (episode) targetUrl += `&episode=${episode}`;
+  }
+
+  const res = await fetch(targetUrl);
+  if (!res.ok) {
+    throw new Error(`Không thể lấy phụ đề từ Shegust (Status: ${res.status}) - Link: ${targetUrl}`);
+  }
+  return await res.json();
+}
+
+// Hàm giải mã Video Link qua Challenge / PoW
+async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
+  const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
+  if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
+  
+  const challengeData = await challengeRes.json();
+  const { challenge, difficulty = 4 } = challengeData;
+
+  const nonce = solvePoWNode(challenge, difficulty);
+
+  const payload = {
+    mediaType,
+    id: isNaN(id) ? id : Number(id),
+    challenge,
+    nonce: nonce.toString(),
+    ...extraParams
+  };
+
+  const apiRes = await fetch(`https://api.reallyfast.xyz/api/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  return await apiRes.json();
+}
+
+function solvePoWNode(challenge, difficulty) {
+  const targetPrefix = '0'.repeat(difficulty);
+  let nonce = 0;
+
+  while (nonce < 1000000) {
+    const hash = crypto.createHash('sha256').update(challenge + nonce).digest('hex');
+    if (hash.startsWith(targetPrefix)) {
+      return nonce;
+    }
+    nonce++;
+  }
+  return nonce;
+}

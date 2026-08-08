@@ -36,3 +36,37 @@ https://vaxplayer.vercel.app/api/json?file=filex.json&refresh=1
 
 https://vaxplayer.vercel.app/api/themoviedb?page=1&with_genres=9648&sort_by=popularity.desc
 
+
+
+https://nflixmovies.app/api/titan/play?id=980431&type=movie&skip=signalvault&cache_only=1&public_embed=1&parent=nflixmovies.app
+
+https://nflixmovies.app/api/titan/embed-access?type=movie&id=980431&public_embed=1&sid=38e82311-6117-4a24-8e3b-194b9e89d3a9&parent=nflixmovies.app
+
+https://nflixmovies.app/tv/94997/1/1
+https://nflixmovies.app/api/titan/embed-access?type=movie&id=980431&public_embed=1&sid=38e82311-6117-4a24-8e3b-194b9e89d3a9&parent=nflixmovies.app
+https://nflixmovies.app/api/titan/play?id=94997&type=tv&season=1&episode=1&skip=signalvault&cache_only=1&browserPlatform=desktop&browserHevc=1&browserH2644k=1&browserMatroska=1&public_embed=1&sid=06942e44-7b1e-48c4-a5dd-31abe1aadefd&parent=nflixmovies.app
+
+
+// Tạo 1 chuỗi SID ngẫu nhiên duy nhất cho lần chạy này
+const EMBED_SID = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const EMBED_SID = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function withEmbedSid(q, parentHost = '') {
+  let s = String(q || '');
+
+  // 1. Nối thêm sid nếu chưa có
+  if (!/(?:^|&)sid=/.test(s)) {
+    s = `${s}${s.length ? '&' : ''}sid=${encodeURIComponent(EMBED_SID)}`;
+  }
+
+  // 2. Nối thêm parent nếu chưa có
+  if (!/(?:^|&)parent=/.test(s)) {
+    // Ưu tiên truyền tay parentHost, nếu không truyền thì lấy location.hostname
+    const host = parentHost || (typeof window !== 'undefined' ? window.location.hostname : '');
+    if (host) {
+      s = `${s}&parent=${encodeURIComponent(host)}`;
+    }
+  }
+
+  return s;
+}
+withEmbedSid("https://nflixmovies.app/api/titan/play?id=980431&type=movie&skip=signalvault&cache_only=1&public_embed=1&parent=nflixmovies.app")
