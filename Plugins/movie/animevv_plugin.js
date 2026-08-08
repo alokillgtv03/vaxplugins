@@ -7,7 +7,7 @@ function getManifest() {
     description: "Nguồn phim Animevv...",
     "version": "1.2",
     info: "Nguồn phim Animevv, nguồn này dùng servers riêng của họ nên cũng khá mượt mà..",
-    baseUrl: "http://vkey.vn/animevv",
+    "BASEURL": "http://vkey.vn/animevv",
     iconUrl: "https://raw.githubusercontent.com/alokillgtv-gif/VAXAPPSCRIPT/main/img/animevv.png",
     isEnabled: true,
     "adblock": false,

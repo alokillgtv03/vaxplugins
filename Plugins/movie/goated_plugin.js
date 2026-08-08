@@ -13,7 +13,7 @@ function getManifest() {
       "version": "1.0.1",
       "author": "Alokillgtv",
       "info": "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này được mình tích hợp rẩt nhiều subtitle nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát.\nNếu vẫn không dược hãy thử hạ độ phân giải xuống 1 cấp sẽ coi được..",
-      "baseUrl": "https://vaxplayer.vercel.app",
+      "BASEURL": "https://vaxplayer.vercel.app",
       "iconUrl": "https://raw.githubusercontent.com/alokillgtv03/vaxplugins/main/img/goated.png",
       "isEnabled": true,
       "isAdult": false,
