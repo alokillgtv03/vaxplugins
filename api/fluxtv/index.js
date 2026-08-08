@@ -1,4 +1,4 @@
-// script fluxtv version 1.1 (Added getsv feature)
+// script fluxtv version 1.1 (Added getsv with video format feature)
 const crypto = require('crypto');
 
 const APP_SECRET_KEY = "VAXPLAYER";
@@ -110,6 +110,19 @@ function solvePoWNode(challenge, difficulty) {
   return nonce;
 }
 
+// Hàm hỗ trợ nhận diện định dạng video từ response
+function detectVideoFormat(data) {
+  if (!data) return 'unknown';
+  if (data.format) return String(data.format).toLowerCase();
+  if (data.type) return String(data.type).toLowerCase();
+  
+  const targetUrl = data.directUrl || data.hlsUrl || data.url || data.link || '';
+  if (targetUrl.includes('.m3u8')) return 'hls';
+  if (targetUrl.includes('.mp4')) return 'mp4';
+  
+  return targetUrl ? 'hls' : 'unknown';
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -155,19 +168,42 @@ module.exports = async (req, res) => {
 
     // 2. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // 1. Lấy danh sách server khả dụng ban đầu
-      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-      if (initialRes?.error) throw new Error(initialRes.error);
+      // BƯỚC 1: Lấy thông tin Nflix và danh sách server từ ReallyFast
+      const [nflixRes, reallyFastInitial] = await Promise.all([
+        fetchNflixStream({ mediaType, id: cleanId, season, episode }).catch(() => null),
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(() => null)
+      ]);
 
-      const servers = initialRes?.availableSources || ['Valenox'];
+      const serversList = [];
 
-      // 2. Lấy chi tiết format/định dạng của từng server bằng cách gọi song song
-      const serverDetailsPromises = servers.map(async (src) => {
+      // Xử lý server Nflix
+      if (nflixRes && !nflixRes.error) {
+        serversList.push({
+          name: 'Nflix',
+          format: detectVideoFormat(nflixRes),
+          status: 'available'
+        });
+      }
+
+      // Xử lý các server từ ReallyFast (Valenox, Orbit,...)
+      const availableSources = reallyFastInitial?.availableSources || ['Valenox'];
+      
+      const rfPromises = availableSources.map(async (src) => {
+        // Nếu là Valenox đã có dữ liệu từ bước gọi ban đầu
+        if (src === 'Valenox' && reallyFastInitial && !reallyFastInitial.error) {
+          return {
+            name: 'Valenox',
+            format: detectVideoFormat(reallyFastInitial),
+            status: 'available'
+          };
+        }
+
+        // Với các server khác, gọi để lấy chi tiết định dạng
         try {
           const res = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
           return {
             name: src,
-            format: res?.format || res?.type || (res?.url?.includes('.m3u8') ? 'hls' : (res?.url ? 'mp4' : 'unknown')),
+            format: res?.error ? 'unknown' : detectVideoFormat(res),
             status: res?.error ? 'error' : 'available'
           };
         } catch (e) {
@@ -179,11 +215,17 @@ module.exports = async (req, res) => {
         }
       });
 
-      const serversWithFormat = await Promise.all(serverDetailsPromises);
+      const rfServers = await Promise.all(rfPromises);
+      
+      // Gộp Nflix và danh sách từ ReallyFast
+      const allServers = [...serversList, ...rfServers];
+
+      // Loại bỏ các server trùng tên
+      const uniqueServers = Array.from(new Map(allServers.map(item => [item.name, item])).values());
 
       resultData = {
-        total_servers: servers.length,
-        servers: serversWithFormat
+        total_servers: uniqueServers.length,
+        servers: uniqueServers
       };
 
     } else if (type === 'subtitle' || type === 'sub') {

@@ -1,4 +1,4 @@
-// script goated, version: 1.1 (Added getsv feature)
+// script goated, version: 1.1 (Updated getsv with video format & status)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -6,6 +6,19 @@ const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 tiếng
 
 const APP_SECRET_KEY = "VAXPLAYER";
 const DEBUG_KEY = "9780752";
+
+// Hàm hỗ trợ nhận diện định dạng video từ response
+function detectVideoFormat(data) {
+  if (!data) return 'unknown';
+  if (data.format) return String(data.format).toLowerCase();
+  if (data.type) return String(data.type).toLowerCase();
+  
+  const targetUrl = data.directUrl || data.hlsUrl || data.url || data.link || '';
+  if (targetUrl.includes('.m3u8')) return 'hls';
+  if (targetUrl.includes('.mp4')) return 'mp4';
+  
+  return targetUrl ? 'hls' : 'unknown';
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -93,19 +106,30 @@ module.exports = async (req, res) => {
 
     // 3. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // 1. Lấy danh sách server khả dụng ban đầu
-      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
-      if (initialRes?.error) throw new Error(initialRes.error);
+      // BƯỚC 1: Lấy danh sách server khả dụng ban đầu từ 1 request
+      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(() => null);
+      if (!initialRes || initialRes.error) {
+        throw new Error(initialRes?.error || "Không thể kết nối đến máy chủ lấy danh sách Server.");
+      }
 
-      const servers = initialRes?.availableSources || ['Valenox'];
+      const availableSources = initialRes?.availableSources || ['Valenox'];
 
-      // 2. Lấy chi tiết format/định dạng của từng server bằng cách gọi song song
-      const serverDetailsPromises = servers.map(async (src) => {
+      // BƯỚC 2: Gọi lấy thông tin định dạng (format) cho từng Server song song
+      const serverDetailsPromises = availableSources.map(async (src) => {
+        // Nếu là Valenox thì lấy trực tiếp định dạng từ kết quả bước 1
+        if (src === 'Valenox') {
+          return {
+            name: 'Valenox',
+            format: detectVideoFormat(initialRes),
+            status: 'available'
+          };
+        }
+
         try {
           const res = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
           return {
             name: src,
-            format: res?.format || res?.type || (res?.url?.includes('.m3u8') ? 'hls' : (res?.url ? 'mp4' : 'unknown')),
+            format: res?.error ? 'unknown' : detectVideoFormat(res),
             status: res?.error ? 'error' : 'available'
           };
         } catch (e) {
@@ -120,7 +144,7 @@ module.exports = async (req, res) => {
       const serversWithFormat = await Promise.all(serverDetailsPromises);
 
       resultData = {
-        total_servers: servers.length,
+        total_servers: serversWithFormat.length,
         servers: serversWithFormat
       };
 
