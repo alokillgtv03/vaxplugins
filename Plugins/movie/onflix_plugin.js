@@ -6,7 +6,7 @@ function getManifest() {
 		"id": "onflix",
 		"name": "Onflix",
 		"description": "Trang xem phim siêu hay.",
-		"version": "1.8",
+		"version": "1.9",
 		"baseUrl": "https://onflix.lat",
     "info": "Nguồn phim Onflix, nhanh mượt và dễ tìm phim là ưu điểm.",
 		"iconUrl": "https://onflix.lat/app/asset/logo.png",
@@ -269,17 +269,25 @@ function parseListResponse(html, $url) {
             var block = rawList[j];
             var movieSlug = block.slug || "";
             var itemUrl = domain + "/phim/" + movieSlug;
-
-            items.push({
-                "id": itemUrl,
-                "title": (block.title || block.name || "").trim(),
-                "posterUrl": block.poster_url || "",
-                "backdropUrl": block.thumb_url || "",
-                "year": block.year || "",
-                "quality": block.quality || "",
-                "episode_current": block.episode_current || "",
-                "lang": block.lang || ""
-            });
+            var poster = block.poster_url;
+            var backdrop = block.thumb_url;
+            if(!block.episode_current.match(/sắp|chiếu/)){
+              if(poster && poster.indexOf("ophim") > -1 || backdrop && backdrop.indexOf("ophim") > -1){
+                // https://img.ophim.live
+                poster = poster.replace("https://img.ophim.live","https://ophim1.com");
+                backdrop = backdrop.replace("https://img.ophim.live","https://ophim1.com");
+              }
+              items.push({
+                  "id": itemUrl,
+                  "title": (block.title || block.name || "").trim(),
+                  "posterUrl": poster || "",
+                  "backdropUrl": backdrop || "",
+                  "year": block.year || "",
+                  "quality": block.quality || "",
+                  "episode_current": block.episode_current || "",
+                  "lang": block.lang || ""
+              });
+            }
         }
 
         return JSON.stringify({
