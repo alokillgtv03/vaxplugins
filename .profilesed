@@ -1,0 +1,1 @@
+alias t='git add . && git commit -m "update [skip ci]" && git push' -i /alias t=/d /public/.p
