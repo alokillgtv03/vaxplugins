@@ -170,68 +170,15 @@ module.exports = async (req, res) => {
 
     // 2. XỬ LÝ THEO LOẠI REQUEST
     if (isGetSv) {
-      // Gọi Nflix và ReallyFast ban đầu để lấy danh sách nguồn
-      const [nflixRes, reallyFastInitial] = await Promise.all([
-        fetchNflixStream({ mediaType, id: cleanId, season, episode }).catch(() => null),
-        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(() => null)
-      ]);
+      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
+      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
+      if (initialRes?.error) throw new Error(initialRes.error);
 
-      const serversList = [];
-
-      // Kiểm tra nguồn Nflix
-      if (nflixRes && !nflixRes.error) {
-        serversList.push({
-          name: 'Nflix',
-          format: safeDetectFormat(nflixRes),
-          status: 'available'
-        });
-      }
-
-      // Lấy danh sách server nguồn từ ReallyFast
-      const availableSources = Array.isArray(reallyFastInitial?.availableSources)
-        ? reallyFastInitial.availableSources
-        : ['Valenox'];
-
-      for (let i = 0; i < availableSources.length; i++) {
-        const src = availableSources[i];
-        if (src === 'Valenox' && reallyFastInitial && !reallyFastInitial.error) {
-          serversList.push({
-            name: 'Valenox',
-            format: safeDetectFormat(reallyFastInitial),
-            status: 'available'
-          });
-        } else {
-          try {
-            const resData = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: src, season, episode });
-            serversList.push({
-              name: src,
-              format: (resData && !resData.error) ? safeDetectFormat(resData) : 'unknown',
-              status: (resData && !resData.error) ? 'available' : 'error'
-            });
-          } catch (err) {
-            serversList.push({
-              name: src,
-              format: 'unknown',
-              status: 'error'
-            });
-          }
-        }
-      }
-
-      // Lọc trùng server dựa trên tên
-      const uniqueServers = [];
-      const seenNames = new Set();
-      for (let i = 0; i < serversList.length; i++) {
-        const item = serversList[i];
-        if (!seenNames.has(item.name)) {
-          seenNames.add(item.name);
-          uniqueServers.push(item);
-        }
-      }
+      const servers = initialRes?.availableSources || ['Valenox'];
 
       resultData = {
-        total_servers: uniqueServers.length,
-        servers: uniqueServers
+        total_servers: servers.length,
+        servers: servers
       };
 
     } else if (type === 'subtitle' || type === 'sub') {
