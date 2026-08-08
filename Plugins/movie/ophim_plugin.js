@@ -9,7 +9,7 @@ function getManifest() {
     return JSON.stringify({
         "id": "ophim",
         "name": "OPhim",
-        "version": "1.0.5",
+        "version": "1.0.6",
         "baseUrl": BASEURL,
         "layoutType": "HORIZONTAL",
         "iconUrl": "https://raw.githubusercontent.com/youngbi/repo/main/plugins/ophim.ico",
