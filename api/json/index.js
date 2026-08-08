@@ -1,34 +1,36 @@
-// Thông tin GitHub Repository
 const GITHUB_USER = 'alokillgtv02';
 const GITHUB_REPO = 'jsonStore';
 const GITHUB_BRANCH = 'main';
 
-// Lưu cache SHA trong bộ nhớ tạm của Serverless (để tối ưu tốc độ)
-let cachedCommitSha = null;
-let lastFetchTime = 0;
-const CACHE_TTL = 30000; // Kiểm tra commit mới sau mỗi 30 giây
+// Memory cache
+let cachedCommitSha = {};
+let lastFetchTime = {};
 
 export default async function handler(req, res) {
-    const { file } = req.query;
+    const { file, refresh } = req.query;
 
     if (!file) {
         return res.status(400).json({ error: 'Thiếu tham số "file". Ví dụ: /json?file=filex.json' });
     }
 
     const now = Date.now();
-    let commitSha = cachedCommitSha;
+    const isForceRefresh = refresh === 'true' || refresh === '1';
+    
+    // Nếu có truyền ?refresh=true HOẶC chưa có cache HOẶC đã quá 10s
+    let commitSha = cachedCommitSha[file];
+    const lastTime = lastFetchTime[file] || 0;
 
-    // Chỉ gọi GitHub API nếu chưa có SHA hoặc cache đã quá 30 giây
-    if (!commitSha || (now - lastFetchTime) > CACHE_TTL) {
+    if (isForceRefresh || !commitSha || (now - lastTime) > 10000) {
         try {
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/commits?sha=${GITHUB_BRANCH}&path=${file}&page=1&per_page=1`;
+            // Thêm timestamp_random để tránh GitHub API trả về cache HTTP
+            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/commits?sha=${GITHUB_BRANCH}&path=${file}&page=1&per_page=1&_t=${now}`;
             
             const headers = {
                 'User-Agent': 'Vercel-CDN-Proxy',
-                'Accept': 'application/vnd.github.v3+json'
+                'Accept': 'application/vnd.github.v3+json',
+                'Cache-Control': 'no-cache'
             };
 
-            // Nếu bạn có cấu hình GITHUB_TOKEN trong Vercel Environment Variables
             if (process.env.GITHUB_TOKEN) {
                 headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
             }
@@ -39,8 +41,8 @@ export default async function handler(req, res) {
                 const commits = await response.json();
                 if (commits && commits.length > 0) {
                     commitSha = commits[0].sha;
-                    cachedCommitSha = commitSha;
-                    lastFetchTime = now;
+                    cachedCommitSha[file] = commitSha;
+                    lastFetchTime[file] = now;
                 }
             }
         } catch (error) {
@@ -48,21 +50,16 @@ export default async function handler(req, res) {
         }
     }
 
-    // Nếu không lấy được Commit SHA (lỗi mạng/API limit) -> Fallback về Branch
     const ref = commitSha || GITHUB_BRANCH;
-
-    // Link CDN chính xác kèm SHA (Đảm bảo luôn load đúng file mới nhất khi có commit)
     const cdnUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${ref}/${file}`;
 
-    // Đặt Cache Header cho Vercel Edge Cache:
-    // Nếu có SHA -> Cache Edge 1 năm (vì SHA là duy nhất cho mỗi bản sửa đổi)
-    // Nếu fallback dùng Branch -> Cache ngắn hạn 60 giây
-    const cacheHeader = commitSha 
-        ? 'public, max-age=31536000, s-maxage=31536000, immutable'
-        : 'public, max-age=60, s-maxage=60, stale-while-revalidate=30';
+    // Cấu hình Cache-Control cho Vercel Edge:
+    // Nếu ép refresh thì bảo Edge không được cache kết quả redirect này
+    if (isForceRefresh) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+    }
 
-    res.setHeader('Cache-Control', cacheHeader);
-
-    // Chuyển hướng 302 sang CDN
     return res.redirect(302, cdnUrl);
 }
