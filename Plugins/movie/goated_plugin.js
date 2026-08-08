@@ -689,7 +689,7 @@ function parseDetailResponse(html, url) {
   }
 }
   
-  function parseEmbedResponse(html, url) {
+function parseEmbedResponse(html, url) {
     log("parseEmbedResponse [url]: " + url); //console.log("parseEmbedResponse [Raw]: " + html);
     try {
       var stream = "";

@@ -1,3 +1,4 @@
+// script fluxtv version 1.1 (Added getsv feature)
 const crypto = require('crypto');
 
 const APP_SECRET_KEY = "VAXPLAYER";
@@ -8,12 +9,10 @@ function withEmbedSid(q, parentHost = 'nflixmovies.app') {
   const embedSid = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let s = String(q || '');
 
-  // 1. Nối thêm sid nếu chưa có
   if (!/(?:^|&)sid=/.test(s)) {
     s = `${s}${s.length ? '&' : ''}sid=${encodeURIComponent(embedSid)}`;
   }
 
-  // 2. Nối thêm parent nếu chưa có
   if (!/(?:^|&)parent=/.test(s)) {
     s = `${s}&parent=${encodeURIComponent(parentHost)}`;
   }
@@ -27,16 +26,13 @@ async function fetchNflixStream({ mediaType, id, season, episode }) {
   let queryPath = '';
 
   if (normType === 'movie') {
-    // Cấu hình query cho phim lẻ
     queryPath = `type=movie&id=${id}&public_embed=1`;
   } else {
-    // Cấu hình query cho phim bộ
     const s = season || '1';
     const e = episode || '1';
     queryPath = `id=${id}&type=tv&season=${s}&episode=${e}&skip=signalvault&browserPlatform=desktop&browserHevc=1&browserH2644k=1&browserMatroska=1&public_embed=1`;
   }
 
-  // Tạo URL hoàn chỉnh với SID và Parent
   const finalQuery = withEmbedSid(queryPath, 'nflixmovies.app');
   const endpoint = normType === 'movie' 
     ? `https://nflixmovies.app/api/titan/embed-access?${finalQuery}`
@@ -73,7 +69,7 @@ async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   return await res.json();
 }
 
-// Hàm giải mã Video Link qua Challenge / PoW (Cho các nguồn cũ nếu có gọi)
+// Hàm giải mã Video Link qua Challenge / PoW
 async function fetchApiWithPoW(endpoint, mediaType, id, extraParams = {}) {
   const challengeRes = await fetch("https://api.reallyfast.xyz/api/challenge");
   if (!challengeRes.ok) throw new Error("Không thể lấy challenge");
@@ -130,8 +126,11 @@ module.exports = async (req, res) => {
     play, 
     debug,
     season,
-    episode
+    episode,
+    getsv
   } = req.query;
+
+  const isGetSv = getsv === 'true';
 
   // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
@@ -154,12 +153,30 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 2. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
-    if (type === 'subtitle' || type === 'sub') {
+    // 2. XỬ LÝ THEO LOẠI REQUEST
+    if (isGetSv) {
+      // Gọi song song Nflix và ReallyFast để tổng hợp toàn bộ các Server khả dụng
+      const [nflixCheck, reallyFastCheck] = await Promise.all([
+        fetchNflixStream({ mediaType, id: cleanId, season, episode })
+          .then(() => ['Nflix'])
+          .catch(() => []),
+        fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode })
+          .then(res => res?.availableSources || ['Valenox'])
+          .catch(() => [])
+      ]);
+
+      // Gộp và lọc trùng danh sách Server
+      const availableServers = Array.from(new Set([...nflixCheck, ...reallyFastCheck]));
+
+      resultData = {
+        total_servers: availableServers.length,
+        servers: availableServers
+      };
+
+    } else if (type === 'subtitle' || type === 'sub') {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
       
     } else if (source === 'Nflix') {
-      // Nguồn mặc định mới: Nflixmovies
       const [nflixData, subData] = await Promise.all([
         fetchNflixStream({ mediaType, id: cleanId, season, episode }),
         fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode }).catch(() => ([]))
@@ -173,7 +190,6 @@ module.exports = async (req, res) => {
       };
 
     } else if (source === 'all') {
-      // Lấy song song dữ liệu Nflix, ReallyFast (Valenox) và Subtitle
       const [nflixRes, valenoxRes, subData] = await Promise.all([
         fetchNflixStream({ mediaType, id: cleanId, season, episode }).catch(err => ({ error: err.message })),
         fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode }).catch(err => ({ error: err.message })),
@@ -230,7 +246,7 @@ module.exports = async (req, res) => {
     };
 
     // Điều hướng nếu có tham số play=true
-    if (play && type === 'video') {
+    if (!isGetSv && play && type === 'video') {
       const videoUrl = resultData?.directUrl || resultData?.hlsUrl || resultData?.url || resultData?.link;
       if (videoUrl && typeof videoUrl === 'string') {
         return res.redirect(302, videoUrl);

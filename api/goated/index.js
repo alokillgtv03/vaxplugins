@@ -1,3 +1,4 @@
+// script goated, version: 1.1 (Added getsv feature)
 const crypto = require('crypto');
 
 const cache = new Map();
@@ -23,10 +24,12 @@ module.exports = async (req, res) => {
     debug,
     season,
     episode,
-    cache: cacheParam
+    cache: cacheParam,
+    getsv
   } = req.query;
 
   const isCacheDisabled = cacheParam === 'false' || req.query.nocache === 'true' || req.query.refresh === 'true';
+  const isGetSv = getsv === 'true';
 
   // 1. KIỂM TRA BẢO MẬT
   const clientSecret = req.headers['x-app-secret'];
@@ -44,10 +47,13 @@ module.exports = async (req, res) => {
     return res.status(400).json({ status: "error", error: "Thiếu tham số 'id' trên URL" });
   }
 
-  // Làm sạch ID (nếu truyền vào dạng "969681,969681" hoặc chứa khoảng trắng)
+  // Làm sạch ID
   const cleanId = String(id).split(',')[0].trim();
 
-  const cacheKey = `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
+  // Tạo Cache Key riêng biệt nếu query tham số getsv
+  const cacheKey = isGetSv 
+    ? `getsv_${mediaType}_${cleanId}_${season || ''}_${episode || ''}`
+    : `${mediaType}_${cleanId}_${season || ''}_${episode || ''}_${type}_${source}`;
 
   // 2. KIỂM TRA CACHE TỒN TẠI TỪ TRƯỚC (CACHE HIT)
   if (isCacheDisabled) {
@@ -68,7 +74,7 @@ module.exports = async (req, res) => {
         ...cachedItem.data
       };
 
-      if (play && source !== 'true' && source !== 'all' && type === 'video') {
+      if (!isGetSv && play && source !== 'true' && source !== 'all' && type === 'video') {
         const videoUrl = responseData?.url || responseData?.link;
         if (videoUrl && typeof videoUrl === 'string') {
           return res.redirect(302, videoUrl);
@@ -85,8 +91,20 @@ module.exports = async (req, res) => {
   try {
     let resultData = {};
 
-    // 3. XỬ LÝ THEO LOẠI SOURCE VÀ TYPE
-    if (type === 'subtitle' || type === 'sub') {
+    // 3. XỬ LÝ THEO LOẠI REQUEST
+    if (isGetSv) {
+      // Chỉ lấy danh sách server khả dụng từ 1 request duy nhất (tiết kiệm tài nguyên)
+      const initialRes = await fetchApiWithPoW('resolve', mediaType, cleanId, { source: 'Valenox', season, episode });
+      if (initialRes?.error) throw new Error(initialRes.error);
+
+      const servers = initialRes?.availableSources || ['Valenox'];
+
+      resultData = {
+        total_servers: servers.length,
+        servers: servers
+      };
+
+    } else if (type === 'subtitle' || type === 'sub') {
       resultData = await fetchSubtitlesShegu({ mediaType, id: cleanId, season, episode });
     } else if (source === 'all') {
       const [firstSourceRes, subData] = await Promise.all([
@@ -154,7 +172,7 @@ module.exports = async (req, res) => {
       if (resultData?.error) throw new Error(resultData.error);
     }
 
-    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI (CACHE MISS HOẶC CACHE REFRESH)
+    // 4. LƯU DỮ LIỆU VÀO CACHE MỚI
     const now = Date.now();
     cache.set(cacheKey, {
       timestamp: now,
@@ -174,7 +192,7 @@ module.exports = async (req, res) => {
       ...resultData
     };
 
-    if (play && source !== 'true' && source !== 'all' && type === 'video') {
+    if (!isGetSv && play && source !== 'true' && source !== 'all' && type === 'video') {
       const videoUrl = resultData?.url || resultData?.link;
       if (videoUrl && typeof videoUrl === 'string') {
         return res.redirect(302, videoUrl);
@@ -215,10 +233,7 @@ module.exports = async (req, res) => {
 
 // Hàm lấy Phụ đề từ Shegust
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
-  // Đảm bảo loại mediaType khớp chuẩn (movie / tv)
   const normType = (mediaType === 'series' || mediaType === 'tv') ? 'tv' : 'movie';
-  
-  // Tự ghép chuỗi URL thủ công để đảm bảo đúng chuẩn mẫu
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
 
   if (normType === 'tv') {
