@@ -7,7 +7,7 @@ function getManifest() {
     id: "novahd",
     name: "Nguồn NovaHD",
     description: "Nguồn phim NovaHD",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "author": "Alokillgtv",
     info: "Nguồn phim thuộc servers nước ngoài.\nDùng để sơ cua khi các nguồn trong nước bị sập.\nNguồn này có subtitle riêng nên có thể tự động dịch và lồng tiếng tự động.\nVì là nguồn nước ngoài nên đôi khi cần phải vượt DNS mới xem được.\nDo đó nếu không xem được hãy vào cài đặt bật DNS và DPI hoặc dùng ứng dụng 1.1.1.1 để vượt DNS.\nMột vài phim load sẽ hơi lâu, nhưng khi load được sẽ phát mượt. Nếu không load được hay bấm tải lại sẽ tự tìm link khác để phát",
     baseUrl: "http://vkey.vn/novahd",
@@ -782,36 +782,70 @@ function parseEmbedResponse(html, url) {
       var language = item.language;
       var type = item.type;
       var itemUrl = item.url;
-      
+      var display = item.display.replace(/^.*?(?:-(\d+))?\.([^.]+)$/, '$1.$2').replace(/^\./, '');
       var encode = itemUrl.replace("https://subtitles.shegu.st/sub/", "");
       var decode = BASE64.decode(encode);
       
       itemUrl = decode;
-      var mimeType = "text/vtt";
-      if (type === "srt") {
-        mimeType = "application/x-subrip";
-      }
+      
+     var subMime = getSubtitleMimeType(type);
       
       if (language === "vi") {
         subtitle.push({
-          lang: "Vietsub " + numsub,
+          lang: "Vietsub " + numsub  + " ["+subMime+" - "+display+"]",
           url: itemUrl,
-          mimeType: mimeType
+          mimeType: subMime
         });
         numsub++;
       }
       if (language === "en") {
-        if (numeng < 2) {
+        if (numeng < 3) {
           numeng++;
           subtitle.push({
-            lang: "Engsub " + numeng,
+            lang: "Engsub " + numeng  + " ["+subMime+" - "+display+"]",
             url: itemUrl,
-            mimeType: mimeType
+            mimeType: subMime
           });
         }
       }
     });
+function getSubtitleMimeType(type, itemUrl) {
+  // Chuẩn hóa input về chữ thường để so sánh chính xác
+  var ext = (type || "").toLowerCase();
+  var url = (itemUrl || "").toLowerCase();
 
+  // Kiểm tra extension truyền vào hoặc lấy đuôi file từ URL
+  var isExt = function(targetExt) {
+    return ext === targetExt || url.indexOf("." + targetExt) > -1;
+  };
+
+  if (isExt("srt")) {
+    return "application/x-subrip";
+  }
+  
+  if (isExt("ass") || isExt("ssa")) {
+    return "text/x-ssa"; // Hoặc "text/x-ass"
+  }
+
+  if (isExt("vtt")) {
+    return "text/vtt";
+  }
+
+  if (isExt("sub")) {
+    return "text/x-microdvd"; // Hoặc "application/x-subviewer" tùy nguồn sub
+  }
+
+  if (isExt("ttml") || isExt("dfxp") || isExt("xml")) {
+    return "application/ttml+xml";
+  }
+
+  if (isExt("lrc")) {
+    return "text/x-lrc";
+  }
+
+  // Mặc định trả về WebVTT nếu không khớp định dạng nào
+  return "text/vtt";
+}
     console.log("subtitle: \n" + JSON.stringify(subtitle));
 
     return JSON.stringify({
