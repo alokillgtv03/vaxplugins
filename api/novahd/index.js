@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
         status: "success",
         log: {
           cache_status: "HIT",
-          message: "Lấy dữ liệu NovaHD từ Cache",
+          message: "Lấy dữ liệu NovaHD từ Cache thành công",
           cached_at: new Date(cachedItem.timestamp).toISOString()
         },
         ...cachedItem.data
@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
       throw new Error("NovaHD không tìm thấy nguồn video nào cho ID này.");
     }
 
-    // DUYỆT TẤT CẢ SERVER TRONG MẢNG SOURCES CỦA NOVAHD (Viper, Vega, Atlas, Orion...)
+    // MAP TOÀN BỘ DANH SÁCH SERVER (Viper, Vega, Atlas, Orion...)
     const mappedSources = novaData.sources.map(item => ({
       sourceName: item.provider ? `NovaHD (${item.provider})` : (item.name || 'NovaHD'),
       url: item.url,
@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
       subtitles: subData?.subtitles || subData
     };
 
-    // 4. LƯU CACHE
+    // 4. LƯU CACHE VÀ BÁO KẾT QUẢ
     const now = Date.now();
     cache.set(cacheKey, { timestamp: now, data: resultData });
 
@@ -110,6 +110,7 @@ module.exports = async (req, res) => {
   }
 };
 
+// HÀM LẤY DATA NOVAHD (ĐÃ FIX GIẢ LẬP HEADER CHỐNG 403)
 async function fetchNovaHD({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'show' : 'movie';
   let targetUrl = `https://novahd.cc/api/sources?type=${normType}&tmdbId=${id}`;
@@ -119,25 +120,41 @@ async function fetchNovaHD({ mediaType, id, season, episode }) {
   }
 
   const res = await fetch(targetUrl, {
+    method: 'GET',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': 'https://novahd.cc/'
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Origin': 'https://novahd.cc',
+      'Referer': 'https://novahd.cc/',
+      'Sec-Ch-Ua': '"Not-A.Brand";v="99", "Chromium";v="124", "Google Chrome";v="124"',
+      'Sec-Ch-Ua-Mobile': '?0',
+      'Sec-Ch-Ua-Platform': '"Windows"',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-origin'
     }
   });
 
-  if (!res.ok) throw new Error(`NovaHD API Status: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`NovaHD API Status: ${res.status}`);
+  }
+
   const data = await res.json();
   return { sources: data.sources || [] };
 }
 
+// HÀM LẤY SUBTITLE SHEGU
 async function fetchSubtitlesShegu({ mediaType, id, season, episode }) {
   const normType = (mediaType === 'series' || mediaType === 'show' || mediaType === 'tv') ? 'tv' : 'movie';
   let targetUrl = `https://subtitles.shegu.st/subtitles?type=${normType}&tmdb=${id}`;
+  
   if (normType === 'tv') {
     if (season) targetUrl += `&season=${season}`;
     if (episode) targetUrl += `&episode=${episode}`;
   }
+  
   const res = await fetch(targetUrl);
-  if (!res.ok) throw new Error("Lỗi sub");
+  if (!res.ok) throw new Error("Lỗi lấy Subtitle");
   return await res.json();
 }
