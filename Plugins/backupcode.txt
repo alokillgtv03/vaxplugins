@@ -33,3 +33,25 @@ https://vidfast.vc/wyzie?id=969681
 
 
 https://vaxplayer.vercel.app/api/themoviedb?page=1&with_genres=9648&sort_by=popularity.desc
+
+
+
+            id: movie.slug || "",
+            title: movie.name || "",
+            originName: movie.origin_name || "",
+            posterUrl: getImageUrl(movie.thumb_url),
+            backdropUrl: getImageUrl(movie.poster_url),
+            description: (movie.content || "").replace(/<[^>]*>/g, ""),
+            year: movie.year || 0,
+            rating: rating,
+            quality: movie.quality || "",
+            servers: servers,
+            episode_current: movie.episode_current || "",
+            lang: movie.lang || "",
+            category: categories,
+            country: countries,
+            director: directors,
+            casts: actors,
+            tmdbId: String(tmdbId),
+            tmdbSeason: tmdbSeason || 0,
+            tmdbType: tmdbType || ""
