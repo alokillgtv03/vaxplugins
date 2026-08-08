@@ -7,13 +7,13 @@
 6 silly config load:file:/etc/npmrc
 7 verbose title npm install types-registry@latest
 8 verbose argv "install" "--ignore-scripts" "types-registry@latest"
-9 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-07T12_59_04_703Z-
-10 verbose logfile /public/.npm/_logs/2026-08-07T12_59_04_703Z-debug-0.log
+9 verbose logfile logs-max:10 dir:/public/.npm/_logs/2026-08-08T01_31_04_224Z-
+10 verbose logfile /public/.npm/_logs/2026-08-08T01_31_04_224Z-debug-0.log
 11 silly logfile start cleaning logs, removing 1 files
 12 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
 13 silly logfile done cleaning log files
 14 silly packumentCache corgi:https://registry.npmjs.org/types-registry cache-miss
-15 http cache https://registry.npmjs.org/types-registry 32ms (cache hit)
+15 http cache https://registry.npmjs.org/types-registry 38ms (cache hit)
 16 silly packumentCache corgi:https://registry.npmjs.org/types-registry set size:630928 disposed:false
 17 silly idealTree buildDeps
 18 silly fetch manifest types-registry@0.1.781
@@ -48,7 +48,7 @@
 24 silly audit   'undici-types': [ '8.3.0' ],
 24 silly audit   'types-registry': [ '0.1.781' ]
 24 silly audit }
-25 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 532ms
+25 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 519ms
 26 silly audit report {}
 27 verbose cwd /public/.cache/typescript/7.0
 28 verbose os Linux 4.19.157-perf+
